@@ -80,25 +80,28 @@ export function buildConfirmationEmail(
   const exempt = isExempt(type);
   const count = registration.participantCount;
   const grouped = !exempt && count >= GROUP_THRESHOLD;
-  const url = `${siteUrl()}/registration/${registration._id}`;
+  const site = siteUrl();
+  const url = `${site}/registration/${registration.registrationNumber}`;
 
   const preheader = `${registration.registrationNumber} · ${groupPhrase(registration)}`;
 
   const amountLabel = exempt
-    ? formatPeso(0)
+    ? "Nothing to pay"
     : grouped
       ? `${formatPeso(registration.totalAmount)} at the group rate`
       : `${formatPeso(registration.totalAmount)} · ${formatPeso(ratePerPerson(count))} each`;
 
   const opening = exempt
-    ? `Thanks for signing up for the CrossGen Family Summit. Nothing to pay for a ${typeShort(type).toLowerCase()} registration. Keep this email — your number is how we'll find you at the door.`
-    : `Thanks for signing ${count > 1 ? "your family" : "yourself"} up for the CrossGen Family Summit. We've got your receipt too. Keep this email — your number is how we'll find you at the door.`;
+    ? `Salamat! You're on the list for the CrossGen Family Summit as a ${typeShort(type).toLowerCase()}, and there's nothing to pay.`
+    : count > 1
+      ? "Salamat! Your family is on the list for the CrossGen Family Summit, and we have your receipt."
+      : "Salamat! You're on the list for the CrossGen Family Summit, and we have your receipt.";
 
   const sessionRows = participants
     .map(
-      (p) => `<tr>
-        <td style="padding:9px 0;border-bottom:1px solid ${C.line};font:500 14.5px/1.4 ${SANS};color:${C.ink};">${escapeHtml(p.fullName)}</td>
-        <td style="padding:9px 0;border-bottom:1px solid ${C.line};font:400 13.5px/1.4 ${SANS};color:${C.muted};text-align:right;">${escapeHtml(breakoutTitle(p.breakoutSession))}</td>
+      (p, i) => `<tr>
+        <td style="padding:10px 0;${i === 0 ? "" : `border-top:1px solid ${C.line};`}font:500 15px/1.4 ${SANS};color:${C.ink};">${escapeHtml(p.fullName)}</td>
+        <td style="padding:10px 0;${i === 0 ? "" : `border-top:1px solid ${C.line};`}font:400 13.5px/1.45 ${SANS};color:${C.muted};text-align:right;">${escapeHtml(breakoutTitle(p.breakoutSession))}</td>
       </tr>`,
     )
     .join("");
@@ -108,53 +111,64 @@ export function buildConfirmationEmail(
   <head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /></head>
   <body style="margin:0;padding:0;background:${C.canvas};font-family:${SANS};">
     <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(preheader)}</div>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${C.canvas};padding:20px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${C.canvas};padding:24px 16px;">
       <tr><td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:18px;overflow:hidden;">
 
-          <tr><td style="background:${C.purple};padding:22px 28px;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-              <td style="font:700 19px/1 ${SANS};letter-spacing:-.045em;color:#ffffff;">crossgen</td>
-              <td style="font:500 12.5px/1 ${SANS};color:rgba(255,255,255,.7);text-align:right;">Family Summit 2026</td>
-            </tr></table>
+          <tr><td style="padding:0;">
+            <img src="${site}/brand/header.png" width="560" alt="CrossGen Family Summit 2026" style="display:block;width:100%;height:auto;border:0;" />
           </td></tr>
 
-          <tr><td style="padding:32px 28px;">
-            <h1 style="margin:0 0 22px;font:600 25px/1.25 ${SANS};letter-spacing:-.02em;color:${C.ink};">Hi ${escapeHtml(greetingName(registration))} — you're all set.</h1>
-            <p style="margin:0 0 22px;font:400 15.5px/1.65 ${SANS};color:${C.ink};">${escapeHtml(opening)}</p>
+          <!-- the number is the thing they need on the day, so it leads -->
+          <tr><td style="background:${C.purple};padding:26px 28px;">
+            <div style="font:600 11.5px/1 ${SANS};letter-spacing:.09em;text-transform:uppercase;color:rgba(255,255,255,.6);padding-bottom:8px;">Your number</div>
+            <div style="font:700 30px/1 ${SANS};letter-spacing:.01em;color:#ffffff;">${escapeHtml(registration.registrationNumber)}</div>
+            <div style="font:400 14px/1.5 ${SANS};color:rgba(255,255,255,.75);padding-top:8px;">Ipakita lang ito sa registration table.</div>
+          </td></tr>
 
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid ${C.line};margin:0 0 22px;">
-              ${row("Your number", registration.registrationNumber)}
+          <tr><td style="padding:28px 28px 8px;">
+            <h1 style="margin:0 0 14px;font:600 23px/1.3 ${SANS};letter-spacing:-.02em;color:${C.ink};">Hi ${escapeHtml(greetingName(registration))} — you're all set.</h1>
+            <p style="margin:0 0 24px;font:400 15.5px/1.65 ${SANS};color:${C.ink};">${escapeHtml(opening)}</p>
+
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid ${C.line};margin:0 0 24px;">
               ${row(count > 1 ? "Your group" : "Registered", groupPhrase(registration))}
               ${row(exempt ? "Registration fee" : "Sent", amountLabel, registration.datePaid === undefined)}
               ${registration.datePaid ? row("Paid", formatDatePaid(registration.datePaid), true) : ""}
             </table>
 
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 22px;">
-              <tr><td style="background:${C.surface};border-radius:12px;padding:18px 20px;">
-                <div style="font:600 11.5px/1 ${SANS};letter-spacing:.09em;text-transform:uppercase;color:${C.muted};padding-bottom:6px;">Where to be</div>
-                <div style="font:600 15.5px/1.5 ${SANS};color:${C.ink};">${escapeHtml(EVENT.dayOfWeek)}, ${escapeHtml(EVENT.date)}</div>
+            <div style="font:600 11.5px/1 ${SANS};letter-spacing:.09em;text-transform:uppercase;color:${C.muted};padding-bottom:6px;">${count > 1 ? "Everyone and their sessions" : "Your session"}</div>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 26px;">
+              ${sessionRows}
+            </table>
+
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 26px;">
+              <tr><td style="background:${C.surface};border-radius:14px;padding:20px;">
+                <div style="font:600 11.5px/1 ${SANS};letter-spacing:.09em;text-transform:uppercase;color:${C.muted};padding-bottom:8px;">Kita-kita tayo</div>
+                <div style="font:600 16px/1.5 ${SANS};color:${C.ink};">${escapeHtml(EVENT.dayOfWeek)}, ${escapeHtml(EVENT.date)}</div>
                 <div style="font:400 14.5px/1.5 ${SANS};color:${C.muted};">${escapeHtml(EVENT.venue)}<br />${escapeHtml(EVENT.address)}</div>
               </td></tr>
             </table>
 
-            <div style="font:600 11.5px/1 ${SANS};letter-spacing:.09em;text-transform:uppercase;color:${C.muted};padding-bottom:8px;">${count > 1 ? "Everyone and their sessions" : "Your session"}</div>
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid ${C.line};margin:0 0 24px;">
-              ${sessionRows}
+            <!-- padding on the cell, not line-height on the anchor: the
+                 line-height trick mis-centres in Gmail and Apple Mail. -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <tr><td align="center" bgcolor="${C.gold}" style="border-radius:12px;">
+                <a href="${url}" style="display:inline-block;padding:16px 28px;font:600 15.5px ${SANS};color:${C.ink};text-decoration:none;">View your registration</a>
+              </td></tr>
             </table>
-
-            <p style="margin:0 0 22px;font:400 15.5px/1.65 ${SANS};color:${C.ink};">We can't wait to see you there.</p>
-
-            <a href="${url}" style="display:block;height:48px;line-height:48px;background:${C.gold};color:${C.ink};text-decoration:none;font:600 15px ${SANS};text-align:center;border-radius:12px;">View your registration</a>
             ${
               exempt
                 ? ""
-                : `<p style="margin:20px 0 0;font:400 13px/1.6 ${SANS};color:${C.muted};">We've received your receipt — the team checks payments by hand, so this isn't confirmation that it has cleared yet.</p>`
+                : `<p style="margin:16px 0 0;font:400 13px/1.6 ${SANS};color:${C.muted};text-align:center;">Your payment is still being reviewed — we'll be in touch if anything is missing.</p>`
             }
           </td></tr>
 
-          <tr><td style="background:${C.tealTint};padding:18px 28px;font:400 12.5px/1.45 ${SANS};color:${C.tealInk};">
-            PCEC Family Commission · You're getting this because you registered for CrossGen 2026.
+          <tr><td style="padding:26px 28px 30px;">
+            <p style="margin:0;font:400 15.5px/1.65 ${SANS};color:${C.ink};">See you in September!</p>
+          </td></tr>
+
+          <tr><td style="background:${C.tealTint};padding:18px 28px;font:400 12.5px/1.5 ${SANS};color:${C.tealInk};">
+            PCEC Family Commission · Natanggap mo ito dahil nag-register ka para sa CrossGen 2026.
           </td></tr>
 
         </table>
@@ -171,11 +185,9 @@ export function buildConfirmationEmail(
     `Your number: ${registration.registrationNumber}`,
     `${count > 1 ? "Your group" : "Registered"}: ${groupPhrase(registration)}`,
     `${exempt ? "Registration fee" : "Sent"}: ${amountLabel}`,
-    registration.paymentReference
-      ? `Reference: ${registration.paymentReference}${registration.datePaid ? `, paid ${formatDatePaid(registration.datePaid)}` : ""}`
-      : null,
+    registration.datePaid ? `Paid: ${formatDatePaid(registration.datePaid)}` : null,
     "",
-    "Where to be:",
+    "Kita-kita tayo:",
     `${EVENT.dayOfWeek}, ${EVENT.date}`,
     EVENT.venue,
     EVENT.address,
@@ -185,9 +197,9 @@ export function buildConfirmationEmail(
       (p) => `  ${p.fullName} — ${breakoutTitle(p.breakoutSession)}`,
     ),
     "",
-    "We can't wait to see you there.",
-    "",
     `View your registration: ${url}`,
+    "",
+    "See you in September!",
   ]
     .filter((line): line is string => line !== null)
     .join("\n");

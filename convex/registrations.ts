@@ -284,14 +284,23 @@ export const submit = mutation({
   },
 });
 
-/** Powers the confirmation screen after submit. Registrant-scoped. */
+/**
+ * Powers the confirmation screen. Looked up by the printed registration
+ * number rather than the document id, so nothing internal ends up in a URL
+ * people paste around. Still registrant-scoped.
+ */
 export const getMine = query({
-  args: { registrationId: v.id("registrations") },
+  args: { registrationNumber: v.string() },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (userId === null) return null;
 
-    const registration = await ctx.db.get(args.registrationId);
+    const registration = await ctx.db
+      .query("registrations")
+      .withIndex("by_registrationNumber", (q) =>
+        q.eq("registrationNumber", args.registrationNumber.trim().toUpperCase()),
+      )
+      .unique();
     if (registration === null || registration.registrantUserId !== userId) {
       return null;
     }

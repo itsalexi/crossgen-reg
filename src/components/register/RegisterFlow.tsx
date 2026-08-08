@@ -397,7 +397,7 @@ export function RegisterFlow() {
                 fileName: payment.fileName,
               },
       });
-      router.push(`/registration/${result.registrationId}`);
+      router.push(`/registration/${result.registrationNumber}`);
     } catch (error) {
       setSubmitError(
         error instanceof ConvexError

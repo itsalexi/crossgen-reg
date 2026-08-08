@@ -1,9 +1,10 @@
 "use client";
 
+import { useAuthActions } from "@convex-dev/auth/react";
 import { Authenticated, AuthLoading, Unauthenticated, useQuery } from "convex/react";
 import Link from "next/link";
+import { useState } from "react";
 import { api } from "@convex/_generated/api";
-import type { Id } from "@convex/_generated/dataModel";
 import {
   breakoutTitle,
   EVENT,
@@ -16,7 +17,7 @@ import {
   type RegistrationType,
 } from "@convex/shared";
 import { AccountBar, BottomBar, TopBar } from "./brand";
-import { Eyebrow, Spinner } from "./ui";
+import { Button, Eyebrow, Spinner } from "./ui";
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
@@ -28,6 +29,24 @@ function Shell({ children }: { children: React.ReactNode }) {
   );
 }
 
+function SignInButton() {
+  const { signIn } = useAuthActions();
+  const [pending, setPending] = useState(false);
+
+  return (
+    <Button
+      className="mt-1"
+      loading={pending}
+      onClick={() => {
+        setPending(true);
+        void signIn("google").catch(() => setPending(false));
+      }}
+    >
+      Continue with Google
+    </Button>
+  );
+}
+
 function Centered({ children }: { children: React.ReactNode }) {
   return (
     <div className="mx-auto flex w-full max-w-md flex-col items-start gap-4 px-5 py-16 sm:py-24">
@@ -36,10 +55,12 @@ function Centered({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function ConfirmationView({ registrationId }: { registrationId: string }) {
-  const data = useQuery(api.registrations.getMine, {
-    registrationId: registrationId as Id<"registrations">,
-  });
+export function ConfirmationView({
+  registrationNumber,
+}: {
+  registrationNumber: string;
+}) {
+  const data = useQuery(api.registrations.getMine, { registrationNumber });
 
   return (
     <Shell>
@@ -52,11 +73,14 @@ export function ConfirmationView({ registrationId }: { registrationId: string })
       <Unauthenticated>
         <Centered>
           <h1 className="font-display text-[26px] leading-tight font-semibold text-ink">
-            Sign in to see this
+            Sign in to see {registrationNumber}
           </h1>
           <p className="text-[15px] leading-relaxed text-muted">
-            A registration is only visible to the account that sent it in.
+            A registration opens only for the Google account that sent it in —
+            that keeps everyone&rsquo;s details private. Sign in with the same
+            account you registered with.
           </p>
+          <SignInButton />
         </Centered>
       </Unauthenticated>
 

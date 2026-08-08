@@ -9,5 +9,5 @@ export default async function RegistrationPage({
   params,
 }: PageProps<"/registration/[id]">) {
   const { id } = await params;
-  return <ConfirmationView registrationId={id} />;
+  return <ConfirmationView registrationNumber={id} />;
 }

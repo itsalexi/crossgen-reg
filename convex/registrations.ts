@@ -127,145 +127,160 @@ export const generateUploadUrl = mutation({
   },
 });
 
+export const submitArgs = {
+  idempotencyKey: v.string(),
+  groupName: v.optional(v.string()),
+  registrationType: registrationTypeValidator,
+  participants: v.array(participantInputValidator),
+  payment: v.optional(
+    v.object({
+      paymentReference: v.string(),
+      datePaid: v.string(),
+      storageId: v.id("_storage"),
+      fileName: v.optional(v.string()),
+    }),
+  ),
+};
+
+export type SubmitPayload = Infer<ReturnType<typeof v.object<typeof submitArgs>>>;
+
+/**
+ * Everything a submission does, minus the auth check. Split out so the caller
+ * supplies the identity — `submit` takes it from the session.
+ */
+export async function createRegistration(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  args: SubmitPayload,
+) {
+  const user = await ctx.db.get(userId);
+  if (user === null) fail("Your account could not be found. Sign in again.");
+
+  // Idempotency first: a retried submit must not create a second registration
+  // or burn a second registration number.
+  const existing = await ctx.db
+    .query("registrations")
+    .withIndex("by_idempotencyKey", (q) =>
+      q.eq("idempotencyKey", args.idempotencyKey),
+    )
+    .unique();
+  if (existing !== null) {
+    return {
+      registrationId: existing._id,
+      registrationNumber: existing.registrationNumber,
+      totalAmount: existing.totalAmount,
+      alreadySubmitted: true,
+    };
+  }
+
+  if (args.participants.length === 0) fail("Add at least one participant.");
+  if (args.participants.length > MAX_PARTICIPANTS) {
+    fail(`A single registration is limited to ${MAX_PARTICIPANTS} participants.`);
+  }
+
+  const participants = args.participants.map(cleanParticipant);
+  const participantCount = participants.length;
+
+  const groupName = (args.groupName ?? "").trim();
+  if (participantCount > 1 && groupName.length === 0) {
+    fail("Group name is required when registering more than one participant.");
+  }
+
+  const type = args.registrationType as RegistrationType;
+  const exempt = isExempt(type);
+
+  // Amount is recomputed here and nowhere else. Whatever the client displayed
+  // is irrelevant — it never reaches this mutation.
+  const totalAmount = calculateTotal(type, participantCount);
+
+  let paymentFields: {
+    paymentReference?: string;
+    datePaid?: string;
+    paymentProofStorageId?: Id<"_storage">;
+    paymentProofFileName?: string;
+  } = {};
+
+  if (exempt) {
+    // Reject rather than silently drop: payment data on an exempt
+    // registration means the client and server disagree about what this is.
+    if (args.payment !== undefined) {
+      fail("Payment details cannot be attached to an exempt registration.");
+    }
+  } else {
+    if (args.payment === undefined) {
+      fail("Payment details are required for a regular registration.");
+    }
+
+    const metadata = await ctx.db.system.get(args.payment.storageId);
+    if (metadata === null) {
+      fail("The uploaded proof of payment could not be found. Upload it again.");
+    }
+    if (metadata.size > MAX_UPLOAD_BYTES) {
+      fail("Proof of payment must be 10 MB or smaller.");
+    }
+    if (
+      metadata.contentType === undefined ||
+      !ALLOWED_UPLOAD_TYPES.includes(
+        metadata.contentType as (typeof ALLOWED_UPLOAD_TYPES)[number],
+      )
+    ) {
+      fail("Proof of payment must be a JPG, PNG, or PDF file.");
+    }
+
+    const fileName = (args.payment.fileName ?? "").trim();
+    paymentFields = {
+      paymentReference: requireText(
+        args.payment.paymentReference,
+        "Payment reference number",
+      ),
+      datePaid: requireText(args.payment.datePaid, "Date paid"),
+      paymentProofStorageId: args.payment.storageId,
+      paymentProofFileName: fileName.length > 0 ? fileName : undefined,
+    };
+  }
+
+  const registrationNumber = await allocateRegistrationNumber(ctx);
+
+  const registrationId = await ctx.db.insert("registrations", {
+    registrationNumber,
+    idempotencyKey: args.idempotencyKey,
+    groupName: groupName.length > 0 ? groupName : undefined,
+    registrantUserId: userId,
+    registrantName: (user.name ?? participants[0].fullName).trim(),
+    registrantEmail: (user.email ?? participants[0].email).toLowerCase(),
+    registrationType: type,
+    participantCount,
+    totalAmount,
+    paymentType: exempt ? "exempt" : "paid",
+    exemptionReason: exempt ? (type as "speaker" | "volunteer" | "sponsor") : undefined,
+    confirmationEmailStatus: "pending",
+    ...paymentFields,
+  });
+
+  for (const participant of participants) {
+    await ctx.db.insert("participants", { registrationId, ...participant });
+  }
+
+  // Scheduled, not awaited. The registration is already committed, so a
+  // Resend outage cannot roll it back.
+  await ctx.scheduler.runAfter(0, internal.emails.sendConfirmation, {
+    registrationId,
+  });
+
+  return {
+    registrationId,
+    registrationNumber,
+    totalAmount,
+    alreadySubmitted: false,
+  };
+}
+
 export const submit = mutation({
-  args: {
-    idempotencyKey: v.string(),
-    groupName: v.optional(v.string()),
-    registrationType: registrationTypeValidator,
-    participants: v.array(participantInputValidator),
-    payment: v.optional(
-      v.object({
-        paymentReference: v.string(),
-        datePaid: v.string(),
-        storageId: v.id("_storage"),
-        fileName: v.optional(v.string()),
-      }),
-    ),
-  },
+  args: submitArgs,
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (userId === null) fail("Sign in to submit a registration.");
-
-    const user = await ctx.db.get(userId);
-    if (user === null) fail("Your account could not be found. Sign in again.");
-
-    // Idempotency first: a retried submit must not create a second registration
-    // or burn a second registration number.
-    const existing = await ctx.db
-      .query("registrations")
-      .withIndex("by_idempotencyKey", (q) =>
-        q.eq("idempotencyKey", args.idempotencyKey),
-      )
-      .unique();
-    if (existing !== null) {
-      return {
-        registrationId: existing._id,
-        registrationNumber: existing.registrationNumber,
-        totalAmount: existing.totalAmount,
-        alreadySubmitted: true,
-      };
-    }
-
-    if (args.participants.length === 0) fail("Add at least one participant.");
-    if (args.participants.length > MAX_PARTICIPANTS) {
-      fail(`A single registration is limited to ${MAX_PARTICIPANTS} participants.`);
-    }
-
-    const participants = args.participants.map(cleanParticipant);
-    const participantCount = participants.length;
-
-    const groupName = (args.groupName ?? "").trim();
-    if (participantCount > 1 && groupName.length === 0) {
-      fail("Group name is required when registering more than one participant.");
-    }
-
-    const type = args.registrationType as RegistrationType;
-    const exempt = isExempt(type);
-
-    // Amount is recomputed here and nowhere else. Whatever the client displayed
-    // is irrelevant — it never reaches this mutation.
-    const totalAmount = calculateTotal(type, participantCount);
-
-    let paymentFields: {
-      paymentReference?: string;
-      datePaid?: string;
-      paymentProofStorageId?: Id<"_storage">;
-      paymentProofFileName?: string;
-    } = {};
-
-    if (exempt) {
-      // Reject rather than silently drop: payment data on an exempt
-      // registration means the client and server disagree about what this is.
-      if (args.payment !== undefined) {
-        fail("Payment details cannot be attached to an exempt registration.");
-      }
-    } else {
-      if (args.payment === undefined) {
-        fail("Payment details are required for a regular registration.");
-      }
-
-      const metadata = await ctx.db.system.get(args.payment.storageId);
-      if (metadata === null) {
-        fail("The uploaded proof of payment could not be found. Upload it again.");
-      }
-      if (metadata.size > MAX_UPLOAD_BYTES) {
-        fail("Proof of payment must be 10 MB or smaller.");
-      }
-      if (
-        metadata.contentType === undefined ||
-        !ALLOWED_UPLOAD_TYPES.includes(
-          metadata.contentType as (typeof ALLOWED_UPLOAD_TYPES)[number],
-        )
-      ) {
-        fail("Proof of payment must be a JPG, PNG, or PDF file.");
-      }
-
-      const fileName = (args.payment.fileName ?? "").trim();
-      paymentFields = {
-        paymentReference: requireText(
-          args.payment.paymentReference,
-          "Payment reference number",
-        ),
-        datePaid: requireText(args.payment.datePaid, "Date paid"),
-        paymentProofStorageId: args.payment.storageId,
-        paymentProofFileName: fileName.length > 0 ? fileName : undefined,
-      };
-    }
-
-    const registrationNumber = await allocateRegistrationNumber(ctx);
-
-    const registrationId = await ctx.db.insert("registrations", {
-      registrationNumber,
-      idempotencyKey: args.idempotencyKey,
-      groupName: groupName.length > 0 ? groupName : undefined,
-      registrantUserId: userId,
-      registrantName: (user.name ?? participants[0].fullName).trim(),
-      registrantEmail: (user.email ?? participants[0].email).toLowerCase(),
-      registrationType: type,
-      participantCount,
-      totalAmount,
-      paymentType: exempt ? "exempt" : "paid",
-      exemptionReason: exempt ? (type as "speaker" | "volunteer" | "sponsor") : undefined,
-      confirmationEmailStatus: "pending",
-      ...paymentFields,
-    });
-
-    for (const participant of participants) {
-      await ctx.db.insert("participants", { registrationId, ...participant });
-    }
-
-    // Scheduled, not awaited. The registration is already committed, so a
-    // Resend outage cannot roll it back.
-    await ctx.scheduler.runAfter(0, internal.emails.sendConfirmation, {
-      registrationId,
-    });
-
-    return {
-      registrationId,
-      registrationNumber,
-      totalAmount,
-      alreadySubmitted: false,
-    };
+    return await createRegistration(ctx, userId, args);
   },
 });
 

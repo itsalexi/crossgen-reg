@@ -70,7 +70,9 @@ export function validateParticipant(
   } else if (!Number.isInteger(age)) {
     errors.age = "Enter age as a whole number.";
   } else if (age < EVENT.minAge) {
-    errors.age = `CrossGen Family Summit is for participants aged ${EVENT.minAge} and above.`;
+    // Short enough to fit the narrow age column. The full explanation is on
+    // the step itself, and the server repeats it in the rejection.
+    errors.age = `${EVENT.minAge} and above only.`;
   } else if (age > 120) {
     errors.age = "Enter a valid age.";
   }

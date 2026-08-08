@@ -19,26 +19,34 @@ export function ParticipantForm({
   participant,
   errors,
   onChange,
+  onBlurField,
   idPrefix,
   who,
+  autoFocusFirst,
 }: {
   participant: ParticipantDraft;
   errors: ParticipantErrors;
   onChange: (patch: Partial<ParticipantDraft>) => void;
+  /** Validates a single field once the person has moved on from it. */
+  onBlurField: (field: keyof ParticipantDraft) => void;
   idPrefix: string;
   /** First name if we have one, so the copy can address a person. */
   who: string;
+  /** Focused when the step opens, so keyboard users start in the right place. */
+  autoFocusFirst?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-6 sm:gap-7">
       <div className="grid gap-5 sm:grid-cols-2">
         <TextInput
           label="Full name"
+          autoFocus={autoFocusFirst}
           value={participant.fullName}
           error={errors.fullName}
           autoComplete="off"
           placeholder="Juan Dela Cruz"
           onChange={(e) => onChange({ fullName: e.target.value })}
+          onBlur={() => onBlurField("fullName")}
         />
         <TextInput
           label="Nickname"
@@ -47,6 +55,7 @@ export function ParticipantForm({
           error={errors.preferredName}
           placeholder="What we'll put on the name tag"
           onChange={(e) => onChange({ preferredName: e.target.value })}
+          onBlur={() => onBlurField("preferredName")}
         />
       </div>
 
@@ -62,6 +71,7 @@ export function ParticipantForm({
           error={errors.age}
           placeholder={String(EVENT.minAge)}
           onChange={(e) => onChange({ age: e.target.value })}
+          onBlur={() => onBlurField("age")}
         />
         <SelectInput
           label="Gender"
@@ -69,6 +79,7 @@ export function ParticipantForm({
           value={participant.gender}
           error={errors.gender}
           onChange={(e) => onChange({ gender: e.target.value })}
+          onBlur={() => onBlurField("gender")}
         />
         <SelectInput
           label="Marital status"
@@ -76,6 +87,7 @@ export function ParticipantForm({
           value={participant.maritalStatus}
           error={errors.maritalStatus}
           onChange={(e) => onChange({ maritalStatus: e.target.value })}
+          onBlur={() => onBlurField("maritalStatus")}
         />
       </div>
 
@@ -86,6 +98,7 @@ export function ParticipantForm({
           error={errors.churchOrganization}
           placeholder="Grace Christian Fellowship"
           onChange={(e) => onChange({ churchOrganization: e.target.value })}
+          onBlur={() => onBlurField("churchOrganization")}
         />
         <TextInput
           label="How they serve there"
@@ -93,6 +106,7 @@ export function ParticipantForm({
           error={errors.ministryInvolvement}
           placeholder="Youth worship team"
           onChange={(e) => onChange({ ministryInvolvement: e.target.value })}
+          onBlur={() => onBlurField("ministryInvolvement")}
         />
       </div>
 
@@ -103,6 +117,7 @@ export function ParticipantForm({
           error={errors.occupation}
           placeholder="Teacher, student, business"
           onChange={(e) => onChange({ occupation: e.target.value })}
+          onBlur={() => onBlurField("occupation")}
         />
         <TextInput
           label="City or town"
@@ -110,6 +125,7 @@ export function ParticipantForm({
           error={errors.cityMunicipality}
           placeholder="Las Piñas"
           onChange={(e) => onChange({ cityMunicipality: e.target.value })}
+          onBlur={() => onBlurField("cityMunicipality")}
         />
       </div>
 
@@ -122,6 +138,7 @@ export function ParticipantForm({
           error={errors.mobileNumber}
           placeholder="0917 123 4567"
           onChange={(e) => onChange({ mobileNumber: e.target.value })}
+          onBlur={() => onBlurField("mobileNumber")}
         />
         <TextInput
           label="Email"
@@ -131,6 +148,7 @@ export function ParticipantForm({
           error={errors.email}
           placeholder="name@email.com"
           onChange={(e) => onChange({ email: e.target.value })}
+          onBlur={() => onBlurField("email")}
         />
       </div>
 

@@ -244,6 +244,20 @@ export function RegisterFlow() {
     );
   }
 
+  /** Validate one field on blur so mistakes surface where they were made. */
+  function validateField(index: number, field: keyof ParticipantDraft) {
+    const found = validateParticipant(participants[index])[field];
+    setParticipantErrors((current) =>
+      current.map((errors, i) => {
+        if (i !== index) return errors;
+        const next = { ...errors };
+        if (found === undefined) delete next[field];
+        else next[field] = found;
+        return next;
+      }),
+    );
+  }
+
   function setCount(next: number) {
     const clamped = Math.max(1, Math.min(MAX_PARTICIPANTS, next));
 
@@ -410,7 +424,14 @@ export function RegisterFlow() {
                 blurb="Register everyone at once and we'll keep them together. If someone is serving or speaking, they can register separately."
               />
 
-              <div className="flex max-w-[640px] flex-col gap-2.5">
+              <form
+                noValidate
+                className="flex max-w-[640px] flex-col gap-2.5"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  leaveTypeStep();
+                }}
+              >
                 {REGISTRATION_TYPES.map((option) => (
                   <ChoiceCard
                     key={option.value}
@@ -497,9 +518,9 @@ export function RegisterFlow() {
                 )}
 
                 <div className="mt-6 flex items-center gap-4">
-                  <Button onClick={leaveTypeStep}>Continue</Button>
+                  <Button type="submit">Continue</Button>
                 </div>
-              </div>
+              </form>
             </div>
           )}
 
@@ -559,19 +580,49 @@ export function RegisterFlow() {
                     })}
                   </nav>
                 )}
+
+                {!exempt && (
+                  <div className="flex items-baseline justify-between gap-3 border-t border-line pt-3.5">
+                    <span className="text-[13.5px] text-muted">
+                      {count > 1 ? `${titleCaseCount(count)} of you` : "Just you"}
+                      {count >= GROUP_THRESHOLD ? ", group rate" : ""}
+                    </span>
+                    <span className="font-display text-[16px] font-bold text-ink">
+                      {formatPeso(total)}
+                    </span>
+                  </div>
+                )}
               </StepAside>
 
-              <div className="flex max-w-[720px] flex-col gap-7">
+              <form
+                noValidate
+                className="flex max-w-[720px] flex-col gap-7"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  advanceFromPerson();
+                }}
+              >
+                {participantErrors[active]?.age?.startsWith(String(EVENT.minAge)) && (
+                  <Callout tone="gold" title="This one is 14 and above">
+                    Pasensya na po — walang mapaglalagakan ng mga mumunting bata
+                    sa venue, kaya {EVENT.minAge} pataas lang ang pwedeng
+                    sumama.
+                  </Callout>
+                )}
+
                 <ParticipantForm
+                  key={active}
                   participant={participants[active]}
                   errors={participantErrors[active] ?? {}}
                   idPrefix={`p${active}`}
                   who={count === 1 ? "you" : activeName}
+                  autoFocusFirst={count > 1}
                   onChange={(patch) => patchParticipant(active, patch)}
+                  onBlurField={(field) => validateField(active, field)}
                 />
 
-                <div className="flex flex-wrap items-center gap-3 pt-1">
-                  <Button onClick={advanceFromPerson}>
+                <div className="sticky bottom-0 -mx-5 flex flex-wrap items-center gap-3 border-t border-line bg-white/95 px-5 py-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:pt-1 sm:pb-0 sm:backdrop-blur-none">
+                  <Button type="submit">
                     {active < count - 1
                       ? "Next person"
                       : exempt
@@ -579,6 +630,7 @@ export function RegisterFlow() {
                         : "On to payment"}
                   </Button>
                   <Button
+                    type="button"
                     variant="quiet"
                     onClick={() => {
                       if (active > 0) {
@@ -597,7 +649,7 @@ export function RegisterFlow() {
                     </span>
                   )}
                 </div>
-              </div>
+              </form>
             </div>
           )}
 
@@ -608,7 +660,14 @@ export function RegisterFlow() {
                 title="Send it over, then show us the receipt"
                 blurb="Deposit to the account below, then attach a photo of the slip so the team can tick your group off the list."
               />
-              <div className="flex max-w-[720px] flex-col gap-7">
+              <form
+                noValidate
+                className="flex max-w-[720px] flex-col gap-7"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  advanceFromPayment();
+                }}
+              >
                 <PaymentStep
                   payment={payment}
                   errors={paymentErrors}
@@ -625,13 +684,13 @@ export function RegisterFlow() {
                     });
                   }}
                 />
-                <div className="flex items-center gap-3">
-                  <Button onClick={advanceFromPayment}>Continue</Button>
-                  <Button variant="quiet" onClick={() => goTo("people")}>
+                <div className="sticky bottom-0 -mx-5 flex items-center gap-3 border-t border-line bg-white/95 px-5 py-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none">
+                  <Button type="submit">Continue</Button>
+                  <Button type="button" variant="quiet" onClick={() => goTo("people")}>
                     Back
                   </Button>
                 </div>
-              </div>
+              </form>
             </div>
           )}
 

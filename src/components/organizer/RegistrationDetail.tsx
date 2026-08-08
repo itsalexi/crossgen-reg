@@ -1,0 +1,250 @@
+"use client";
+
+import { useMutation, useQuery } from "convex/react";
+import { useState } from "react";
+import { api } from "@convex/_generated/api";
+import type { Id } from "@convex/_generated/dataModel";
+import {
+  breakoutTitle,
+  formatDatePaid,
+  formatPeso,
+  typeShort,
+  type RegistrationType,
+} from "@convex/shared";
+import { Button, Eyebrow, Spinner } from "@/components/ui";
+import { buildParticipantCsv, downloadCsv } from "@/lib/csv";
+import { EmailTag, longDate, ReceiptTag } from "./parts";
+
+function isImage(name: string | undefined): boolean {
+  return /\.(jpe?g|png)$/i.test(name ?? "");
+}
+
+export function RegistrationDetail({
+  registrationId,
+  onBack,
+}: {
+  registrationId: Id<"registrations">;
+  onBack: () => void;
+}) {
+  const detail = useQuery(api.organizer.get, { registrationId });
+  const resend = useMutation(api.organizer.resendConfirmation);
+  const [resending, setResending] = useState(false);
+  const [resent, setResent] = useState(false);
+
+  if (detail === undefined) {
+    return (
+      <div className="flex justify-center py-20">
+        <Spinner className="size-5 text-cg-purple" />
+      </div>
+    );
+  }
+  if (detail === null) return null;
+
+  const { registration, participants, paymentProofUrl } = detail;
+  const shared =
+    participants.length > 1 &&
+    participants.every(
+      (p) =>
+        p.churchOrganization === participants[0].churchOrganization &&
+        p.cityMunicipality === participants[0].cityMunicipality,
+    );
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center gap-2.5">
+        <button
+          type="button"
+          onClick={onBack}
+          className="text-[13.5px] font-medium text-cg-purple hover:underline"
+        >
+          All registrations
+        </button>
+        <span className="text-[13.5px] text-faint">/</span>
+        <span className="text-[13.5px] font-medium text-muted">
+          {registration.registrationNumber}
+        </span>
+      </div>
+
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+        <div className="flex flex-col gap-1.5">
+          <h1 className="font-display text-[26px] leading-tight font-semibold text-ink">
+            {registration.groupName ?? registration.registrantName}
+          </h1>
+          <span className="text-[14.5px] leading-normal text-muted">
+            {registration.registrationNumber} · registered{" "}
+            {longDate(registration._creationTime)} by{" "}
+            {registration.registrantEmail}
+          </span>
+        </div>
+        <div className="flex flex-none flex-wrap items-center gap-2.5">
+          <Button
+            size="sm"
+            variant="outline"
+            loading={resending}
+            onClick={() => {
+              setResending(true);
+              void resend({ registrationId })
+                .then(() => setResent(true))
+                .finally(() => setResending(false));
+            }}
+          >
+            {resent ? "Sent again" : "Resend email"}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() =>
+              downloadCsv(
+                `${registration.registrationNumber}.csv`,
+                buildParticipantCsv([{ registration, participants }]),
+              )
+            }
+          >
+            Export
+          </Button>
+        </div>
+      </div>
+
+      <dl className="grid grid-cols-2 gap-4 rounded-2xl border border-line bg-white p-5 sm:grid-cols-5">
+        {[
+          ["Type", typeShort(registration.registrationType as RegistrationType)],
+          ["People", String(registration.participantCount)],
+          ["Amount", formatPeso(registration.totalAmount)],
+        ].map(([label, value]) => (
+          <div key={label} className="flex flex-col gap-1">
+            <Eyebrow>{label}</Eyebrow>
+            <dd className="font-display text-[16px] font-semibold text-ink">
+              {value}
+            </dd>
+          </div>
+        ))}
+        <div className="flex flex-col gap-1">
+          <Eyebrow>Receipt</Eyebrow>
+          <dd>
+            <ReceiptTag registration={registration} />
+          </dd>
+        </div>
+        <div className="flex flex-col gap-1">
+          <Eyebrow>Email</Eyebrow>
+          <dd>
+            <EmailTag registration={registration} />
+          </dd>
+        </div>
+      </dl>
+
+      {registration.confirmationEmailError && (
+        <p className="text-[13px] leading-normal text-red-600">
+          Confirmation email failed: {registration.confirmationEmailError}
+        </p>
+      )}
+
+      <div className="grid gap-6 xl:grid-cols-[1fr_280px]">
+        <div className="overflow-hidden rounded-2xl border border-line bg-white">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[620px] text-left">
+              <thead>
+                <tr className="border-b border-line text-[11.5px] font-semibold tracking-[0.07em] text-muted uppercase">
+                  <th className="px-5 py-3 font-semibold">Name</th>
+                  <th className="px-2 py-3 font-semibold">Age</th>
+                  <th className="px-2 py-3 font-semibold">Contact</th>
+                  <th className="px-5 py-3 font-semibold">Session</th>
+                </tr>
+              </thead>
+              <tbody>
+                {participants.map((p) => (
+                  <tr
+                    key={p._id}
+                    className="border-b border-line-soft align-baseline text-[14px] last:border-0"
+                  >
+                    <td className="px-5 py-3.5 font-medium text-ink">
+                      {p.fullName}
+                      {p.preferredName && (
+                        <span className="ml-1 font-normal text-muted">
+                          ({p.preferredName})
+                        </span>
+                      )}
+                      <div className="text-[12.5px] font-normal text-muted">
+                        {p.gender} · {p.maritalStatus} · {p.occupation}
+                      </div>
+                      {!shared && (
+                        <div className="text-[12.5px] font-normal text-muted">
+                          {p.churchOrganization} · {p.cityMunicipality}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-2 py-3.5 text-muted">{p.age}</td>
+                    <td className="px-2 py-3.5 text-muted">
+                      {p.mobileNumber}
+                      <div className="text-[12.5px]">{p.email}</div>
+                    </td>
+                    <td className="px-5 py-3.5 text-muted">
+                      {breakoutTitle(p.breakoutSession)}
+                      <div className="text-[12.5px]">
+                        Serves: {p.ministryInvolvement}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {shared && (
+            <p className="border-t border-line px-5 py-3 text-[13px] text-muted">
+              Everyone lists {participants[0].churchOrganization},{" "}
+              {participants[0].cityMunicipality}.
+            </p>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <Eyebrow>Receipt</Eyebrow>
+          {registration.paymentType === "exempt" ? (
+            <p className="text-[14px] leading-normal text-muted">
+              Exempt — {registration.exemptionReason}. Nothing was collected.
+            </p>
+          ) : (
+            <div className="overflow-hidden rounded-2xl border border-line bg-white">
+              {paymentProofUrl !== null &&
+              isImage(registration.paymentProofFileName) ? (
+                <a href={paymentProofUrl} target="_blank" rel="noreferrer">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={paymentProofUrl}
+                    alt={`Receipt for ${registration.registrationNumber}`}
+                    className="h-44 w-full bg-surface object-contain"
+                  />
+                </a>
+              ) : (
+                <div className="flex h-44 items-center justify-center bg-surface px-4 text-center">
+                  <span className="text-[13.5px] text-muted">
+                    {registration.paymentProofFileName ?? "No file attached"}
+                  </span>
+                </div>
+              )}
+              <div className="flex flex-col gap-2.5 border-t border-line px-4 py-3.5">
+                <dl className="grid grid-cols-[auto_1fr] gap-x-3.5 gap-y-1 text-[13.5px] leading-normal">
+                  <dt className="text-muted">Reference</dt>
+                  <dd className="font-medium">{registration.paymentReference}</dd>
+                  <dt className="text-muted">Paid</dt>
+                  <dd className="font-medium">
+                    {formatDatePaid(registration.datePaid ?? "")}
+                  </dd>
+                </dl>
+                {paymentProofUrl !== null && (
+                  <a
+                    href={paymentProofUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex h-9.5 items-center justify-center rounded-[10px] border border-line bg-white text-[14px] font-semibold text-cg-purple hover:border-cg-purple-soft hover:bg-cg-purple-tint"
+                  >
+                    Open full size
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

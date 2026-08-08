@@ -9,630 +9,645 @@ import {
 } from "convex/react";
 import { useMemo, useState } from "react";
 import { api } from "@convex/_generated/api";
-import type { Doc, Id } from "@convex/_generated/dataModel";
+import type { Id } from "@convex/_generated/dataModel";
 import {
   BREAKOUT_SESSIONS,
   breakoutTitle,
-  formatDatePaid,
   formatPeso,
   REGISTRATION_TYPES,
   typeShort,
   type RegistrationType,
 } from "@convex/shared";
-import { buildParticipantCsv, downloadCsv } from "@/lib/csv";
 import { AccountBar, BottomBar, TopBar } from "@/components/brand";
-import { Button, Eyebrow, Pill, Spinner, cn } from "@/components/ui";
+import { Button, Eyebrow, Spinner, cn } from "@/components/ui";
+import { buildParticipantCsv, downloadCsv } from "@/lib/csv";
+import {
+  buildRows,
+  computeStats,
+  EMPTY_FILTERS,
+  filterRows,
+  filtersActive,
+  uniqueValues,
+  type Filters,
+} from "@/lib/organizer";
+import { AdminsSection } from "./AdminsSection";
+import { RegistrationDetail } from "./RegistrationDetail";
+import { BarList, EmailTag, Panel, ReceiptTag, shortDate, StatTile } from "./parts";
 
-type Row = {
-  registration: Doc<"registrations">;
-  participants: Doc<"participants">[];
-};
+type Section = "overview" | "registrations" | "people" | "admins";
 
-const COLUMNS =
-  "grid grid-cols-[110px_1.3fr_56px_1fr_92px_100px_88px] gap-4 items-center";
+const SECTIONS: { key: Section; label: string }[] = [
+  { key: "overview", label: "Overview" },
+  { key: "registrations", label: "Registrations" },
+  { key: "people", label: "Participants" },
+  { key: "admins", label: "Organizers" },
+];
 
-function shortDate(ts: number): string {
-  return new Date(ts).toLocaleDateString("en-PH", {
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function longDate(ts: number): string {
-  return new Date(ts).toLocaleDateString("en-PH", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
-
-function dayStart(value: string): number | undefined {
-  if (value.length === 0) return undefined;
-  const date = new Date(`${value}T00:00:00`);
-  return Number.isNaN(date.getTime()) ? undefined : date.getTime();
-}
-
-function dayEnd(value: string): number | undefined {
-  if (value.length === 0) return undefined;
-  const date = new Date(`${value}T23:59:59.999`);
-  return Number.isNaN(date.getTime()) ? undefined : date.getTime();
-}
-
-function isImage(name: string | undefined): boolean {
-  return /\.(jpe?g|png)$/i.test(name ?? "");
-}
-
-function ReceiptTag({ registration }: { registration: Doc<"registrations"> }) {
-  if (registration.paymentType === "exempt") {
-    return <span className="text-[13.5px] text-muted">Not needed</span>;
-  }
-  return registration.paymentProofStorageId ? (
-    <Pill tone="teal">Attached</Pill>
-  ) : (
-    <Pill tone="gold">Missing</Pill>
-  );
-}
-
-// ------------------------------------------------------------ detail panel
-
-function Detail({
-  registrationId,
-  onBack,
-}: {
-  registrationId: Id<"registrations">;
-  onBack: () => void;
-}) {
-  const detail = useQuery(api.organizer.get, { registrationId });
-  const resend = useMutation(api.organizer.resendConfirmation);
-  const [resending, setResending] = useState(false);
-  const [resent, setResent] = useState(false);
-
-  if (detail === undefined) {
-    return (
-      <div className="flex justify-center py-20">
-        <Spinner className="size-5 text-cg-purple" />
-      </div>
-    );
-  }
-  if (detail === null) return null;
-
-  const { registration, participants, paymentProofUrl } = detail;
-  const shared =
-    participants.length > 1 &&
-    participants.every(
-      (p) =>
-        p.churchOrganization === participants[0].churchOrganization &&
-        p.cityMunicipality === participants[0].cityMunicipality,
-    );
-
-  return (
-    <div>
-      <div className="flex h-14 items-center gap-2.5 border-b border-line px-5 sm:px-8">
-        <button
-          type="button"
-          onClick={onBack}
-          className="text-[13.5px] font-medium text-cg-purple hover:underline"
-        >
-          All registrations
-        </button>
-        <span className="text-[13.5px] text-faint">/</span>
-        <span className="text-[13.5px] font-medium text-muted">
-          {registration.registrationNumber}
-        </span>
-      </div>
-
-      <div className="flex flex-col justify-between gap-5 border-b border-line px-5 py-7 sm:flex-row sm:items-start sm:px-8">
-        <div className="flex flex-col gap-2">
-          <h1 className="font-display text-[26px] leading-tight font-semibold text-ink sm:text-[30px]">
-            {registration.groupName ?? registration.registrantName}
-          </h1>
-          <span className="text-[15px] leading-normal text-muted">
-            {registration.registrationNumber} · registered{" "}
-            {longDate(registration._creationTime)} by{" "}
-            {registration.registrantEmail}
-          </span>
-        </div>
-        <div className="flex flex-none flex-wrap items-center gap-2.5">
-          <Button
-            size="sm"
-            variant="outline"
-            loading={resending}
-            onClick={() => {
-              setResending(true);
-              void resend({ registrationId })
-                .then(() => setResent(true))
-                .finally(() => setResending(false));
-            }}
-          >
-            {resent ? "Sent again" : "Resend email"}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() =>
-              downloadCsv(
-                `${registration.registrationNumber}.csv`,
-                buildParticipantCsv([{ registration, participants }]),
-              )
-            }
-          >
-            Export this group
-          </Button>
-        </div>
-      </div>
-
-      <dl className="grid grid-cols-2 gap-5 border-b border-line px-5 py-6 sm:grid-cols-4 sm:gap-0 sm:px-8">
-        {[
-          ["Type", typeShort(registration.registrationType as RegistrationType)],
-          ["People", String(registration.participantCount)],
-          ["Amount", formatPeso(registration.totalAmount)],
-        ].map(([label, value], index) => (
-          <div
-            key={label}
-            className={cn(
-              "flex flex-col gap-1",
-              index > 0 && "sm:border-l sm:border-line sm:px-7",
-              index === 0 && "sm:pr-7",
-            )}
-          >
-            <Eyebrow>{label}</Eyebrow>
-            <dd className="font-display text-[16px] font-semibold text-ink">
-              {value}
-            </dd>
-          </div>
-        ))}
-        <div className="flex flex-col gap-1 sm:border-l sm:border-line sm:pl-7">
-          <Eyebrow>Receipt</Eyebrow>
-          <dd>
-            <ReceiptTag registration={registration} />
-          </dd>
-        </div>
-      </dl>
-
-      <div className="grid gap-8 px-5 py-7 sm:px-8 lg:grid-cols-[1fr_300px] lg:gap-10">
-        <div className="flex flex-col">
-          <Eyebrow>Participants</Eyebrow>
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full min-w-[560px] text-left">
-              <thead>
-                <tr className="border-y border-line text-[11.5px] font-semibold tracking-[0.07em] text-muted uppercase">
-                  <th className="py-3 pr-4 font-semibold">Name</th>
-                  <th className="py-3 pr-4 font-semibold">Age</th>
-                  <th className="py-3 pr-4 font-semibold">Mobile</th>
-                  <th className="py-3 font-semibold">Session</th>
-                </tr>
-              </thead>
-              <tbody>
-                {participants.map((p) => (
-                  <tr
-                    key={p._id}
-                    className="border-b border-line-soft align-baseline text-[14.5px]"
-                  >
-                    <td className="py-3.5 pr-4 font-medium text-ink">
-                      {p.fullName}
-                      {p.preferredName && (
-                        <span className="ml-1 font-normal text-muted">
-                          ({p.preferredName})
-                        </span>
-                      )}
-                      {!shared && (
-                        <div className="text-[13px] text-muted">
-                          {p.churchOrganization} · {p.cityMunicipality}
-                        </div>
-                      )}
-                    </td>
-                    <td className="py-3.5 pr-4 text-muted">{p.age}</td>
-                    <td className="py-3.5 pr-4 text-muted">
-                      {p.mobileNumber}
-                      <div className="text-[13px]">{p.email}</div>
-                    </td>
-                    <td className="py-3.5 text-muted">
-                      {breakoutTitle(p.breakoutSession)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {shared && (
-            <p className="pt-3.5 text-[13.5px] leading-normal text-muted">
-              Everyone lists {participants[0].churchOrganization},{" "}
-              {participants[0].cityMunicipality}.
-            </p>
-          )}
-          {registration.confirmationEmailStatus === "failed" && (
-            <p className="pt-3 text-[13px] leading-normal text-red-600">
-              Confirmation email failed: {registration.confirmationEmailError}
-            </p>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-3">
-          <Eyebrow>Receipt</Eyebrow>
-          {registration.paymentType === "exempt" ? (
-            <p className="text-[14px] leading-normal text-muted">
-              Exempt — {registration.exemptionReason}. Nothing was collected.
-            </p>
-          ) : (
-            <div className="overflow-hidden rounded-2xl border border-line">
-              {/* Most receipts are phone photos, so show one. PDFs fall back
-                  to the filename — organizers open those in a new tab. */}
-              {paymentProofUrl !== null && isImage(registration.paymentProofFileName) ? (
-                <a href={paymentProofUrl} target="_blank" rel="noreferrer">
-                  <img
-                    src={paymentProofUrl}
-                    alt={`Receipt for ${registration.registrationNumber}`}
-                    className="h-44 w-full bg-surface object-contain"
-                  />
-                </a>
-              ) : (
-                <div className="flex h-44 items-center justify-center bg-surface px-4 text-center">
-                  <span className="text-[13.5px] leading-normal text-muted">
-                    {registration.paymentProofFileName ?? "Receipt"}
-                  </span>
-                </div>
-              )}
-              <div className="flex flex-col gap-2.5 border-t border-line px-4 py-3.5">
-                <dl className="grid grid-cols-[auto_1fr] gap-x-3.5 gap-y-1 text-[13.5px] leading-normal">
-                  <dt className="text-muted">Reference</dt>
-                  <dd className="font-medium">{registration.paymentReference}</dd>
-                  <dt className="text-muted">Paid</dt>
-                  <dd className="font-medium">
-                    {formatDatePaid(registration.datePaid ?? "")}
-                  </dd>
-                </dl>
-                {paymentProofUrl !== null ? (
-                  <a
-                    href={paymentProofUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex h-9.5 items-center justify-center rounded-[10px] border border-line bg-white text-[14px] font-semibold text-cg-purple hover:border-cg-purple-soft hover:bg-cg-purple-tint"
-                  >
-                    Open full size
-                  </a>
-                ) : (
-                  <span className="text-[13.5px] text-muted">
-                    No file attached.
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------- the list
+const CONTROL =
+  "h-10 w-full rounded-[10px] border border-line bg-white px-3 text-[14px] text-ink";
 
 export function OrganizerDashboard() {
-  const [search, setSearch] = useState("");
-  const [registrationType, setRegistrationType] = useState("");
-  const [breakoutSession, setBreakoutSession] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [section, setSection] = useState<Section>("overview");
+  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [open, setOpen] = useState<Id<"registrations"> | null>(null);
+  const [resending, setResending] = useState(false);
 
   const isOrganizer = useQuery(api.organizer.amIOrganizer);
-  const data = useQuery(
-    api.organizer.list,
-    isOrganizer === true
-      ? {
-          search: search.trim().length > 0 ? search.trim() : undefined,
-          registrationType:
-            registrationType.length > 0
-              ? (registrationType as RegistrationType)
-              : undefined,
-          breakoutSession:
-            breakoutSession.length > 0
-              ? (Number(breakoutSession) as 1 | 2 | 3 | 4 | 5)
-              : undefined,
-          dateFrom: dayStart(dateFrom),
-          dateTo: dayEnd(dateTo),
-        }
-      : "skip",
+  const data = useQuery(api.organizer.snapshot, isOrganizer === true ? {} : "skip");
+  const resendAllFailed = useMutation(api.organizer.resendAllFailed);
+
+  const allRows = useMemo(
+    () => (data ? buildRows(data.registrations, data.participants) : []),
+    [data],
+  );
+  const rows = useMemo(() => filterRows(allRows, filters), [allRows, filters]);
+  const people = useMemo(
+    () => rows.flatMap((row) =>
+      row.participants.map((participant) => ({ participant, registration: row.registration })),
+    ),
+    [rows],
+  );
+  const stats = useMemo(() => computeStats(rows), [rows]);
+  const allStats = useMemo(() => computeStats(allRows), [allRows]);
+  const churches = useMemo(
+    () => uniqueValues(allRows, (p) => p.churchOrganization),
+    [allRows],
+  );
+  const cities = useMemo(
+    () => uniqueValues(allRows, (p) => p.cityMunicipality),
+    [allRows],
   );
 
-  const stats = useMemo(() => {
-    if (data === undefined) return null;
-    const rows: Row[] = data.rows;
-
-    const exemptPeople = rows
-      .filter((r) => r.registration.paymentType === "exempt")
-      .reduce((sum, r) => sum + r.registration.participantCount, 0);
-
-    const missingReceipts = rows.filter(
-      (r) =>
-        r.registration.paymentType === "paid" &&
-        r.registration.paymentProofStorageId === undefined,
-    ).length;
-
-    const bySession = new Map<number, number>();
-    for (const row of rows) {
-      for (const p of row.participants) {
-        bySession.set(p.breakoutSession, (bySession.get(p.breakoutSession) ?? 0) + 1);
-      }
-    }
-    const fullest = [...bySession.entries()].sort((a, b) => b[1] - a[1])[0];
-
-    return {
-      exemptPeople,
-      missingReceipts,
-      withReceipts: rows.filter(
-        (r) => r.registration.paymentProofStorageId !== undefined,
-      ).length,
-      fullest,
-    };
-  }, [data]);
-
-  const filtersOn =
-    search.length > 0 ||
-    registrationType.length > 0 ||
-    breakoutSession.length > 0 ||
-    dateFrom.length > 0 ||
-    dateTo.length > 0;
-
-  const selectClass =
-    "h-10 rounded-[10px] border border-line bg-white px-3 text-[14.5px] text-ink";
+  const active = filtersActive(filters);
+  const set = (patch: Partial<Filters>) =>
+    setFilters((current) => ({ ...current, ...patch }));
 
   return (
     <div className="flex min-h-dvh flex-col">
       <TopBar href="/organizer" right={<AccountBar />} />
 
-      <main className="flex-1">
-        <AuthLoading>
-          <div className="flex justify-center py-24">
+      <AuthLoading>
+        <div className="flex flex-1 items-center justify-center py-24">
+          <Spinner className="size-6 text-cg-purple" />
+        </div>
+      </AuthLoading>
+
+      <Unauthenticated>
+        <main className="mx-auto w-full max-w-md flex-1 px-5 py-20">
+          <h1 className="font-display text-[26px] font-semibold text-ink">
+            Organizers only
+          </h1>
+          <p className="mt-2 text-[15px] leading-relaxed text-muted">
+            Sign in with an organizer account to see the registrations.
+          </p>
+        </main>
+      </Unauthenticated>
+
+      <Authenticated>
+        {isOrganizer === undefined ? (
+          <div className="flex flex-1 items-center justify-center py-24">
             <Spinner className="size-6 text-cg-purple" />
           </div>
-        </AuthLoading>
-
-        <Unauthenticated>
-          <div className="mx-auto max-w-md px-5 py-20">
+        ) : isOrganizer === false ? (
+          <main className="mx-auto w-full max-w-md flex-1 px-5 py-20">
             <h1 className="font-display text-[26px] font-semibold text-ink">
-              Organizers only
+              Not on the organizer list
             </h1>
             <p className="mt-2 text-[15px] leading-relaxed text-muted">
-              Sign in with an organizer account to see the registrations.
+              Ask someone already on the team to add your email address, then
+              reload this page.
             </p>
-          </div>
-        </Unauthenticated>
-
-        <Authenticated>
-          {isOrganizer === undefined ? (
-            <div className="flex justify-center py-24">
-              <Spinner className="size-6 text-cg-purple" />
-            </div>
-          ) : isOrganizer === false ? (
-            <div className="mx-auto max-w-md px-5 py-20">
-              <h1 className="font-display text-[26px] font-semibold text-ink">
-                Not on the organizer list
-              </h1>
-              <p className="mt-2 text-[15px] leading-relaxed text-muted">
-                Ask the CrossGen team to add your email address, then reload this
-                page.
-              </p>
-            </div>
-          ) : open !== null ? (
-            <Detail registrationId={open} onBack={() => setOpen(null)} />
-          ) : (
-            <>
-              {/* ----------------------------------------------- the numbers */}
-              <dl className="grid grid-cols-2 gap-6 border-b border-line px-5 py-7 sm:px-8 lg:grid-cols-4 lg:gap-0">
-                {[
-                  {
-                    label: "Participants",
-                    value: data ? String(data.totals.participants) : "—",
-                    note: data
-                      ? `across ${data.totals.registrations} registration${data.totals.registrations === 1 ? "" : "s"}`
-                      : "",
-                  },
-                  {
-                    label: "Received",
-                    value: data ? formatPeso(data.totals.amount) : "—",
-                    note: stats
-                      ? `${stats.withReceipts} with receipts attached`
-                      : "",
-                  },
-                  {
-                    label: "Not paying",
-                    value: stats ? String(stats.exemptPeople) : "—",
-                    note: "speakers, volunteers, sponsors",
-                  },
-                  {
-                    label: "Fullest session",
-                    value: stats?.fullest ? String(stats.fullest[1]) : "—",
-                    note: stats?.fullest
-                      ? breakoutTitle(stats.fullest[0]).split(":")[0]
-                      : "no sessions yet",
-                  },
-                ].map((stat, index) => (
-                  <div
-                    key={stat.label}
+          </main>
+        ) : (
+          <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-6 px-4 py-6 lg:flex-row lg:gap-8 lg:px-8">
+            {/* --------------------------------------------------- left rail */}
+            <aside className="flex w-full flex-none flex-col gap-5 lg:sticky lg:top-6 lg:h-fit lg:w-[264px]">
+              <nav className="flex gap-1 overflow-x-auto rounded-xl border border-line bg-white p-1 lg:flex-col lg:overflow-visible">
+                {SECTIONS.map((entry) => (
+                  <button
+                    key={entry.key}
+                    type="button"
+                    onClick={() => {
+                      setSection(entry.key);
+                      setOpen(null);
+                    }}
                     className={cn(
-                      "flex flex-col gap-1.5",
-                      index > 0 && "lg:border-l lg:border-line lg:px-8",
-                      index === 0 && "lg:pr-8",
+                      "flex-none rounded-lg px-3.5 py-2.5 text-left text-[14px] font-medium transition-colors lg:w-full",
+                      section === entry.key
+                        ? "bg-cg-purple-tint text-cg-purple"
+                        : "text-muted hover:bg-surface hover:text-ink",
                     )}
                   >
-                    <Eyebrow>{stat.label}</Eyebrow>
-                    <span className="font-display text-[30px] leading-none font-bold tracking-[-0.025em] text-ink sm:text-[34px]">
-                      {stat.value}
-                    </span>
-                    <span className="text-[13.5px] leading-normal text-muted">
-                      {stat.note}
-                    </span>
-                  </div>
+                    {entry.label}
+                  </button>
                 ))}
-              </dl>
+              </nav>
 
-              {/* ----------------------------------------------- the filters */}
-              <div className="flex flex-wrap items-center gap-3 border-b border-line px-5 py-4 sm:px-8">
-                <input
-                  type="search"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search a name, group, or number"
-                  aria-label="Search registrations"
-                  className="h-10 w-full min-w-[200px] flex-1 rounded-[10px] border border-line bg-white px-3.5 text-[14.5px] text-ink placeholder:text-faint sm:max-w-[340px]"
-                />
-                <select
-                  aria-label="Registration type"
-                  className={selectClass}
-                  value={registrationType}
-                  onChange={(e) => setRegistrationType(e.target.value)}
-                >
-                  <option value="">All types</option>
-                  {REGISTRATION_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.short}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  aria-label="Breakout session"
-                  className={selectClass}
-                  value={breakoutSession}
-                  onChange={(e) => setBreakoutSession(e.target.value)}
-                >
-                  <option value="">All sessions</option>
-                  {BREAKOUT_SESSIONS.map((s) => (
-                    <option key={s.value} value={s.value}>
-                      {s.title.split(":")[0]}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="date"
-                  aria-label="Registered from"
-                  className={selectClass}
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                />
-                <input
-                  type="date"
-                  aria-label="Registered to"
-                  className={selectClass}
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                />
-                {stats !== null && stats.missingReceipts > 0 && (
-                  <Pill tone="purple">
-                    Receipt missing · {stats.missingReceipts}
-                  </Pill>
-                )}
-                <div className="ml-auto flex items-center gap-4">
-                  <span className="text-[13.5px] text-muted">
-                    {data
-                      ? `${data.totals.registrations}${filtersOn ? ` of ${data.totals.allRegistrations}` : ""} registration${data.totals.registrations === 1 ? "" : "s"}`
-                      : "Loading…"}
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={data === undefined || data.rows.length === 0}
-                    onClick={() => {
-                      if (data === undefined) return;
-                      downloadCsv(
-                        "crossgen-2026-participants.csv",
-                        buildParticipantCsv(data.rows),
-                      );
-                    }}
-                  >
-                    Export CSV
-                  </Button>
-                </div>
-              </div>
-
-              {/* ------------------------------------------------- the table */}
-              <div className="px-5 pb-10 sm:px-8">
-                {data === undefined ? (
-                  <div className="flex justify-center py-20">
-                    <Spinner className="size-6 text-cg-purple" />
+              {section !== "admins" && (
+                <>
+                  <div className="flex flex-col gap-1 rounded-xl border border-line bg-white px-4 py-3.5">
+                    <Eyebrow>{active ? "Matching now" : "All registrations"}</Eyebrow>
+                    <p className="font-display text-[22px] leading-tight font-bold text-ink">
+                      {stats.participants}
+                      <span className="ml-1.5 text-[13px] font-medium text-muted">
+                        people
+                      </span>
+                    </p>
+                    <p className="text-[13px] text-muted">
+                      {stats.registrations} registration
+                      {stats.registrations === 1 ? "" : "s"} ·{" "}
+                      {formatPeso(stats.amount)}
+                    </p>
                   </div>
-                ) : data.rows.length === 0 ? (
-                  <p className="py-16 text-center text-[15px] text-muted">
-                    {filtersOn
-                      ? "Nothing matches those filters."
-                      : "No registrations yet. The first one will show up here."}
-                  </p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <div className="min-w-[880px]">
-                      <div
-                        className={cn(
-                          COLUMNS,
-                          "border-b border-line py-3.5 text-[11.5px] font-semibold tracking-[0.07em] text-muted uppercase",
-                        )}
-                      >
-                        <span>Number</span>
-                        <span>Group</span>
-                        <span>People</span>
-                        <span>Registered by</span>
-                        <span>Type</span>
-                        <span>Amount</span>
-                        <span>Receipt</span>
-                      </div>
 
-                      {data.rows.map(({ registration }) => {
-                        const missing =
-                          registration.paymentType === "paid" &&
-                          registration.paymentProofStorageId === undefined;
+                  <div className="flex flex-col gap-3 rounded-xl border border-line bg-white p-4">
+                    <div className="flex items-baseline justify-between">
+                      <Eyebrow>Filters</Eyebrow>
+                      {active && (
+                        <button
+                          type="button"
+                          onClick={() => setFilters(EMPTY_FILTERS)}
+                          className="text-[13px] font-semibold text-cg-purple hover:underline"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
 
-                        return (
-                          <button
-                            key={registration._id}
-                            type="button"
-                            onClick={() => setOpen(registration._id)}
-                            className={cn(
-                              COLUMNS,
-                              "w-full border-b border-line-soft py-4 text-left text-[14.5px] text-ink transition-colors hover:bg-surface",
-                              missing && "bg-[#fffdf5]",
-                            )}
-                          >
-                            <span className="font-semibold">
-                              {registration.registrationNumber}
-                            </span>
-                            <span className="truncate font-medium">
-                              {registration.groupName ?? (
-                                <span className="text-muted">—</span>
-                              )}
-                              <span className="block text-[12.5px] font-normal text-muted">
-                                {shortDate(registration._creationTime)}
-                              </span>
-                            </span>
-                            <span>{registration.participantCount}</span>
-                            <span className="truncate text-muted">
-                              {registration.registrantEmail}
-                            </span>
-                            <span>
-                              {typeShort(
-                                registration.registrationType as RegistrationType,
-                              )}
-                            </span>
-                            <span
-                              className={cn(
-                                registration.totalAmount === 0
-                                  ? "text-muted"
-                                  : "font-medium",
-                              )}
-                            >
-                              {formatPeso(registration.totalAmount)}
-                            </span>
-                            <span className="justify-self-start">
-                              <ReceiptTag registration={registration} />
-                            </span>
-                          </button>
-                        );
-                      })}
+                    <input
+                      type="search"
+                      className={CONTROL}
+                      placeholder="Name, group, number, email"
+                      aria-label="Search"
+                      value={filters.search}
+                      onChange={(e) => set({ search: e.target.value })}
+                    />
+                    <select
+                      className={CONTROL}
+                      aria-label="Registration type"
+                      value={filters.type}
+                      onChange={(e) => set({ type: e.target.value as Filters["type"] })}
+                    >
+                      <option value="">All types</option>
+                      {REGISTRATION_TYPES.map((t) => (
+                        <option key={t.value} value={t.value}>
+                          {t.short}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      className={CONTROL}
+                      aria-label="Breakout session"
+                      value={filters.session}
+                      onChange={(e) =>
+                        set({
+                          session: e.target.value === "" ? "" : Number(e.target.value),
+                        })
+                      }
+                    >
+                      <option value="">All sessions</option>
+                      {BREAKOUT_SESSIONS.map((s) => (
+                        <option key={s.value} value={s.value}>
+                          {s.value}. {s.title.split(":")[0]}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      className={CONTROL}
+                      aria-label="Payment"
+                      value={filters.payment}
+                      onChange={(e) =>
+                        set({ payment: e.target.value as Filters["payment"] })
+                      }
+                    >
+                      <option value="">Any payment</option>
+                      <option value="paid">Paying</option>
+                      <option value="exempt">Not paying</option>
+                      <option value="receipt-missing">Receipt missing</option>
+                    </select>
+                    <select
+                      className={CONTROL}
+                      aria-label="Confirmation email"
+                      value={filters.email}
+                      onChange={(e) =>
+                        set({ email: e.target.value as Filters["email"] })
+                      }
+                    >
+                      <option value="">Any email status</option>
+                      <option value="sent">Email sent</option>
+                      <option value="pending">Email sending</option>
+                      <option value="failed">Email failed</option>
+                    </select>
+                    <select
+                      className={CONTROL}
+                      aria-label="Church"
+                      value={filters.church}
+                      onChange={(e) => set({ church: e.target.value })}
+                    >
+                      <option value="">All churches</option>
+                      {churches.map((name) => (
+                        <option key={name} value={name}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      className={CONTROL}
+                      aria-label="City"
+                      value={filters.city}
+                      onChange={(e) => set({ city: e.target.value })}
+                    >
+                      <option value="">All cities</option>
+                      {cities.map((name) => (
+                        <option key={name} value={name}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="flex gap-2">
+                      <input
+                        type="date"
+                        className={CONTROL}
+                        aria-label="Registered from"
+                        value={filters.dateFrom}
+                        onChange={(e) => set({ dateFrom: e.target.value })}
+                      />
+                      <input
+                        type="date"
+                        className={CONTROL}
+                        aria-label="Registered to"
+                        value={filters.dateTo}
+                        onChange={(e) => set({ dateTo: e.target.value })}
+                      />
                     </div>
                   </div>
-                )}
-              </div>
-            </>
-          )}
-        </Authenticated>
-      </main>
+
+                  {allStats.receiptsMissing + allStats.emailsFailed > 0 && (
+                    <div className="flex flex-col gap-2 rounded-xl border border-cg-gold/40 bg-cg-gold-tint p-4">
+                      <Eyebrow>Needs a look</Eyebrow>
+                      {allStats.receiptsMissing > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            set({ payment: "receipt-missing" });
+                            setSection("registrations");
+                          }}
+                          className="text-left text-[14px] font-medium text-cg-gold-ink hover:underline"
+                        >
+                          {allStats.receiptsMissing} without a receipt
+                        </button>
+                      )}
+                      {allStats.emailsFailed > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            set({ email: "failed" });
+                            setSection("registrations");
+                          }}
+                          className="text-left text-[14px] font-medium text-cg-gold-ink hover:underline"
+                        >
+                          {allStats.emailsFailed} email
+                          {allStats.emailsFailed === 1 ? "" : "s"} failed
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </aside>
+
+            {/* -------------------------------------------------- main column */}
+            <div className="min-w-0 flex-1">
+              {data === undefined ? (
+                <div className="flex justify-center py-24">
+                  <Spinner className="size-6 text-cg-purple" />
+                </div>
+              ) : open !== null ? (
+                <RegistrationDetail registrationId={open} onBack={() => setOpen(null)} />
+              ) : section === "admins" ? (
+                <AdminsSection />
+              ) : section === "overview" ? (
+                <div className="flex flex-col gap-6">
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <StatTile
+                      label="Participants"
+                      value={String(stats.participants)}
+                      note={`across ${stats.registrations} registration${stats.registrations === 1 ? "" : "s"}`}
+                    />
+                    <StatTile
+                      label="Collected"
+                      value={formatPeso(stats.amount)}
+                      note={`${stats.receiptsAttached} receipt${stats.receiptsAttached === 1 ? "" : "s"} attached`}
+                    />
+                    <StatTile
+                      label="Not paying"
+                      value={String(stats.exemptParticipants)}
+                      note="speakers, volunteers, sponsors"
+                    />
+                    <StatTile
+                      label="Needs a receipt"
+                      tone="warn"
+                      value={String(stats.receiptsMissing)}
+                      note={
+                        stats.emailsFailed > 0
+                          ? `${stats.emailsFailed} email${stats.emailsFailed === 1 ? "" : "s"} also failed`
+                          : "everything else is in"
+                      }
+                    />
+                  </div>
+
+                  <div className="grid gap-4 xl:grid-cols-2">
+                    <Panel title="Breakout sessions">
+                      <BarList
+                        total={stats.participants}
+                        items={stats.bySession.map((s) => ({
+                          name: `${s.value}. ${s.title.split(":")[0]}`,
+                          count: s.count,
+                        }))}
+                      />
+                    </Panel>
+                    <Panel title="Who's coming">
+                      <BarList
+                        total={stats.participants}
+                        items={stats.byType.map((t) => ({
+                          name: typeShort(t.type),
+                          count: t.count,
+                        }))}
+                      />
+                      <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-line pt-3 text-[14px]">
+                        <div>
+                          <dt className="text-muted">Average age</dt>
+                          <dd className="font-semibold text-ink">
+                            {stats.averageAge ?? "—"}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-muted">Under 18</dt>
+                          <dd className="font-semibold text-ink">{stats.minors}</dd>
+                        </div>
+                      </dl>
+                    </Panel>
+                    <Panel title="Churches">
+                      <BarList items={stats.byChurch} total={stats.participants} />
+                    </Panel>
+                    <Panel title="Cities">
+                      <BarList items={stats.byCity} total={stats.participants} />
+                    </Panel>
+                  </div>
+
+                  {stats.emailsFailed > 0 && (
+                    <Panel
+                      title="Confirmation emails that failed"
+                      action={
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          loading={resending}
+                          onClick={() => {
+                            setResending(true);
+                            void resendAllFailed().finally(() => setResending(false));
+                          }}
+                        >
+                          Retry all
+                        </Button>
+                      }
+                    >
+                      <ul className="flex flex-col">
+                        {rows
+                          .filter(
+                            (r) => r.registration.confirmationEmailStatus === "failed",
+                          )
+                          .map(({ registration }) => (
+                            <li
+                              key={registration._id}
+                              className="border-t border-line py-2.5 text-[14px]"
+                            >
+                              <button
+                                type="button"
+                                onClick={() => setOpen(registration._id)}
+                                className="font-semibold text-cg-purple hover:underline"
+                              >
+                                {registration.registrationNumber}
+                              </button>
+                              <span className="ml-2 text-muted">
+                                {registration.registrantEmail}
+                              </span>
+                              {registration.confirmationEmailError && (
+                                <div className="text-[12.5px] text-red-600">
+                                  {registration.confirmationEmailError}
+                                </div>
+                              )}
+                            </li>
+                          ))}
+                      </ul>
+                    </Panel>
+                  )}
+                </div>
+              ) : section === "registrations" ? (
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h1 className="font-display text-[22px] font-semibold text-ink">
+                      {stats.registrations} registration
+                      {stats.registrations === 1 ? "" : "s"}
+                      {active && (
+                        <span className="ml-2 text-[14px] font-normal text-muted">
+                          of {allStats.registrations}
+                        </span>
+                      )}
+                    </h1>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={rows.length === 0}
+                      onClick={() =>
+                        downloadCsv(
+                          "crossgen-2026-participants.csv",
+                          buildParticipantCsv(rows),
+                        )
+                      }
+                    >
+                      Export CSV
+                    </Button>
+                  </div>
+
+                  {rows.length === 0 ? (
+                    <p className="rounded-2xl border border-line bg-white py-16 text-center text-[15px] text-muted">
+                      {active
+                        ? "Nothing matches those filters."
+                        : "No registrations yet."}
+                    </p>
+                  ) : (
+                    <div className="overflow-x-auto rounded-2xl border border-line bg-white">
+                      <table className="w-full min-w-[900px] text-left">
+                        <thead>
+                          <tr className="border-b border-line text-[11.5px] font-semibold tracking-[0.07em] text-muted uppercase">
+                            <th className="px-4 py-3 font-semibold">Number</th>
+                            <th className="px-4 py-3 font-semibold">Group</th>
+                            <th className="px-4 py-3 font-semibold">People</th>
+                            <th className="px-4 py-3 font-semibold">Registered by</th>
+                            <th className="px-4 py-3 font-semibold">Type</th>
+                            <th className="px-4 py-3 font-semibold">Amount</th>
+                            <th className="px-4 py-3 font-semibold">Receipt</th>
+                            <th className="px-4 py-3 font-semibold">Email</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rows.map(({ registration, participants }) => (
+                            <tr
+                              key={registration._id}
+                              onClick={() => setOpen(registration._id)}
+                              className="cursor-pointer border-b border-line-soft text-[14px] last:border-0 hover:bg-surface"
+                            >
+                              <td className="px-4 py-3.5 font-semibold text-cg-purple">
+                                {registration.registrationNumber}
+                                <div className="text-[12.5px] font-normal text-muted">
+                                  {shortDate(registration._creationTime)}
+                                </div>
+                              </td>
+                              <td className="max-w-[200px] truncate px-4 py-3.5 font-medium text-ink">
+                                {registration.groupName ?? (
+                                  <span className="font-normal text-muted">—</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3.5 text-ink">
+                                {participants.length}
+                                {participants.length !==
+                                  registration.participantCount && (
+                                  <span className="text-muted">
+                                    {" "}
+                                    of {registration.participantCount}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="max-w-[220px] truncate px-4 py-3.5 text-muted">
+                                {registration.registrantEmail}
+                              </td>
+                              <td className="px-4 py-3.5 text-ink">
+                                {typeShort(
+                                  registration.registrationType as RegistrationType,
+                                )}
+                              </td>
+                              <td
+                                className={cn(
+                                  "px-4 py-3.5",
+                                  registration.totalAmount === 0
+                                    ? "text-muted"
+                                    : "font-medium text-ink",
+                                )}
+                              >
+                                {formatPeso(registration.totalAmount)}
+                              </td>
+                              <td className="px-4 py-3.5">
+                                <ReceiptTag registration={registration} />
+                              </td>
+                              <td className="px-4 py-3.5">
+                                <EmailTag registration={registration} />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h1 className="font-display text-[22px] font-semibold text-ink">
+                      {people.length} participant{people.length === 1 ? "" : "s"}
+                      {active && (
+                        <span className="ml-2 text-[14px] font-normal text-muted">
+                          of {allStats.participants}
+                        </span>
+                      )}
+                    </h1>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={rows.length === 0}
+                      onClick={() =>
+                        downloadCsv(
+                          "crossgen-2026-participants.csv",
+                          buildParticipantCsv(rows),
+                        )
+                      }
+                    >
+                      Export CSV
+                    </Button>
+                  </div>
+
+                  {people.length === 0 ? (
+                    <p className="rounded-2xl border border-line bg-white py-16 text-center text-[15px] text-muted">
+                      {active
+                        ? "Nobody matches those filters."
+                        : "No participants yet."}
+                    </p>
+                  ) : (
+                    <div className="overflow-x-auto rounded-2xl border border-line bg-white">
+                      <table className="w-full min-w-[1000px] text-left">
+                        <thead>
+                          <tr className="border-b border-line text-[11.5px] font-semibold tracking-[0.07em] text-muted uppercase">
+                            <th className="px-4 py-3 font-semibold">Name</th>
+                            <th className="px-4 py-3 font-semibold">Age</th>
+                            <th className="px-4 py-3 font-semibold">Church</th>
+                            <th className="px-4 py-3 font-semibold">City</th>
+                            <th className="px-4 py-3 font-semibold">Session</th>
+                            <th className="px-4 py-3 font-semibold">Contact</th>
+                            <th className="px-4 py-3 font-semibold">Group</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {people.map(({ participant, registration }) => (
+                            <tr
+                              key={participant._id}
+                              onClick={() => setOpen(registration._id)}
+                              className="cursor-pointer border-b border-line-soft text-[14px] last:border-0 hover:bg-surface"
+                            >
+                              <td className="px-4 py-3.5 font-medium text-ink">
+                                {participant.fullName}
+                                <div className="text-[12.5px] font-normal text-muted">
+                                  {participant.gender} · {participant.maritalStatus}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3.5 text-muted">
+                                {participant.age}
+                              </td>
+                              <td className="max-w-[190px] truncate px-4 py-3.5 text-muted">
+                                {participant.churchOrganization}
+                                <div className="text-[12.5px]">
+                                  {participant.ministryInvolvement}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3.5 text-muted">
+                                {participant.cityMunicipality}
+                              </td>
+                              <td className="max-w-[220px] px-4 py-3.5 text-muted">
+                                {breakoutTitle(participant.breakoutSession)}
+                              </td>
+                              <td className="max-w-[200px] truncate px-4 py-3.5 text-muted">
+                                {participant.mobileNumber}
+                                <div className="text-[12.5px]">{participant.email}</div>
+                              </td>
+                              <td className="px-4 py-3.5">
+                                <span className="font-semibold text-cg-purple">
+                                  {registration.registrationNumber}
+                                </span>
+                                <div className="text-[12.5px] text-muted">
+                                  {registration.groupName ?? "Individual"}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </main>
+        )}
+      </Authenticated>
 
       <BottomBar />
     </div>

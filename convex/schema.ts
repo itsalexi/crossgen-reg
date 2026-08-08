@@ -102,6 +102,15 @@ export default defineSchema({
     breakoutSession: breakoutSessionValidator,
   }).index("by_registrationId", ["registrationId"]),
 
+  // Organizers added from inside the app. The ORGANIZER_EMAILS env var still
+  // works and acts as the owner list — those accounts can always get in, and
+  // cannot be removed through the UI.
+  organizers: defineTable({
+    email: v.string(),
+    addedByEmail: v.string(),
+    note: v.optional(v.string()),
+  }).index("by_email", ["email"]),
+
   // Convex has no autoincrement. Sequential registration numbers come from an
   // atomic read-modify-write inside the submit mutation.
   counters: defineTable({

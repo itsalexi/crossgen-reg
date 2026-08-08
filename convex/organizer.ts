@@ -2,40 +2,52 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
-import { mutation, query, type QueryCtx } from "./_generated/server";
 import {
-  breakoutSessionValidator,
-  registrationTypeValidator,
-} from "./schema";
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "./_generated/server";
 
-/**
- * Organizer access is an env allowlist, not a role column — V1 has a handful of
- * organizers and no need for a permissions UI. Every organizer function calls
- * this; the dashboard route guard is convenience, this is the actual boundary.
- */
-async function requireOrganizer(ctx: QueryCtx): Promise<string> {
-  const userId = await getAuthUserId(ctx);
-  if (userId === null) throw new ConvexError("Sign in to view registrations.");
+type AnyCtx = QueryCtx | MutationCtx;
 
-  const user = await ctx.db.get(userId);
-  const email = user?.email?.toLowerCase().trim();
-  if (email === undefined || email.length === 0) {
-    throw new ConvexError("Your account has no email address.");
-  }
-
-  const allowed = (process.env.ORGANIZER_EMAILS ?? "")
+/** Accounts named in the env var. They can always get in, and can't be removed. */
+function ownerEmails(): string[] {
+  return (process.env.ORGANIZER_EMAILS ?? "")
     .split(",")
     .map((entry) => entry.toLowerCase().trim())
     .filter((entry) => entry.length > 0);
-
-  if (!allowed.includes(email)) {
-    throw new ConvexError("This account is not an authorized organizer.");
-  }
-
-  return email;
 }
 
-/** Lets the dashboard render a clean "not authorized" state without throwing. */
+async function signedInEmail(ctx: AnyCtx): Promise<string | null> {
+  const userId = await getAuthUserId(ctx);
+  if (userId === null) return null;
+  const user = await ctx.db.get(userId);
+  const email = user?.email?.toLowerCase().trim();
+  return email !== undefined && email.length > 0 ? email : null;
+}
+
+export type Access = { email: string; isOwner: boolean };
+
+/**
+ * The actual access boundary. Every organizer function calls this — the route
+ * guard in the UI is only convenience.
+ */
+async function requireOrganizer(ctx: AnyCtx): Promise<Access> {
+  const email = await signedInEmail(ctx);
+  if (email === null) throw new ConvexError("Sign in to view registrations.");
+
+  if (ownerEmails().includes(email)) return { email, isOwner: true };
+
+  const added = await ctx.db
+    .query("organizers")
+    .withIndex("by_email", (q) => q.eq("email", email))
+    .unique();
+  if (added !== null) return { email, isOwner: false };
+
+  throw new ConvexError("This account is not an authorized organizer.");
+}
+
 export const amIOrganizer = query({
   args: {},
   handler: async (ctx) => {
@@ -48,118 +60,34 @@ export const amIOrganizer = query({
   },
 });
 
-type Row = {
-  registration: Doc<"registrations">;
-  participants: Doc<"participants">[];
-};
-
-async function loadAll(ctx: QueryCtx): Promise<Row[]> {
-  const registrations = await ctx.db.query("registrations").order("desc").collect();
-
-  return await Promise.all(
-    registrations.map(async (registration) => ({
-      registration,
-      participants: await ctx.db
-        .query("participants")
-        .withIndex("by_registrationId", (q) =>
-          q.eq("registrationId", registration._id),
-        )
-        .collect(),
-    })),
-  );
-}
-
-const filterArgs = {
-  search: v.optional(v.string()),
-  registrationType: v.optional(registrationTypeValidator),
-  breakoutSession: v.optional(breakoutSessionValidator),
-  paymentType: v.optional(v.union(v.literal("paid"), v.literal("exempt"))),
-  dateFrom: v.optional(v.number()),
-  dateTo: v.optional(v.number()),
-};
-
-function matches(
-  row: Row,
-  filters: {
-    search?: string;
-    registrationType?: string;
-    breakoutSession?: number;
-    paymentType?: string;
-    dateFrom?: number;
-    dateTo?: number;
+export const whoAmI = query({
+  args: {},
+  handler: async (ctx): Promise<Access | null> => {
+    try {
+      return await requireOrganizer(ctx);
+    } catch {
+      return null;
+    }
   },
-): boolean {
-  const { registration, participants } = row;
+});
 
-  if (
-    filters.registrationType !== undefined &&
-    registration.registrationType !== filters.registrationType
-  ) {
-    return false;
-  }
-  if (
-    filters.paymentType !== undefined &&
-    registration.paymentType !== filters.paymentType
-  ) {
-    return false;
-  }
-  if (
-    filters.breakoutSession !== undefined &&
-    !participants.some((p) => p.breakoutSession === filters.breakoutSession)
-  ) {
-    return false;
-  }
-  if (
-    filters.dateFrom !== undefined &&
-    registration._creationTime < filters.dateFrom
-  ) {
-    return false;
-  }
-  if (filters.dateTo !== undefined && registration._creationTime > filters.dateTo) {
-    return false;
-  }
-
-  const search = (filters.search ?? "").toLowerCase().trim();
-  if (search.length > 0) {
-    const haystack = [
-      registration.registrationNumber,
-      registration.groupName ?? "",
-      registration.registrantName,
-      registration.registrantEmail,
-      registration.paymentReference ?? "",
-      ...participants.flatMap((p) => [p.fullName, p.preferredName ?? "", p.email]),
-    ]
-      .join(" ")
-      .toLowerCase();
-    if (!haystack.includes(search)) return false;
-  }
-
-  return true;
-}
-
-export const list = query({
-  args: filterArgs,
-  handler: async (ctx, args) => {
+/**
+ * Everything the dashboard needs, in one subscription. An event this size runs
+ * to hundreds of rows, not millions, so filtering and totals happen in the
+ * browser — which keeps every filter instant and the server simple.
+ */
+export const snapshot = query({
+  args: {},
+  handler: async (ctx) => {
     await requireOrganizer(ctx);
-    const rows = await loadAll(ctx);
-    const filtered = rows.filter((row) => matches(row, args));
 
-    return {
-      rows: filtered,
-      totals: {
-        registrations: filtered.length,
-        participants: filtered.reduce(
-          (sum, row) => sum + row.registration.participantCount,
-          0,
-        ),
-        amount: filtered.reduce(
-          (sum, row) => sum + row.registration.totalAmount,
-          0,
-        ),
-        // Every registration in the filtered set, regardless of filters above.
-        allRegistrations: rows.length,
-      },
-    };
+    const registrations = await ctx.db
+      .query("registrations")
+      .order("desc")
+      .collect();
+    const participants = await ctx.db.query("participants").collect();
+
+    return { registrations, participants };
   },
 });
 
@@ -187,7 +115,6 @@ export const get = query({
   },
 });
 
-/** Signed URLs for proof-of-payment files, resolved only for organizers. */
 export const paymentProofUrls = query({
   args: { storageIds: v.array(v.id("_storage")) },
   handler: async (ctx, args) => {
@@ -206,10 +133,7 @@ export const paymentProofUrls = query({
   },
 });
 
-/**
- * §27: the registration survives a Resend outage, so organizers need a way to
- * try again afterwards.
- */
+/** §27: a registration outlives a Resend outage, so this has to be re-runnable. */
 export const resendConfirmation = mutation({
   args: { registrationId: v.id("registrations") },
   handler: async (ctx, args) => {
@@ -227,3 +151,120 @@ export const resendConfirmation = mutation({
     });
   },
 });
+
+/** Re-sends every confirmation that failed, in one go. */
+export const resendAllFailed = mutation({
+  args: {},
+  handler: async (ctx) => {
+    await requireOrganizer(ctx);
+
+    const failed = (await ctx.db.query("registrations").collect()).filter(
+      (r) => r.confirmationEmailStatus === "failed",
+    );
+
+    for (const registration of failed) {
+      await ctx.db.patch(registration._id, {
+        confirmationEmailStatus: "pending",
+        confirmationEmailError: undefined,
+      });
+      await ctx.scheduler.runAfter(0, internal.emails.sendConfirmation, {
+        registrationId: registration._id,
+      });
+    }
+
+    return failed.length;
+  },
+});
+
+// ------------------------------------------------------------ organizer list
+
+export type OrganizerEntry = {
+  email: string;
+  isOwner: boolean;
+  addedByEmail: string | null;
+  addedAt: number | null;
+  note: string | null;
+  id: Id<"organizers"> | null;
+};
+
+export const listOrganizers = query({
+  args: {},
+  handler: async (ctx): Promise<OrganizerEntry[]> => {
+    await requireOrganizer(ctx);
+
+    const owners: OrganizerEntry[] = ownerEmails().map((email) => ({
+      email,
+      isOwner: true,
+      addedByEmail: null,
+      addedAt: null,
+      note: null,
+      id: null,
+    }));
+
+    const added: OrganizerEntry[] = (await ctx.db.query("organizers").collect())
+      // An owner added to the table too would otherwise show up twice.
+      .filter((row) => !ownerEmails().includes(row.email))
+      .map((row) => ({
+        email: row.email,
+        isOwner: false,
+        addedByEmail: row.addedByEmail,
+        addedAt: row._creationTime,
+        note: row.note ?? null,
+        id: row._id,
+      }));
+
+    return [...owners, ...added];
+  },
+});
+
+export const addOrganizer = mutation({
+  args: { email: v.string(), note: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const me = await requireOrganizer(ctx);
+
+    const email = args.email.toLowerCase().trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new ConvexError("That doesn't look like an email address.");
+    }
+    if (ownerEmails().includes(email)) {
+      throw new ConvexError("That account already has access.");
+    }
+
+    const existing = await ctx.db
+      .query("organizers")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .unique();
+    if (existing !== null) {
+      throw new ConvexError("That account is already an organizer.");
+    }
+
+    const note = (args.note ?? "").trim();
+    await ctx.db.insert("organizers", {
+      email,
+      addedByEmail: me.email,
+      note: note.length > 0 ? note : undefined,
+    });
+  },
+});
+
+export const removeOrganizer = mutation({
+  args: { id: v.id("organizers") },
+  handler: async (ctx, args) => {
+    const me = await requireOrganizer(ctx);
+
+    const row = await ctx.db.get(args.id);
+    if (row === null) return;
+
+    // Removing yourself would lock you out mid-session with no way back.
+    if (row.email === me.email) {
+      throw new ConvexError("You can't remove your own access.");
+    }
+
+    await ctx.db.delete(args.id);
+  },
+});
+
+export type RegistrationRow = {
+  registration: Doc<"registrations">;
+  participants: Doc<"participants">[];
+};

@@ -1,5 +1,9 @@
 import type { Doc } from "@convex/_generated/dataModel";
-import { BREAKOUT_SESSIONS, type RegistrationType } from "@convex/shared";
+import {
+  BREAKOUT_SESSIONS,
+  heardFromLabel,
+  type RegistrationType,
+} from "@convex/shared";
 
 export type Registration = Doc<"registrations">;
 export type Participant = Doc<"participants">;
@@ -199,6 +203,7 @@ export type Stats = {
   byCity: { name: string; count: number }[];
   averageAge: number | null;
   minors: number;
+  byHeardFrom: { name: string; count: number }[];
 };
 
 function tally(values: string[]): { name: string; count: number }[] {
@@ -254,6 +259,12 @@ export function computeStats(rows: Row[]): Stats {
         ? Math.round(ages.reduce((a, b) => a + b, 0) / ages.length)
         : null,
     minors: people.filter((p) => p.age < 18).length,
+    // Counted per registration — one answer is given for the whole group.
+    byHeardFrom: tally(
+      rows.map((row) =>
+        heardFromLabel(row.registration.heardFrom, row.registration.heardFromOther),
+      ),
+    ),
   };
 }
 

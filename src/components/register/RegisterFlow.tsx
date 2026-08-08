@@ -17,7 +17,9 @@ import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import {
   calculateTotal,
+  type ConsentKey,
   EVENT,
+  type HeardFrom,
   formatPeso,
   GROUP_RATE,
   GROUP_THRESHOLD,
@@ -267,6 +269,17 @@ export function RegisterFlow() {
     emptyParticipant(),
   ]);
   const [payment, setPayment] = useState<PaymentDraft>(emptyPayment());
+  const [consents, setConsents] = useState<Record<ConsentKey, boolean>>({
+    consentAccurate: false,
+    consentDataUse: false,
+    consentPhotos: false,
+  });
+  const [heardFrom, setHeardFrom] = useState<HeardFrom | "">("");
+  const [heardFromOther, setHeardFromOther] = useState("");
+  const [finalErrors, setFinalErrors] = useState<{
+    consents?: string;
+    heardFrom?: string;
+  }>({});
 
   const [step, setStep] = useState<Step>("type");
   const [activeRaw, setActive] = useState(0);
@@ -441,6 +454,21 @@ export function RegisterFlow() {
       }
     }
 
+    const missing: typeof finalErrors = {};
+    if (!consents.consentAccurate || !consents.consentDataUse || !consents.consentPhotos) {
+      missing.consents = "Please tick all three before sending this in.";
+    }
+    if (heardFrom === "") {
+      missing.heardFrom = "Let us know where you heard about the summit.";
+    } else if (heardFrom === "other" && heardFromOther.trim().length === 0) {
+      missing.heardFrom = "Tell us where, so we know what's working.";
+    }
+    if (Object.keys(missing).length > 0) {
+      setFinalErrors(missing);
+      return;
+    }
+    setFinalErrors({});
+
     setSubmitting(true);
     setSubmitError(null);
     try {
@@ -448,6 +476,10 @@ export function RegisterFlow() {
         idempotencyKey,
         groupName: groupName.trim().length > 0 ? groupName.trim() : undefined,
         registrationType,
+        ...consents,
+        heardFrom: heardFrom as HeardFrom,
+        heardFromOther:
+          heardFrom === "other" ? heardFromOther.trim() : undefined,
         participants: participants.map((p) => ({
           fullName: p.fullName.trim(),
           preferredName:
@@ -810,6 +842,22 @@ export function RegisterFlow() {
                   goTo("people");
                 }}
                 onEditPayment={() => goTo("payment")}
+                consents={consents}
+                onConsentChange={(key, next) => {
+                  setConsents((current) => ({ ...current, [key]: next }));
+                  setFinalErrors((current) => ({ ...current, consents: undefined }));
+                }}
+                heardFrom={heardFrom}
+                heardFromOther={heardFromOther}
+                onHeardFromChange={(value) => {
+                  setHeardFrom(value);
+                  setFinalErrors((current) => ({ ...current, heardFrom: undefined }));
+                }}
+                onHeardFromOtherChange={(value) => {
+                  setHeardFromOther(value);
+                  setFinalErrors((current) => ({ ...current, heardFrom: undefined }));
+                }}
+                errors={finalErrors}
               />
 
               {submitError !== null && (

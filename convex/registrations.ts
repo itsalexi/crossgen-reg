@@ -10,6 +10,7 @@ import {
   type MutationCtx,
 } from "./_generated/server";
 import {
+  heardFromValidator,
   participantInputValidator,
   registrationTypeValidator,
 } from "./schema";
@@ -131,6 +132,11 @@ export const submitArgs = {
   idempotencyKey: v.string(),
   groupName: v.optional(v.string()),
   registrationType: registrationTypeValidator,
+  consentAccurate: v.boolean(),
+  consentDataUse: v.boolean(),
+  consentPhotos: v.boolean(),
+  heardFrom: heardFromValidator,
+  heardFromOther: v.optional(v.string()),
   participants: v.array(participantInputValidator),
   payment: v.optional(
     v.object({
@@ -185,6 +191,17 @@ export async function createRegistration(
   if (participantCount > 1 && groupName.length === 0) {
     fail("Group name is required when registering more than one participant.");
   }
+
+  // All three agreements are required, and the server is where that is
+  // enforced — an unchecked box must not become a stored `false`.
+  if (!args.consentAccurate || !args.consentDataUse || !args.consentPhotos) {
+    fail("Please agree to all three statements before sending this in.");
+  }
+
+  const heardFromOther =
+    args.heardFrom === "other"
+      ? requireText(args.heardFromOther, "Where you heard about the summit")
+      : undefined;
 
   const type = args.registrationType as RegistrationType;
   const exempt = isExempt(type);
@@ -249,6 +266,11 @@ export async function createRegistration(
     registrantName: (user.name ?? participants[0].fullName).trim(),
     registrantEmail: (user.email ?? participants[0].email).toLowerCase(),
     registrationType: type,
+    consentAccurate: args.consentAccurate,
+    consentDataUse: args.consentDataUse,
+    consentPhotos: args.consentPhotos,
+    heardFrom: args.heardFrom,
+    heardFromOther,
     participantCount,
     totalAmount,
     paymentType: exempt ? "exempt" : "paid",

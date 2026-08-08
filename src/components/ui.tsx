@@ -284,6 +284,66 @@ export function ChoiceCard({
   );
 }
 
+export function Checkbox({
+  checked,
+  onChange,
+  label,
+  error,
+}: {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  label: ReactNode;
+  error?: boolean;
+}) {
+  const id = useId();
+
+  return (
+    <label
+      htmlFor={id}
+      className={cn(
+        "flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3.5 transition-colors",
+        checked
+          ? "border-[1.5px] border-cg-purple-soft bg-cg-purple-tint"
+          : error
+            ? "border-red-300 bg-white"
+            : "border-line bg-white hover:border-cg-purple-soft hover:bg-surface",
+      )}
+    >
+      <input
+        id={id}
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="sr-only"
+      />
+      <span
+        className={cn(
+          "mt-0.5 flex size-[18px] flex-none items-center justify-center rounded-[5px] border-[1.5px] transition-colors",
+          checked
+            ? "border-cg-purple bg-cg-purple text-white"
+            : error
+              ? "border-red-300 bg-white"
+              : "border-faint bg-white",
+        )}
+        aria-hidden="true"
+      >
+        {checked && (
+          <svg viewBox="0 0 14 14" className="size-3" fill="none">
+            <path
+              d="m2.5 7.5 3 3 6-7"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        )}
+      </span>
+      <span className="text-[14.5px] leading-normal text-ink">{label}</span>
+    </label>
+  );
+}
+
 // ------------------------------------------------------------------ pieces
 
 export function Eyebrow({

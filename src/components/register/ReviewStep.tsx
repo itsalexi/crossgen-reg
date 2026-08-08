@@ -2,6 +2,10 @@
 
 import {
   breakoutTitle,
+  CONSENTS,
+  type ConsentKey,
+  HEARD_FROM_OPTIONS,
+  type HeardFrom,
   formatDatePaid,
   formatPeso,
   GROUP_THRESHOLD,
@@ -12,7 +16,7 @@ import {
   typeShort,
   type RegistrationType,
 } from "@convex/shared";
-import { Eyebrow } from "@/components/ui";
+import { Checkbox, ChoiceCard, Eyebrow, TextInput } from "@/components/ui";
 import type { ParticipantDraft, PaymentDraft } from "@/lib/registerForm";
 
 function EditButton({ onClick }: { onClick: () => void }) {
@@ -51,6 +55,13 @@ export function ReviewStep({
   onEditType,
   onEditParticipant,
   onEditPayment,
+  consents,
+  onConsentChange,
+  heardFrom,
+  heardFromOther,
+  onHeardFromChange,
+  onHeardFromOtherChange,
+  errors,
 }: {
   registrationType: RegistrationType;
   groupName: string;
@@ -60,6 +71,13 @@ export function ReviewStep({
   onEditType: () => void;
   onEditParticipant: (index: number) => void;
   onEditPayment: () => void;
+  consents: Record<ConsentKey, boolean>;
+  onConsentChange: (key: ConsentKey, next: boolean) => void;
+  heardFrom: HeardFrom | "";
+  heardFromOther: string;
+  onHeardFromChange: (value: HeardFrom) => void;
+  onHeardFromOtherChange: (value: string) => void;
+  errors: { consents?: string; heardFrom?: string };
 }) {
   const exempt = isExempt(registrationType);
   const count = participants.length;
@@ -159,12 +177,68 @@ export function ReviewStep({
         )}
       </section>
 
-      <p className="text-[13px] leading-relaxed text-muted">
-        Sending this in shares {spellCount(count)}{" "}
-        {count === 1 ? "person's" : "people's"} details with the CrossGen
-        organizing team, for registration, event updates, session assignment,
-        and looking after everyone on the day.
-      </p>
+      {/* --------------------------------------------- where they heard */}
+      <section className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1">
+          <Eyebrow>Saan mo nalaman ang summit?</Eyebrow>
+          <p className="text-[13.5px] text-muted">
+            Nakakatulong ito para malaman namin kung saan kami dapat mag-abot.
+          </p>
+        </div>
+        <div className="flex flex-col gap-2">
+          {HEARD_FROM_OPTIONS.map((option) => (
+            <ChoiceCard
+              key={option.value}
+              name="heard-from"
+              align="center"
+              selected={heardFrom === option.value}
+              onSelect={() => onHeardFromChange(option.value)}
+              title={option.label}
+            />
+          ))}
+        </div>
+        {heardFrom === "other" && (
+          <TextInput
+            label="Saan po?"
+            value={heardFromOther}
+            placeholder="A friend, a poster, somewhere online…"
+            onChange={(e) => onHeardFromOtherChange(e.target.value)}
+          />
+        )}
+        {errors.heardFrom && (
+          <p className="text-[12.5px] font-medium text-red-600">
+            {errors.heardFrom}
+          </p>
+        )}
+      </section>
+
+      {/* ---------------------------------------------------- agreements */}
+      <section className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1">
+          <Eyebrow>Bago tayo magpadala</Eyebrow>
+          <p className="text-[13.5px] text-muted">
+            Kailangan po ang lahat ng tatlo. Kayo ang sumasagot para sa{" "}
+            {spellCount(count)} {count === 1 ? "tao" : "tao"} sa registration
+            na ito.
+          </p>
+        </div>
+        <div className="flex flex-col gap-2">
+          {CONSENTS.map((consent) => (
+            <Checkbox
+              key={consent.key}
+              checked={consents[consent.key]}
+              error={errors.consents !== undefined && !consents[consent.key]}
+              onChange={(next) => onConsentChange(consent.key, next)}
+              label={consent.label}
+            />
+          ))}
+        </div>
+        {errors.consents && (
+          <p className="text-[12.5px] font-medium text-red-600">
+            {errors.consents}
+          </p>
+        )}
+      </section>
     </div>
   );
 }

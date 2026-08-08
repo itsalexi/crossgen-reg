@@ -164,6 +164,44 @@ export function breakoutTitle(value: number): string {
   );
 }
 
+// -------------------------------------------------------- where they heard
+
+export type HeardFrom = "social-media" | "church-announcement" | "other";
+
+export const HEARD_FROM_OPTIONS: { value: HeardFrom; label: string }[] = [
+  { value: "social-media", label: "Social media" },
+  { value: "church-announcement", label: "Church announcement" },
+  { value: "other", label: "Somewhere else" },
+];
+
+export function heardFromLabel(value: HeardFrom, other?: string): string {
+  if (value === "other") {
+    const trimmed = (other ?? "").trim();
+    return trimmed.length > 0 ? trimmed : "Somewhere else";
+  }
+  return HEARD_FROM_OPTIONS.find((o) => o.value === value)?.label ?? value;
+}
+
+/** The three agreements, in the organizers' words. All are required. */
+export const CONSENTS = [
+  {
+    key: "consentAccurate",
+    label: "I confirm that the information provided is accurate.",
+  },
+  {
+    key: "consentDataUse",
+    label:
+      "I consent to the collection and use of my personal information for event registration and administration.",
+  },
+  {
+    key: "consentPhotos",
+    label:
+      "I consent to photos/videos being taken during the event for documentation and promotional purposes.",
+  },
+] as const;
+
+export type ConsentKey = (typeof CONSENTS)[number]["key"];
+
 // ------------------------------------------------------------ form options
 
 export const GENDERS = ["Male", "Female"] as const;

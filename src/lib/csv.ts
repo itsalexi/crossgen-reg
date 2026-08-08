@@ -2,6 +2,7 @@ import type { Doc } from "@convex/_generated/dataModel";
 import {
   breakoutTitle,
   formatDatePaid,
+  heardFromLabel,
   typeShort,
   type RegistrationType,
 } from "@convex/shared";
@@ -27,6 +28,8 @@ const HEADERS = [
   "Date Paid",
   "Amount",
   "Date Registered",
+  "Heard About Us",
+  "Photo/Video Consent",
 ] as const;
 
 function escapeCell(value: string | number | undefined | null): string {
@@ -78,6 +81,8 @@ export function buildParticipantCsv(
           formatDatePaid(registration.datePaid ?? ""),
           registration.totalAmount,
           formatDate(registration._creationTime),
+          heardFromLabel(registration.heardFrom, registration.heardFromOther),
+          registration.consentPhotos ? "Yes" : "No",
         ]
           .map(escapeCell)
           .join(","),

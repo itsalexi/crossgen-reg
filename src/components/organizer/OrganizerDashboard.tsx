@@ -398,6 +398,13 @@ export function OrganizerDashboard() {
                     <Panel title="Cities">
                       <BarList items={stats.byCity} total={stats.participants} />
                     </Panel>
+                    <Panel title="Where they heard about it">
+                      <BarList
+                        items={stats.byHeardFrom}
+                        total={stats.registrations}
+                        empty="Nobody has answered yet."
+                      />
+                    </Panel>
                   </div>
 
                   {stats.emailsFailed > 0 && (

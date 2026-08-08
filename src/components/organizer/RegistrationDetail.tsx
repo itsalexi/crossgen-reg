@@ -8,6 +8,7 @@ import {
   breakoutTitle,
   formatDatePaid,
   formatPeso,
+  heardFromLabel,
   typeShort,
   type RegistrationType,
 } from "@convex/shared";
@@ -128,6 +129,25 @@ export function RegistrationDetail({
           <Eyebrow>Email</Eyebrow>
           <dd>
             <EmailTag registration={registration} />
+          </dd>
+        </div>
+      </dl>
+
+      <dl className="flex flex-col gap-2 rounded-2xl border border-line bg-white px-5 py-4 text-[14px] sm:flex-row sm:gap-10">
+        <div>
+          <dt className="text-muted">Heard about it from</dt>
+          <dd className="font-medium text-ink">
+            {heardFromLabel(registration.heardFrom, registration.heardFromOther)}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-muted">Agreements</dt>
+          <dd className="font-medium text-ink">
+            {registration.consentAccurate &&
+            registration.consentDataUse &&
+            registration.consentPhotos
+              ? "All three agreed"
+              : "Incomplete"}
           </dd>
         </div>
       </dl>

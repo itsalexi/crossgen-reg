@@ -23,6 +23,12 @@ export const breakoutSessionValidator = v.union(
   v.literal(5),
 );
 
+export const heardFromValidator = v.union(
+  v.literal("social-media"),
+  v.literal("church-announcement"),
+  v.literal("other"),
+);
+
 export const emailStatusValidator = v.union(
   v.literal("pending"),
   v.literal("sent"),
@@ -77,6 +83,14 @@ export default defineSchema({
     datePaid: v.optional(v.string()),
     paymentProofStorageId: v.optional(v.id("_storage")),
     paymentProofFileName: v.optional(v.string()),
+
+    // Agreed to by the registrant on behalf of everyone on the registration.
+    consentAccurate: v.boolean(),
+    consentDataUse: v.boolean(),
+    consentPhotos: v.boolean(),
+
+    heardFrom: heardFromValidator,
+    heardFromOther: v.optional(v.string()),
 
     confirmationEmailStatus: emailStatusValidator,
     confirmationEmailError: v.optional(v.string()),

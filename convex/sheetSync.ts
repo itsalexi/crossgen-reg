@@ -46,6 +46,7 @@ const HEADERS = [
   "Payment Reference",
   "Date Paid",
   "Amount",
+  "Amount Received",
   "Receipt",
   "Heard About Us",
   "Photo/Video Consent",
@@ -64,6 +65,9 @@ export const push = internalAction({
     }
 
     const data = await ctx.runQuery(internal.registrations.everything, {});
+    const received = new Map(
+      data.payments.map((p) => [p.reference, p.amountReceived]),
+    );
 
     const byRegistration = new Map<string, typeof data.participants>();
     for (const participant of data.participants) {
@@ -103,6 +107,7 @@ export const push = internalAction({
           registration.paymentReference ?? "",
           formatDatePaid(registration.datePaid ?? ""),
           registration.amountUnknown === true ? "" : registration.totalAmount,
+          received.get((registration.paymentReference ?? "").trim()) ?? "",
           registration.paymentProofExternalUrl ??
             (registration.paymentProofStorageId !== undefined ? "Uploaded" : ""),
           heardFromLabel(registration.heardFrom, registration.heardFromOther),

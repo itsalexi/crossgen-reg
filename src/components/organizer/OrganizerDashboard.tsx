@@ -26,7 +26,9 @@ import {
   computeStats,
   EMPTY_FILTERS,
   filterRows,
+  amountFor,
   filtersActive,
+  paymentIndex,
   registeredAt,
   uniqueValues,
   type Filters,
@@ -35,7 +37,6 @@ import { AdminsSection } from "./AdminsSection";
 import { PaymentsSection } from "./PaymentsSection";
 import { RegistrationDetail } from "./RegistrationDetail";
 import {
-  amountText,
   BarList,
   EmailTag,
   Panel,
@@ -84,8 +85,16 @@ export function OrganizerDashboard() {
     ),
     [rows],
   );
-  const stats = useMemo(() => computeStats(rows), [rows]);
-  const allStats = useMemo(() => computeStats(allRows), [allRows]);
+  const payments = useMemo(() => data?.payments ?? [], [data]);
+  const stats = useMemo(() => computeStats(rows, payments), [rows, payments]);
+  const allStats = useMemo(
+    () => computeStats(allRows, payments),
+    [allRows, payments],
+  );
+  const paidIndex = useMemo(
+    () => paymentIndex(allRows, payments),
+    [allRows, payments],
+  );
   const churches = useMemo(
     () => uniqueValues(allRows, (p) => p.churchOrganization),
     [allRows],
@@ -354,28 +363,23 @@ export function OrganizerDashboard() {
                       note={`across ${stats.registrations} registration${stats.registrations === 1 ? "" : "s"}`}
                     />
                     <StatTile
-                      label="Collected"
+                      label="Confirmed received"
+                      value={formatPeso(stats.received)}
+                      note={`${stats.referencesChecked} of ${stats.referencesTotal} payment references checked`}
+                    />
+                    <StatTile
+                      label="Expected, where known"
                       value={formatPeso(stats.amount)}
                       note={
                         stats.amountUnknownCount > 0
-                          ? `${stats.amountUnknownCount} imported row${stats.amountUnknownCount === 1 ? "" : "s"} with no amount recorded`
-                          : `${stats.receiptsAttached} receipt${stats.receiptsAttached === 1 ? "" : "s"} attached`
+                          ? `${stats.amountUnknownCount} imported row${stats.amountUnknownCount === 1 ? "" : "s"} have no amount on file`
+                          : "every registration has an amount"
                       }
                     />
                     <StatTile
                       label="Not paying"
                       value={String(stats.exemptParticipants)}
                       note="speakers, volunteers, sponsors"
-                    />
-                    <StatTile
-                      label="Needs a receipt"
-                      tone="warn"
-                      value={String(stats.receiptsMissing)}
-                      note={
-                        stats.emailsFailed > 0
-                          ? `${stats.emailsFailed} email${stats.emailsFailed === 1 ? "" : "s"} also failed`
-                          : "everything else is in"
-                      }
                     />
                   </div>
 
@@ -497,7 +501,7 @@ export function OrganizerDashboard() {
                       onClick={() =>
                         downloadCsv(
                           "crossgen-2026-participants.csv",
-                          buildParticipantCsv(rows),
+                          buildParticipantCsv(rows, payments),
                         )
                       }
                     >
@@ -581,7 +585,26 @@ export function OrganizerDashboard() {
                                     : "font-medium text-ink",
                                 )}
                               >
-                                {amountText(registration)}
+                                {(() => {
+                                  const { value, fromBank } = amountFor(
+                                    registration,
+                                    paidIndex,
+                                  );
+                                  if (value === null) return "—";
+                                  return (
+                                    <>
+                                      {formatPeso(value)}
+                                      {fromBank && (
+                                        <span
+                                          className="ml-1 text-muted"
+                                          title="From the reconciled bank payment"
+                                        >
+                                          ✓
+                                        </span>
+                                      )}
+                                    </>
+                                  );
+                                })()}
                               </td>
                               <td className="px-4 py-3.5">
                                 <ReceiptTag registration={registration} />
@@ -614,7 +637,7 @@ export function OrganizerDashboard() {
                       onClick={() =>
                         downloadCsv(
                           "crossgen-2026-participants.csv",
-                          buildParticipantCsv(rows),
+                          buildParticipantCsv(rows, payments),
                         )
                       }
                     >

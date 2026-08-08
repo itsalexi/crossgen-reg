@@ -481,9 +481,11 @@ export const everything = internalQuery({
   ): Promise<{
     registrations: Doc<"registrations">[];
     participants: Doc<"participants">[];
+    payments: Doc<"payments">[];
   }> => ({
     registrations: await ctx.db.query("registrations").collect(),
     participants: await ctx.db.query("participants").collect(),
+    payments: await ctx.db.query("payments").collect(),
   }),
 });
 

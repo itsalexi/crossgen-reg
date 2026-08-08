@@ -7,6 +7,52 @@ import {
 
 export type Registration = Doc<"registrations">;
 export type Participant = Doc<"participants">;
+export type Payment = Doc<"payments">;
+
+export function referenceOf(registration: Registration): string {
+  const reference = (registration.paymentReference ?? "").trim();
+  return reference.length > 0 ? reference : "(no reference)";
+}
+
+/**
+ * What the bank actually gave us, per reference — plus how many registrations
+ * each reference covers, because a deposit shared between several groups
+ * cannot be attributed to any one of them.
+ */
+export function paymentIndex(rows: Row[], payments: Payment[]) {
+  const covers = new Map<string, number>();
+  for (const row of rows) {
+    if (row.registration.paymentType !== "paid") continue;
+    const key = referenceOf(row.registration);
+    covers.set(key, (covers.get(key) ?? 0) + 1);
+  }
+  return {
+    received: new Map(payments.map((p) => [p.reference, p.amountReceived])),
+    covers,
+  };
+}
+
+export type PaymentIndex = ReturnType<typeof paymentIndex>;
+
+/**
+ * The amount to show for one registration. Falls back to the reconciled
+ * figure only when this registration is the sole thing that reference paid
+ * for — otherwise the split is unknowable and it stays blank.
+ */
+export function amountFor(
+  registration: Registration,
+  index: PaymentIndex,
+): { value: number | null; fromBank: boolean } {
+  if (registration.amountUnknown !== true) {
+    return { value: registration.totalAmount, fromBank: false };
+  }
+  const key = referenceOf(registration);
+  const received = index.received.get(key);
+  if (received !== undefined && index.covers.get(key) === 1) {
+    return { value: received, fromBank: true };
+  }
+  return { value: null, fromBank: false };
+}
 
 export type Row = {
   registration: Registration;
@@ -211,6 +257,10 @@ export type Stats = {
   emailsFailed: number;
   amountUnknownCount: number;
   imported: number;
+  /** Confirmed against the bank, summed once per reference. */
+  received: number;
+  referencesChecked: number;
+  referencesTotal: number;
   bySession: { value: number; title: string; count: number }[];
   byType: { type: RegistrationType; count: number }[];
   byChurch: { name: string; count: number }[];
@@ -232,7 +282,25 @@ function tally(values: string[]): { name: string; count: number }[] {
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
 
-export function computeStats(rows: Row[]): Stats {
+export function computeStats(rows: Row[], payments: Payment[] = []): Stats {
+  const index = paymentIndex(rows, payments);
+  const referencesHere = new Set(
+    rows
+      .filter((r) => r.registration.paymentType === "paid")
+      .map((r) => referenceOf(r.registration)),
+  );
+  // Summed per reference, never per registration — one deposit is one number
+  // however many people it covered.
+  let received = 0;
+  let referencesChecked = 0;
+  for (const reference of referencesHere) {
+    const amount = index.received.get(reference);
+    if (amount !== undefined) {
+      received += amount;
+      referencesChecked += 1;
+    }
+  }
+
   const people = rows.flatMap((row) => row.participants);
   const ages = people.map((p) => p.age).filter((age) => Number.isFinite(age));
 
@@ -256,6 +324,9 @@ export function computeStats(rows: Row[]): Stats {
     ),
     amountUnknownCount: rows.filter((r) => r.registration.amountUnknown === true)
       .length,
+    received,
+    referencesChecked,
+    referencesTotal: referencesHere.size,
     imported: rows.filter((r) => r.registration.source === "google-form").length,
     paidRegistrations: rows.filter((r) => r.registration.paymentType === "paid")
       .length,

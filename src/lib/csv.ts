@@ -1,4 +1,5 @@
 import type { Doc } from "@convex/_generated/dataModel";
+import { referenceOf } from "./organizer";
 import {
   breakoutTitle,
   formatDatePaid,
@@ -27,6 +28,7 @@ const HEADERS = [
   "Payment Reference",
   "Date Paid",
   "Amount",
+  "Amount Received",
   "Date Registered",
   "Heard About Us",
   "Photo/Video Consent",
@@ -55,7 +57,10 @@ function formatDate(timestamp: number): string {
 /** One row per participant, per §22 of the spec. */
 export function buildParticipantCsv(
   rows: { registration: Doc<"registrations">; participants: Doc<"participants">[] }[],
+  payments: Doc<"payments">[] = [],
 ): string {
+  // Recorded against the reference, so every row that deposit covered shows it.
+  const received = new Map(payments.map((p) => [p.reference, p.amountReceived]));
   const lines = [HEADERS.map(escapeCell).join(",")];
 
   for (const { registration, participants } of rows) {
@@ -81,6 +86,7 @@ export function buildParticipantCsv(
           registration.paymentReference ?? "",
           formatDatePaid(registration.datePaid ?? ""),
           registration.amountUnknown === true ? "" : registration.totalAmount,
+          received.get(referenceOf(registration)) ?? "",
           formatDate(registration.submittedAt ?? registration._creationTime),
           heardFromLabel(registration.heardFrom, registration.heardFromOther),
           registration.consentPhotos === undefined

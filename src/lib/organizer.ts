@@ -20,11 +20,13 @@ export function referenceOf(registration: Registration): string {
  * cannot be attributed to any one of them.
  */
 export function paymentIndex(rows: Row[], payments: Payment[]) {
+  // Counted in people, not registrations: the rate is per head, so a deposit
+  // divides by the number of people it covered.
   const covers = new Map<string, number>();
   for (const row of rows) {
     if (row.registration.paymentType !== "paid") continue;
     const key = referenceOf(row.registration);
-    covers.set(key, (covers.get(key) ?? 0) + 1);
+    covers.set(key, (covers.get(key) ?? 0) + row.participants.length);
   }
   return {
     received: new Map(payments.map((p) => [p.reference, p.amountReceived])),
@@ -35,23 +37,37 @@ export function paymentIndex(rows: Row[], payments: Payment[]) {
 export type PaymentIndex = ReturnType<typeof paymentIndex>;
 
 /**
- * The amount to show for one registration. Falls back to the reconciled
- * figure only when this registration is the sole thing that reference paid
- * for — otherwise the split is unknowable and it stays blank.
+ * The amount to show for one registration.
+ *
+ * Where the amount was never recorded — every imported row — the reconciled
+ * deposit is divided by the people it covered. That is the arithmetic the
+ * group rate is built on: ₱1,750 across five people is ₱350 each.
+ *
+ * It is marked approximate because the divisor is the people who actually
+ * filled the form, and several groups paid for more than turned up in the
+ * sheet: BSOTEAM's row says seven and six answered. Totals are always summed
+ * from the reference, never from these shares, so rounding cannot drift.
  */
 export function amountFor(
   registration: Registration,
   index: PaymentIndex,
-): { value: number | null; fromBank: boolean } {
+): { value: number | null; approximate: boolean } {
   if (registration.amountUnknown !== true) {
-    return { value: registration.totalAmount, fromBank: false };
+    return { value: registration.totalAmount, approximate: false };
   }
+
   const key = referenceOf(registration);
   const received = index.received.get(key);
-  if (received !== undefined && index.covers.get(key) === 1) {
-    return { value: received, fromBank: true };
+  const people = index.covers.get(key) ?? 0;
+  if (received === undefined || people === 0) {
+    return { value: null, approximate: false };
   }
-  return { value: null, fromBank: false };
+
+  const perPerson = received / people;
+  return {
+    value: Math.round(perPerson * registration.participantCount),
+    approximate: people > registration.participantCount,
+  };
 }
 
 export type Row = {

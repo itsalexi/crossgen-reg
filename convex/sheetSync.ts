@@ -47,6 +47,7 @@ const HEADERS = [
   "Date Paid",
   "Amount",
   "Amount Received",
+  "Share Per Person",
   "Receipt",
   "Heard About Us",
   "Photo/Video Consent",
@@ -68,6 +69,24 @@ export const push = internalAction({
     const received = new Map(
       data.payments.map((p) => [p.reference, p.amountReceived]),
     );
+
+    // A deposit divides by the people it covered — the group rate is per head.
+    const peoplePerReference = new Map<string, number>();
+    for (const registration of data.registrations) {
+      if (registration.paymentType !== "paid") continue;
+      const key = (registration.paymentReference ?? "").trim();
+      peoplePerReference.set(
+        key,
+        (peoplePerReference.get(key) ?? 0) + registration.participantCount,
+      );
+    }
+    const shareFor = (reference: string): number | "" => {
+      const total = received.get(reference);
+      const people = peoplePerReference.get(reference) ?? 0;
+      return total === undefined || people === 0
+        ? ""
+        : Math.round(total / people);
+    };
 
     const byRegistration = new Map<string, typeof data.participants>();
     for (const participant of data.participants) {
@@ -108,6 +127,7 @@ export const push = internalAction({
           formatDatePaid(registration.datePaid ?? ""),
           registration.amountUnknown === true ? "" : registration.totalAmount,
           received.get((registration.paymentReference ?? "").trim()) ?? "",
+          shareFor((registration.paymentReference ?? "").trim()),
           registration.paymentProofExternalUrl ??
             (registration.paymentProofStorageId !== undefined ? "Uploaded" : ""),
           heardFromLabel(registration.heardFrom, registration.heardFromOther),

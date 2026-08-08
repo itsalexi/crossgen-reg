@@ -586,23 +586,22 @@ export function OrganizerDashboard() {
                                 )}
                               >
                                 {(() => {
-                                  const { value, fromBank } = amountFor(
+                                  const { value, approximate } = amountFor(
                                     registration,
                                     paidIndex,
                                   );
                                   if (value === null) return "—";
                                   return (
-                                    <>
+                                    <span
+                                      title={
+                                        approximate
+                                          ? "This person's share of a deposit that covered several people"
+                                          : undefined
+                                      }
+                                    >
+                                      {approximate ? "≈" : ""}
                                       {formatPeso(value)}
-                                      {fromBank && (
-                                        <span
-                                          className="ml-1 text-muted"
-                                          title="From the reconciled bank payment"
-                                        >
-                                          ✓
-                                        </span>
-                                      )}
-                                    </>
+                                    </span>
                                   );
                                 })()}
                               </td>

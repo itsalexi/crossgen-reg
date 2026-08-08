@@ -261,9 +261,11 @@ export function computeStats(rows: Row[]): Stats {
     minors: people.filter((p) => p.age < 18).length,
     // Counted per registration — one answer is given for the whole group.
     byHeardFrom: tally(
-      rows.map((row) =>
-        heardFromLabel(row.registration.heardFrom, row.registration.heardFromOther),
-      ),
+      rows
+        .filter((row) => row.registration.heardFrom !== undefined)
+        .map((row) =>
+          heardFromLabel(row.registration.heardFrom, row.registration.heardFromOther),
+        ),
     ),
   };
 }

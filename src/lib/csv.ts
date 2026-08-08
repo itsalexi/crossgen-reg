@@ -82,7 +82,11 @@ export function buildParticipantCsv(
           registration.totalAmount,
           formatDate(registration._creationTime),
           heardFromLabel(registration.heardFrom, registration.heardFromOther),
-          registration.consentPhotos ? "Yes" : "No",
+          registration.consentPhotos === undefined
+            ? ""
+            : registration.consentPhotos
+              ? "Yes"
+              : "No",
         ]
           .map(escapeCell)
           .join(","),

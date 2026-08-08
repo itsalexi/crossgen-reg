@@ -85,11 +85,13 @@ export default defineSchema({
     paymentProofFileName: v.optional(v.string()),
 
     // Agreed to by the registrant on behalf of everyone on the registration.
-    consentAccurate: v.boolean(),
-    consentDataUse: v.boolean(),
-    consentPhotos: v.boolean(),
+    // Optional only so registrations filed before these questions existed
+    // still validate — the submit mutation requires them from every new one.
+    consentAccurate: v.optional(v.boolean()),
+    consentDataUse: v.optional(v.boolean()),
+    consentPhotos: v.optional(v.boolean()),
 
-    heardFrom: heardFromValidator,
+    heardFrom: v.optional(heardFromValidator),
     heardFromOther: v.optional(v.string()),
 
     confirmationEmailStatus: emailStatusValidator,

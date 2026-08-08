@@ -174,7 +174,11 @@ export const HEARD_FROM_OPTIONS: { value: HeardFrom; label: string }[] = [
   { value: "other", label: "Somewhere else" },
 ];
 
-export function heardFromLabel(value: HeardFrom, other?: string): string {
+export function heardFromLabel(
+  value: HeardFrom | undefined,
+  other?: string,
+): string {
+  if (value === undefined) return "Not asked";
   if (value === "other") {
     const trimmed = (other ?? "").trim();
     return trimmed.length > 0 ? trimmed : "Somewhere else";

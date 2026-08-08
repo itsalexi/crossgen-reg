@@ -143,11 +143,13 @@ export function RegistrationDetail({
         <div>
           <dt className="text-muted">Agreements</dt>
           <dd className="font-medium text-ink">
-            {registration.consentAccurate &&
-            registration.consentDataUse &&
-            registration.consentPhotos
-              ? "All three agreed"
-              : "Incomplete"}
+            {registration.consentAccurate === undefined
+              ? "Not asked at the time"
+              : registration.consentAccurate &&
+                  registration.consentDataUse &&
+                  registration.consentPhotos
+                ? "All three agreed"
+                : "Incomplete"}
           </dd>
         </div>
       </dl>

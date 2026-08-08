@@ -88,8 +88,9 @@ export const snapshot = query({
       .order("desc")
       .collect();
     const participants = await ctx.db.query("participants").collect();
+    const payments = await ctx.db.query("payments").collect();
 
-    return { registrations, participants };
+    return { registrations, participants, payments };
   },
 });
 
@@ -175,6 +176,56 @@ export const resendAllFailed = mutation({
     }
 
     return failed.length;
+  },
+});
+
+// -------------------------------------------------------------- payments
+
+/** Records what actually arrived for one payment reference. */
+export const recordPayment = mutation({
+  args: {
+    reference: v.string(),
+    amountReceived: v.number(),
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const me = await requireOrganizer(ctx);
+
+    const reference = args.reference.trim();
+    if (reference.length === 0) throw new ConvexError("Missing reference.");
+    if (!Number.isFinite(args.amountReceived) || args.amountReceived < 0) {
+      throw new ConvexError("Enter the amount that arrived, in pesos.");
+    }
+
+    const note = (args.note ?? "").trim();
+    const existing = await ctx.db
+      .query("payments")
+      .withIndex("by_reference", (q) => q.eq("reference", reference))
+      .unique();
+
+    const next = {
+      reference,
+      amountReceived: args.amountReceived,
+      note: note.length > 0 ? note : undefined,
+      verifiedByEmail: me.email,
+      verifiedAt: Date.now(),
+    };
+
+    if (existing === null) await ctx.db.insert("payments", next);
+    else await ctx.db.patch(existing._id, next);
+  },
+});
+
+/** Undo — puts a reference back into the unreconciled pile. */
+export const clearPayment = mutation({
+  args: { reference: v.string() },
+  handler: async (ctx, args) => {
+    await requireOrganizer(ctx);
+    const existing = await ctx.db
+      .query("payments")
+      .withIndex("by_reference", (q) => q.eq("reference", args.reference.trim()))
+      .unique();
+    if (existing !== null) await ctx.db.delete(existing._id);
   },
 });
 

@@ -32,6 +32,7 @@ import {
   type Filters,
 } from "@/lib/organizer";
 import { AdminsSection } from "./AdminsSection";
+import { PaymentsSection } from "./PaymentsSection";
 import { RegistrationDetail } from "./RegistrationDetail";
 import {
   amountText,
@@ -44,12 +45,13 @@ import {
   StatTile,
 } from "./parts";
 
-type Section = "overview" | "registrations" | "people" | "admins";
+type Section = "overview" | "registrations" | "people" | "payments" | "admins";
 
 const SECTIONS: { key: Section; label: string }[] = [
   { key: "overview", label: "Overview" },
   { key: "registrations", label: "Registrations" },
   { key: "people", label: "Participants" },
+  { key: "payments", label: "Payments" },
   { key: "admins", label: "Organizers" },
 ];
 
@@ -341,6 +343,8 @@ export function OrganizerDashboard() {
                 <RegistrationDetail registrationId={open} onBack={() => setOpen(null)} />
               ) : section === "admins" ? (
                 <AdminsSection />
+              ) : section === "payments" ? (
+                <PaymentsSection rows={rows} payments={data.payments} />
               ) : section === "overview" ? (
                 <div className="flex flex-col gap-6">
                   <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

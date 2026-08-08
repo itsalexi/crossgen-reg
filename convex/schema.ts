@@ -144,6 +144,20 @@ export default defineSchema({
     note: v.optional(v.string()),
   }).index("by_email", ["email"]),
 
+  /**
+   * What the team actually found in the bank, keyed by payment reference.
+   * A reference is the unit of reconciliation, not a registration: one deposit
+   * often covers several people, especially among the imported Google Form
+   * rows where 31 references cover 65 participants.
+   */
+  payments: defineTable({
+    reference: v.string(),
+    amountReceived: v.number(),
+    note: v.optional(v.string()),
+    verifiedByEmail: v.string(),
+    verifiedAt: v.number(),
+  }).index("by_reference", ["reference"]),
+
   // Remembers the last push to the organizers' Google Sheet.
   syncState: defineTable({
     key: v.string(),

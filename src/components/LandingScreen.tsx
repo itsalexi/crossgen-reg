@@ -90,7 +90,7 @@ export function LandingScreen() {
             className="h-auto w-full sm:rounded-b-2xl"
           />
 
-          <div className="flex flex-col gap-6 px-6 py-9 sm:px-10 sm:py-12">
+          <div className="flex flex-col gap-7 px-6 py-10 sm:px-10 sm:py-12">
             <div className="flex flex-col gap-3">
               <Eyebrow>
                 {EVENT.dayOfWeek}, {EVENT.date}
@@ -98,42 +98,27 @@ export function LandingScreen() {
               <h1 className="font-display text-[2rem] leading-[1.1] font-bold tracking-[-0.03em] text-ink sm:text-[2.5rem]">
                 {EVENT.tagline}
               </h1>
+              <p className="text-[16.5px] leading-relaxed text-muted">
+                {EVENT.venue}, Las Piñas · {EVENT.minAge} pataas
+              </p>
             </div>
 
-            <p className="max-w-[52ch] text-[16.5px] leading-relaxed text-muted text-pretty sm:text-[17px]">
-              Isang araw tayong magkakasama sa {EVENT.venue}, Daang Hari Road,
-              Las Piñas — para sa learning, encouragement, at fellowship bilang
-              mga pamilya. Bukas ito sa lahat ng edad {EVENT.minAge} pataas.
-            </p>
-
-            <dl className="flex flex-col gap-3 border-y border-line py-5 sm:flex-row sm:gap-0">
-              <div className="flex flex-col gap-1 sm:pr-8">
-                <Eyebrow>On your own or with family</Eyebrow>
+            <dl className="flex gap-8 border-y border-line py-5">
+              <div className="flex flex-col gap-1">
+                <Eyebrow>Solo or family</Eyebrow>
                 <dd className="text-[15px] font-medium text-ink">
                   {formatPeso(REGULAR_RATE)} each
                 </dd>
               </div>
-              <div className="flex flex-col gap-1 sm:border-l sm:border-line sm:pl-8">
-                <Eyebrow>Coming as {GROUP_THRESHOLD} or more</Eyebrow>
+              <div className="flex flex-col gap-1 border-l border-line pl-8">
+                <Eyebrow>{GROUP_THRESHOLD} or more</Eyebrow>
                 <dd className="text-[15px] font-medium text-ink">
                   {formatPeso(GROUP_RATE)} each
                 </dd>
               </div>
             </dl>
 
-            <div className="flex flex-col gap-3 pt-1">
-              <RegisterButton />
-              <span className="text-[13.5px] leading-normal text-muted">
-                Speakers, volunteers, and sponsors register free — pick that
-                when you start.
-              </span>
-            </div>
-
-            <p className="text-[13px] leading-relaxed text-muted">
-              Paalala: ang CrossGen Family Summit ay para sa edad{" "}
-              {EVENT.minAge} pataas. Pasensya na po — walang mapaglalagakan ng
-              mga mumunting bata sa venue.
-            </p>
+            <RegisterButton />
           </div>
         </div>
       </main>

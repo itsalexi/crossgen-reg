@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
 import { useState } from "react";
 import { api } from "@convex/_generated/api";
@@ -19,6 +19,11 @@ export function AdminsSection() {
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<Id<"organizers"> | null>(null);
+
+  const syncState = useQuery(api.organizer.sheetSyncState);
+  const syncToSheet = useAction(api.organizer.syncToSheet);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
   async function add() {
     setAdding(true);
@@ -57,6 +62,53 @@ export function AdminsSection() {
           details, and download the export. Add people sparingly.
         </p>
       </div>
+
+      <section className="flex flex-col gap-4 rounded-2xl border border-line bg-white p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <Eyebrow>Google Sheet</Eyebrow>
+            <p className="mt-1.5 text-[14.5px] leading-relaxed text-muted">
+              Pushes every participant to the shared sheet, replacing what is
+              there. Nothing syncs on its own — press this when you want the
+              sheet brought up to date.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            loading={syncing}
+            onClick={() => {
+              setSyncing(true);
+              setSyncMessage(null);
+              void syncToSheet()
+                .then((r) => setSyncMessage(`Sheet updated — ${r.rows} rows.`))
+                .catch((caught) =>
+                  setSyncMessage(
+                    caught instanceof ConvexError
+                      ? String(caught.data)
+                      : "Could not reach the sheet.",
+                  ),
+                )
+                .finally(() => setSyncing(false));
+            }}
+          >
+            Sync now
+          </Button>
+        </div>
+
+        <p className="text-[13px] text-muted">
+          {syncState == null
+            ? "Never synced."
+            : syncState.lastStatus === "ok"
+              ? `Last synced ${longDate(syncState.lastSyncedAt)} by ${syncState.byEmail} — ${syncState.rows} rows.`
+              : `Last attempt ${longDate(syncState.lastSyncedAt)} failed: ${syncState.lastError}`}
+        </p>
+
+        {syncMessage !== null && (
+          <Callout tone={syncMessage.startsWith("Sheet updated") ? "teal" : "error"}>
+            {syncMessage}
+          </Callout>
+        )}
+      </section>
 
       <section className="rounded-2xl border border-line bg-white">
         <ul className="divide-y divide-line">

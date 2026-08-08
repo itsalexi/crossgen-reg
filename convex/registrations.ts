@@ -473,6 +473,20 @@ export const getForEmail = internalQuery({
   },
 });
 
+/** Everything, for the Google Sheet push. Internal — no auth context in actions. */
+export const everything = internalQuery({
+  args: {},
+  handler: async (
+    ctx,
+  ): Promise<{
+    registrations: Doc<"registrations">[];
+    participants: Doc<"participants">[];
+  }> => ({
+    registrations: await ctx.db.query("registrations").collect(),
+    participants: await ctx.db.query("participants").collect(),
+  }),
+});
+
 export const recordEmailResult = internalMutation({
   args: {
     registrationId: v.id("registrations"),

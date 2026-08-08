@@ -144,6 +144,16 @@ export default defineSchema({
     note: v.optional(v.string()),
   }).index("by_email", ["email"]),
 
+  // Remembers the last push to the organizers' Google Sheet.
+  syncState: defineTable({
+    key: v.string(),
+    lastSyncedAt: v.number(),
+    lastStatus: v.union(v.literal("ok"), v.literal("failed")),
+    lastError: v.optional(v.string()),
+    rows: v.number(),
+    byEmail: v.string(),
+  }).index("by_key", ["key"]),
+
   // Convex has no autoincrement. Sequential registration numbers come from an
   // atomic read-modify-write inside the submit mutation.
   counters: defineTable({

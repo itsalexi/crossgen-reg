@@ -15,6 +15,7 @@ import type * as importGoogleForm from "../importGoogleForm.js";
 import type * as organizer from "../organizer.js";
 import type * as registrations from "../registrations.js";
 import type * as shared from "../shared.js";
+import type * as sheetSync from "../sheetSync.js";
 import type * as users from "../users.js";
 
 import type {
@@ -31,6 +32,7 @@ declare const fullApi: ApiFromModules<{
   organizer: typeof organizer;
   registrations: typeof registrations;
   shared: typeof shared;
+  sheetSync: typeof sheetSync;
   users: typeof users;
 }>;
 

@@ -1,8 +1,10 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { ConvexError, v } from "convex/values";
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import {
+  action,
+  internalMutation,
   mutation,
   query,
   type MutationCtx,
@@ -268,3 +270,81 @@ export type RegistrationRow = {
   registration: Doc<"registrations">;
   participants: Doc<"participants">[];
 };
+
+
+// ------------------------------------------------------------- sheet sync
+
+export const sheetSyncState = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireOrganizer(ctx);
+    return await ctx.db
+      .query("syncState")
+      .withIndex("by_key", (q) => q.eq("key", "googleSheet"))
+      .unique();
+  },
+});
+
+export const recordSheetSync = internalMutation({
+  args: {
+    lastStatus: v.union(v.literal("ok"), v.literal("failed")),
+    lastError: v.optional(v.string()),
+    rows: v.number(),
+    byEmail: v.string(),
+    at: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("syncState")
+      .withIndex("by_key", (q) => q.eq("key", "googleSheet"))
+      .unique();
+
+    const next = {
+      key: "googleSheet",
+      lastSyncedAt: args.at,
+      lastStatus: args.lastStatus,
+      lastError: args.lastError,
+      rows: args.rows,
+      byEmail: args.byEmail,
+    };
+
+    if (existing === null) await ctx.db.insert("syncState", next);
+    else await ctx.db.patch(existing._id, next);
+  },
+});
+
+/**
+ * The Sync button. An action rather than a mutation because it reaches out to
+ * Google, and the result is recorded either way so the dashboard can show what
+ * happened rather than swallowing a failure.
+ */
+export const syncToSheet = action({
+  args: {},
+  handler: async (ctx): Promise<{ rows: number }> => {
+    const me: Access | null = await ctx.runQuery(api.organizer.whoAmI, {});
+    if (me === null) throw new ConvexError("Organizers only.");
+
+    try {
+      const result = await ctx.runAction(internal.sheetSync.push, {
+        byEmail: me.email,
+      });
+      await ctx.runMutation(internal.organizer.recordSheetSync, {
+        lastStatus: "ok",
+        rows: result.rows,
+        byEmail: me.email,
+        at: Date.now(),
+      });
+      return result;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await ctx.runMutation(internal.organizer.recordSheetSync, {
+        lastStatus: "failed",
+        lastError: message,
+        rows: 0,
+        byEmail: me.email,
+        at: Date.now(),
+      });
+      throw new ConvexError(message);
+    }
+  },
+});

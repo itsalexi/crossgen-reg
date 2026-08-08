@@ -105,7 +105,9 @@ export function LandingScreen() {
 
             <dl className="flex gap-8 border-y border-line py-5">
               <div className="flex flex-col gap-1">
-                <Eyebrow>Solo or family</Eyebrow>
+                {/* "Solo or family" read as though families paid this rate
+                    regardless of size. The boundary is the number of people. */}
+                <Eyebrow>Solo or up to {GROUP_THRESHOLD - 1}</Eyebrow>
                 <dd className="text-[15px] font-medium text-ink">
                   {formatPeso(REGULAR_RATE)} each
                 </dd>

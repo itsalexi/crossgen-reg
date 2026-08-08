@@ -44,7 +44,12 @@ const SECTIONS: { key: Section; label: string }[] = [
 ];
 
 const CONTROL =
-  "h-10 w-full rounded-[10px] border border-line bg-white px-3 text-[14px] text-ink";
+  "h-10 w-full min-w-0 rounded-[10px] border border-line bg-white px-3 text-[14px] text-ink";
+
+// Between the rail and the table there is only ~820px at 1180px wide, which is
+// less than these tables want. Rather than an inner scrollbar, the columns that
+// are recoverable from the detail view drop out until there is room.
+const WIDE_ONLY = "hidden xl:table-cell";
 
 export function OrganizerDashboard() {
   const [section, setSection] = useState<Section>("overview");
@@ -478,17 +483,19 @@ export function OrganizerDashboard() {
                     </p>
                   ) : (
                     <div className="overflow-x-auto rounded-2xl border border-line bg-white">
-                      <table className="w-full min-w-[900px] text-left">
+                      <table className="w-full min-w-[620px] text-left">
                         <thead>
                           <tr className="border-b border-line text-[11.5px] font-semibold tracking-[0.07em] text-muted uppercase">
                             <th className="px-4 py-3 font-semibold">Number</th>
                             <th className="px-4 py-3 font-semibold">Group</th>
                             <th className="px-4 py-3 font-semibold">People</th>
-                            <th className="px-4 py-3 font-semibold">Registered by</th>
+                            <th className={`px-4 py-3 font-semibold ${WIDE_ONLY}`}>
+                              Registered by
+                            </th>
                             <th className="px-4 py-3 font-semibold">Type</th>
                             <th className="px-4 py-3 font-semibold">Amount</th>
                             <th className="px-4 py-3 font-semibold">Receipt</th>
-                            <th className="px-4 py-3 font-semibold">Email</th>
+                            <th className={`px-4 py-3 font-semibold ${WIDE_ONLY}`}>Email</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -519,7 +526,12 @@ export function OrganizerDashboard() {
                                   </span>
                                 )}
                               </td>
-                              <td className="max-w-[220px] truncate px-4 py-3.5 text-muted">
+                              <td
+                                className={cn(
+                                  "max-w-[220px] truncate px-4 py-3.5 text-muted",
+                                  WIDE_ONLY,
+                                )}
+                              >
                                 {registration.registrantEmail}
                               </td>
                               <td className="px-4 py-3.5 text-ink">
@@ -540,7 +552,7 @@ export function OrganizerDashboard() {
                               <td className="px-4 py-3.5">
                                 <ReceiptTag registration={registration} />
                               </td>
-                              <td className="px-4 py-3.5">
+                              <td className={cn("px-4 py-3.5", WIDE_ONLY)}>
                                 <EmailTag registration={registration} />
                               </td>
                             </tr>
@@ -584,15 +596,15 @@ export function OrganizerDashboard() {
                     </p>
                   ) : (
                     <div className="overflow-x-auto rounded-2xl border border-line bg-white">
-                      <table className="w-full min-w-[1000px] text-left">
+                      <table className="w-full min-w-[660px] text-left">
                         <thead>
                           <tr className="border-b border-line text-[11.5px] font-semibold tracking-[0.07em] text-muted uppercase">
                             <th className="px-4 py-3 font-semibold">Name</th>
                             <th className="px-4 py-3 font-semibold">Age</th>
                             <th className="px-4 py-3 font-semibold">Church</th>
-                            <th className="px-4 py-3 font-semibold">City</th>
+                            <th className={`px-4 py-3 font-semibold ${WIDE_ONLY}`}>City</th>
                             <th className="px-4 py-3 font-semibold">Session</th>
-                            <th className="px-4 py-3 font-semibold">Contact</th>
+                            <th className={`px-4 py-3 font-semibold ${WIDE_ONLY}`}>Contact</th>
                             <th className="px-4 py-3 font-semibold">Group</th>
                           </tr>
                         </thead>
@@ -617,14 +629,22 @@ export function OrganizerDashboard() {
                                 <div className="text-[12.5px]">
                                   {participant.ministryInvolvement}
                                 </div>
+                                <div className="text-[12.5px] xl:hidden">
+                                  {participant.cityMunicipality}
+                                </div>
                               </td>
-                              <td className="px-4 py-3.5 text-muted">
+                              <td className={cn("px-4 py-3.5 text-muted", WIDE_ONLY)}>
                                 {participant.cityMunicipality}
                               </td>
                               <td className="max-w-[220px] px-4 py-3.5 text-muted">
                                 {breakoutTitle(participant.breakoutSession)}
                               </td>
-                              <td className="max-w-[200px] truncate px-4 py-3.5 text-muted">
+                              <td
+                                className={cn(
+                                  "max-w-[200px] truncate px-4 py-3.5 text-muted",
+                                  WIDE_ONLY,
+                                )}
+                              >
                                 {participant.mobileNumber}
                                 <div className="text-[12.5px]">{participant.email}</div>
                               </td>

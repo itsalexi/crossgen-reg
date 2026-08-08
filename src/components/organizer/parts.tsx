@@ -16,7 +16,7 @@ export function StatTile({
   tone?: "ink" | "warn";
 }) {
   return (
-    <div className="flex flex-col gap-1.5 rounded-2xl border border-line bg-white px-5 py-4">
+    <div className="flex min-w-0 flex-col gap-1.5 rounded-2xl border border-line bg-white px-5 py-4">
       <Eyebrow>{label}</Eyebrow>
       <span
         className={cn(
@@ -53,11 +53,11 @@ export function BarList({
   const peak = Math.max(...top.map((i) => i.count), 1);
 
   return (
-    <ul className="flex flex-col">
+    <ul className="flex min-w-0 flex-col">
       {top.map((item) => (
-        <li key={item.name} className="flex flex-col gap-1.5 py-2.5">
-          <div className="flex items-baseline justify-between gap-4">
-            <span className="truncate text-[14px] text-ink">{item.name}</span>
+        <li key={item.name} className="flex min-w-0 flex-col gap-1.5 py-2.5">
+          <div className="flex min-w-0 items-baseline justify-between gap-4">
+            <span className="min-w-0 truncate text-[14px] text-ink">{item.name}</span>
             <span className="flex-none text-[13px] text-muted">
               {item.count}
               {total > 0 && (
@@ -97,7 +97,7 @@ export function Panel({
 }) {
   return (
     <section
-      className={cn("rounded-2xl border border-line bg-white p-5", className)}
+      className={cn("min-w-0 rounded-2xl border border-line bg-white p-5", className)}
     >
       <div className="flex items-baseline justify-between gap-4 pb-1">
         <Eyebrow>{title}</Eyebrow>

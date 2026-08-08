@@ -10,6 +10,7 @@ import {
   useQuery,
 } from "convex/react";
 import { ConvexError } from "convex/values";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@convex/_generated/api";
@@ -76,44 +77,119 @@ function SignInScreen() {
   const [pending, setPending] = useState(false);
 
   return (
-    <div className="mx-auto flex w-full max-w-md flex-col items-start gap-5 px-5 py-16 sm:py-24">
-      <h1 className="font-display text-[30px] leading-tight font-semibold text-ink">
-        First, tell us who you are
-      </h1>
-      <p className="text-[15px] leading-relaxed text-muted">
-        Sign in with Google so we know who to send the confirmation to. You can
-        register your whole family from one account.
-      </p>
-      <Button
-        size="lg"
-        loading={pending}
-        onClick={() => {
-          setPending(true);
-          void signIn("google").catch(() => setPending(false));
-        }}
-      >
-        {!pending && (
-          <svg viewBox="0 0 18 18" className="size-[18px]" aria-hidden="true">
-            <path
-              fill="#4285F4"
-              d="M17.64 9.2c0-.64-.06-1.25-.17-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62Z"
-            />
-            <path
-              fill="#34A853"
-              d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18Z"
-            />
-            <path
-              fill="#FBBC05"
-              d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.96H.96a9 9 0 0 0 0 8.08l3.01-2.32Z"
-            />
-            <path
-              fill="#EA4335"
-              d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.59C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.96l3.01 2.32C4.68 5.16 6.66 3.58 9 3.58Z"
-            />
-          </svg>
-        )}
-        Continue with Google
-      </Button>
+    <div className="mx-auto w-full max-w-[680px] px-5 pb-16">
+      <Image
+        src="/brand/header.png"
+        alt={EVENT.name}
+        width={2000}
+        height={420}
+        priority
+        sizes="(min-width: 680px) 680px, 100vw"
+        className="h-auto w-full rounded-b-2xl"
+      />
+
+      <div className="flex flex-col gap-6 pt-9">
+        <div className="flex flex-col gap-3">
+          <h1 className="font-display text-[26px] leading-tight font-bold text-ink sm:text-[30px]">
+            👋 Welcome sa CrossGen 2026: Connecting Families, Connecting
+            Generations!
+          </h1>
+          <p className="text-[16px] leading-relaxed text-muted text-pretty">
+            Salamat sa inyong interest na maging bahagi ng CrossGen 2026!
+            Excited kaming makasama kayo sa isang araw ng learning,
+            encouragement, at fellowship habang sama-sama nating pinapalakas ang
+            mga pamilya at tinutulungan ang bawat henerasyon na maipasa ang
+            pananampalataya kay Cristo.
+          </p>
+        </div>
+
+        <dl className="flex flex-col gap-3 rounded-2xl bg-surface px-5 py-4 text-[15px] leading-relaxed sm:flex-row sm:gap-8">
+          <div className="flex gap-2.5">
+            <dt aria-hidden="true">🗓</dt>
+            <dd>
+              <span className="font-semibold text-ink">{EVENT.date}</span>
+              <span className="text-muted"> ({EVENT.dayOfWeek})</span>
+            </dd>
+          </div>
+          <div className="flex gap-2.5">
+            <dt aria-hidden="true">📍</dt>
+            <dd>
+              <span className="font-semibold text-ink">{EVENT.venue}</span>
+              <span className="text-muted">, {EVENT.address}</span>
+            </dd>
+          </div>
+        </dl>
+
+        <p className="text-[15.5px] leading-relaxed text-muted">
+          Pakisagutan lamang ang form na ito nang kumpleto at tama upang maging
+          maayos ang inyong registration at event experience.
+        </p>
+
+        <div className="rounded-2xl border border-line px-5 py-4">
+          <Eyebrow>Privacy notice</Eyebrow>
+          <p className="mt-2 text-[14.5px] leading-relaxed text-muted">
+            Ang lahat ng impormasyong ibabahagi ninyo ay gagamitin lamang para
+            sa CrossGen 2026, kabilang ang registration, event communication,
+            breakout session assignment, at participant care. Ang inyong
+            personal na impormasyon ay mananatiling confidential at hindi
+            ibabahagi sa iba maliban sa CrossGen organizing team.
+          </p>
+        </div>
+
+        <p className="text-[15.5px] leading-relaxed text-ink">
+          Maraming salamat! We look forward to seeing you at CrossGen 2026 as we
+          learn, grow, and celebrate God&rsquo;s work in our families and across
+          generations.
+        </p>
+
+        <Callout tone="gold" title="Paalala">
+          Ang CrossGen Family Summit ay para sa edad {EVENT.minAge} pataas.
+          Ipagpaumanhin po ninyo na walang mapaglalagakan ng mga mumunting bata
+          sa conference venue.
+        </Callout>
+
+        <div className="flex flex-col gap-3 border-t border-line pt-7">
+          <h2 className="font-display text-[18px] font-semibold text-ink">
+            Simulan na natin
+          </h2>
+          <p className="text-[15px] leading-relaxed text-muted">
+            Mag-sign in with Google para malaman namin kung kanino ipapadala ang
+            confirmation. Pwede mong i-register ang buong pamilya mula sa isang
+            account.
+          </p>
+          <Button
+            className="mt-1 w-full sm:w-fit"
+            size="lg"
+            loading={pending}
+            onClick={() => {
+              setPending(true);
+              void signIn("google").catch(() => setPending(false));
+            }}
+          >
+            {!pending && (
+              <svg viewBox="0 0 18 18" className="size-[18px]" aria-hidden="true">
+                <path
+                  fill="#4285F4"
+                  d="M17.64 9.2c0-.64-.06-1.25-.17-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62Z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18Z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.96H.96a9 9 0 0 0 0 8.08l3.01-2.32Z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.59C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.96l3.01 2.32C4.68 5.16 6.66 3.58 9 3.58Z"
+                />
+              </svg>
+            )}
+            Continue with Google
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

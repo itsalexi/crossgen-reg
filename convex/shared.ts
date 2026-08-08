@@ -114,6 +114,24 @@ export function titleCaseCount(count: number): string {
   return word.charAt(0).toUpperCase() + word.slice(1);
 }
 
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+/**
+ * "2026-09-05" -> "September 5, 2026". Parsed by hand rather than through
+ * Date, which would shift the day across time zones.
+ */
+export function formatDatePaid(value: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  if (match === null) return value;
+  const [, year, month, day] = match;
+  const name = MONTHS[Number(month) - 1];
+  if (name === undefined) return value;
+  return `${name} ${Number(day)}, ${year}`;
+}
+
 const ORDINALS = [
   "", "first", "second", "third", "fourth", "fifth",
   "sixth", "seventh", "eighth", "ninth", "tenth",

@@ -4,6 +4,7 @@ import { useAuthActions } from "@convex-dev/auth/react";
 import { Authenticated, Unauthenticated, useQuery } from "convex/react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { api } from "@convex/_generated/api";
 import { cn } from "./ui";
@@ -67,6 +68,7 @@ export function AccountBar() {
   const me = useQuery(api.users.me);
   const isOrganizer = useQuery(api.organizer.amIOrganizer);
   const { signOut } = useAuthActions();
+  const pathname = usePathname();
 
   return (
     <>
@@ -75,7 +77,7 @@ export function AccountBar() {
       </Unauthenticated>
       <Authenticated>
         <div className="flex items-center gap-4">
-          {isOrganizer && (
+          {isOrganizer && pathname !== "/organizer" && (
             <Link
               href="/organizer"
               className="text-sm font-medium text-cg-purple hover:underline"

@@ -1,5 +1,10 @@
 import type { Doc } from "@convex/_generated/dataModel";
-import { breakoutTitle, REGISTRATION_TYPES } from "@convex/shared";
+import {
+  breakoutTitle,
+  formatDatePaid,
+  typeShort,
+  type RegistrationType,
+} from "@convex/shared";
 
 const HEADERS = [
   "Registration Number",
@@ -43,10 +48,6 @@ function formatDate(timestamp: number): string {
   });
 }
 
-function typeLabel(type: string): string {
-  return REGISTRATION_TYPES.find((t) => t.value === type)?.label ?? type;
-}
-
 /** One row per participant, per §22 of the spec. */
 export function buildParticipantCsv(
   rows: { registration: Doc<"registrations">; participants: Doc<"participants">[] }[],
@@ -71,10 +72,10 @@ export function buildParticipantCsv(
           participant.email,
           participant.cityMunicipality,
           `${participant.breakoutSession}. ${breakoutTitle(participant.breakoutSession)}`,
-          typeLabel(registration.registrationType),
+          typeShort(registration.registrationType as RegistrationType),
           registration.paymentType,
           registration.paymentReference ?? "",
-          registration.datePaid ?? "",
+          formatDatePaid(registration.datePaid ?? ""),
           registration.totalAmount,
           formatDate(registration._creationTime),
         ]

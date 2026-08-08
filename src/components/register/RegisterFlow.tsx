@@ -193,13 +193,16 @@ export function RegisterFlow() {
   const [payment, setPayment] = useState<PaymentDraft>(emptyPayment());
 
   const [step, setStep] = useState<Step>("type");
-  const [active, setActive] = useState(0);
+  const [activeRaw, setActive] = useState(0);
   const [participantErrors, setParticipantErrors] = useState<ParticipantErrors[]>([{}]);
   const [paymentErrors, setPaymentErrors] = useState<PaymentErrors>({});
   const [groupNameError, setGroupNameError] = useState<string | undefined>();
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  // Clamped rather than reset on shrink, so removing a person never lands the
+  // form on an index that no longer exists.
+  const active = Math.min(activeRaw, participants.length - 1);
   const steps = stepsFor(registrationType);
   const stepIndex = steps.indexOf(step);
   const exempt = isExempt(registrationType);
@@ -258,36 +261,57 @@ export function RegisterFlow() {
     );
   }
 
-  function setCount(next: number) {
-    const clamped = Math.max(1, Math.min(MAX_PARTICIPANTS, next));
+  /**
+   * Delta, not absolute: two taps on + before React re-renders would otherwise
+   * both compute `count + 1` from the same stale render and add one person.
+   */
+  function adjustCount(delta: number) {
+    const clampTo = (length: number) =>
+      Math.max(1, Math.min(MAX_PARTICIPANTS, length + delta));
 
     setParticipants((current) => {
-      if (clamped === current.length) return current;
-      if (clamped < current.length) return current.slice(0, clamped);
-      // Most families share a church and a city. Carry those over so the
-      // second through fifth person are half-filled before anyone starts.
-      const seed = {
-        churchOrganization: current[0].churchOrganization,
-        cityMunicipality: current[0].cityMunicipality,
-      };
+      const next = clampTo(current.length);
+      if (next === current.length) return current;
+      if (next < current.length) return current.slice(0, next);
       return [
         ...current,
-        ...Array.from({ length: clamped - current.length }, () => ({
-          ...emptyParticipant(),
-          ...seed,
-        })),
+        ...Array.from({ length: next - current.length }, emptyParticipant),
       ];
     });
 
-    setParticipantErrors((current) =>
-      clamped < current.length
-        ? current.slice(0, clamped)
-        : [
-            ...current,
-            ...Array.from({ length: clamped - current.length }, () => ({})),
-          ],
-    );
-    setActive((index) => Math.min(index, clamped - 1));
+    setParticipantErrors((current) => {
+      const next = clampTo(current.length);
+      if (next === current.length) return current;
+      if (next < current.length) return current.slice(0, next);
+      return [
+        ...current,
+        ...Array.from({ length: next - current.length }, () => ({})),
+      ];
+    });
+  }
+
+  /**
+   * Most families share a church and a city. Copy them from the first person
+   * the moment you land on someone who has neither — doing it when the count
+   * changes is too early, because nobody has typed anything yet.
+   */
+  function goToPerson(index: number) {
+    setParticipants((current) => {
+      const target = current[index];
+      if (target === undefined) return current;
+      const source = current[0];
+      const patch: Partial<ParticipantDraft> = {};
+      if (target.churchOrganization.length === 0 && source.churchOrganization.length > 0) {
+        patch.churchOrganization = source.churchOrganization;
+      }
+      if (target.cityMunicipality.length === 0 && source.cityMunicipality.length > 0) {
+        patch.cityMunicipality = source.cityMunicipality;
+      }
+      if (Object.keys(patch).length === 0) return current;
+      return current.map((p, i) => (i === index ? { ...p, ...patch } : p));
+    });
+    setActive(index);
+    scrollTop();
   }
 
   function leaveTypeStep() {
@@ -308,8 +332,7 @@ export function RegisterFlow() {
       return;
     }
     if (active < count - 1) {
-      setActive(active + 1);
-      scrollTop();
+      goToPerson(active + 1);
       return;
     }
     goTo(exempt ? "review" : "payment");
@@ -385,7 +408,13 @@ export function RegisterFlow() {
     }
   }
 
-  const activeName = firstName(participants[active]) || "this person";
+  const known = firstName(participants[active]);
+  const activeName = known || `the ${ordinal(active + 1)} person`;
+  // "Ana, third of five" once we know her; plain "Third of five" until then.
+  const position = `${ordinal(active + 1)} of ${spellCount(count)}`;
+  const stepDetail = known
+    ? `${known}, ${position}`
+    : position.charAt(0).toUpperCase() + position.slice(1);
   const doneCount = participants.filter(participantIsComplete).length;
 
   return (
@@ -410,7 +439,7 @@ export function RegisterFlow() {
           total={steps.length}
           detail={
             step === "people" && count > 1
-              ? `${activeName}, ${ordinal(active + 1)} of ${spellCount(count)}`
+              ? stepDetail
               : STEP_TITLES[step]
           }
         />
@@ -453,7 +482,7 @@ export function RegisterFlow() {
                         type="button"
                         aria-label="One fewer person"
                         disabled={count <= 1}
-                        onClick={() => setCount(count - 1)}
+                        onClick={() => adjustCount(-1)}
                         className="flex size-9 items-center justify-center rounded-lg text-lg font-semibold text-cg-purple hover:bg-cg-purple-tint disabled:opacity-30 disabled:hover:bg-transparent"
                       >
                         −
@@ -465,7 +494,7 @@ export function RegisterFlow() {
                         type="button"
                         aria-label="One more person"
                         disabled={count >= MAX_PARTICIPANTS}
-                        onClick={() => setCount(count + 1)}
+                        onClick={() => adjustCount(1)}
                         className="flex size-9 items-center justify-center rounded-lg text-lg font-semibold text-cg-purple hover:bg-cg-purple-tint disabled:opacity-30 disabled:hover:bg-transparent"
                       >
                         +
@@ -555,10 +584,7 @@ export function RegisterFlow() {
                         <button
                           key={index}
                           type="button"
-                          onClick={() => {
-                            setActive(index);
-                            scrollTop();
-                          }}
+                          onClick={() => goToPerson(index)}
                           aria-current={isActive ? "step" : undefined}
                           className={cn(
                             "flex items-center justify-between gap-3 rounded-[10px] px-3 py-2.5 text-left text-[14px] transition-colors",
@@ -634,8 +660,7 @@ export function RegisterFlow() {
                     variant="quiet"
                     onClick={() => {
                       if (active > 0) {
-                        setActive(active - 1);
-                        scrollTop();
+                        goToPerson(active - 1);
                       } else {
                         goTo("type");
                       }
@@ -705,7 +730,7 @@ export function RegisterFlow() {
                 total={total}
                 onEditType={() => goTo("type")}
                 onEditParticipant={(index) => {
-                  setActive(index);
+                  goToPerson(index);
                   goTo("people");
                 }}
                 onEditPayment={() => goTo("payment")}

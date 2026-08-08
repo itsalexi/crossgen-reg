@@ -8,6 +8,7 @@ import { internalAction } from "./_generated/server";
 import {
   breakoutTitle,
   EVENT,
+  formatDatePaid,
   formatPeso,
   GROUP_THRESHOLD,
   isExempt,
@@ -125,7 +126,8 @@ export function buildConfirmationEmail(
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid ${C.line};margin:0 0 22px;">
               ${row("Your number", registration.registrationNumber)}
               ${row(count > 1 ? "Your group" : "Registered", groupPhrase(registration))}
-              ${row(exempt ? "Registration fee" : "Sent", amountLabel, true)}
+              ${row(exempt ? "Registration fee" : "Sent", amountLabel, registration.datePaid === undefined)}
+              ${registration.datePaid ? row("Paid", formatDatePaid(registration.datePaid), true) : ""}
             </table>
 
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 22px;">
@@ -170,7 +172,7 @@ export function buildConfirmationEmail(
     `${count > 1 ? "Your group" : "Registered"}: ${groupPhrase(registration)}`,
     `${exempt ? "Registration fee" : "Sent"}: ${amountLabel}`,
     registration.paymentReference
-      ? `Reference: ${registration.paymentReference}`
+      ? `Reference: ${registration.paymentReference}${registration.datePaid ? `, paid ${formatDatePaid(registration.datePaid)}` : ""}`
       : null,
     "",
     "Where to be:",

@@ -2,6 +2,7 @@
 
 import {
   breakoutTitle,
+  formatDatePaid,
   formatPeso,
   GROUP_THRESHOLD,
   isExempt,
@@ -137,7 +138,7 @@ export function ReviewStep({
               <span className="text-[14.5px] text-muted">Reference</span>
               <span className="text-[14.5px] font-medium text-ink">
                 {payment.paymentReference}
-                {payment.datePaid && ` · paid ${payment.datePaid}`}
+                {payment.datePaid && ` · paid ${formatDatePaid(payment.datePaid)}`}
               </span>
             </div>
             <div className="flex justify-between gap-5 border-t border-line py-3">

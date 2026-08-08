@@ -13,6 +13,7 @@ import type { Doc, Id } from "@convex/_generated/dataModel";
 import {
   BREAKOUT_SESSIONS,
   breakoutTitle,
+  formatDatePaid,
   formatPeso,
   REGISTRATION_TYPES,
   typeShort,
@@ -55,6 +56,10 @@ function dayEnd(value: string): number | undefined {
   if (value.length === 0) return undefined;
   const date = new Date(`${value}T23:59:59.999`);
   return Number.isNaN(date.getTime()) ? undefined : date.getTime();
+}
+
+function isImage(name: string | undefined): boolean {
+  return /\.(jpe?g|png)$/i.test(name ?? "");
 }
 
 function ReceiptTag({ registration }: { registration: Doc<"registrations"> }) {
@@ -250,17 +255,31 @@ function Detail({
             </p>
           ) : (
             <div className="overflow-hidden rounded-2xl border border-line">
-              <div className="flex h-44 items-center justify-center bg-surface px-4 text-center">
-                <span className="text-[13.5px] leading-normal text-muted">
-                  {registration.paymentProofFileName ?? "Receipt"}
-                </span>
-              </div>
+              {/* Most receipts are phone photos, so show one. PDFs fall back
+                  to the filename — organizers open those in a new tab. */}
+              {paymentProofUrl !== null && isImage(registration.paymentProofFileName) ? (
+                <a href={paymentProofUrl} target="_blank" rel="noreferrer">
+                  <img
+                    src={paymentProofUrl}
+                    alt={`Receipt for ${registration.registrationNumber}`}
+                    className="h-44 w-full bg-surface object-contain"
+                  />
+                </a>
+              ) : (
+                <div className="flex h-44 items-center justify-center bg-surface px-4 text-center">
+                  <span className="text-[13.5px] leading-normal text-muted">
+                    {registration.paymentProofFileName ?? "Receipt"}
+                  </span>
+                </div>
+              )}
               <div className="flex flex-col gap-2.5 border-t border-line px-4 py-3.5">
                 <dl className="grid grid-cols-[auto_1fr] gap-x-3.5 gap-y-1 text-[13.5px] leading-normal">
                   <dt className="text-muted">Reference</dt>
                   <dd className="font-medium">{registration.paymentReference}</dd>
                   <dt className="text-muted">Paid</dt>
-                  <dd className="font-medium">{registration.datePaid}</dd>
+                  <dd className="font-medium">
+                    {formatDatePaid(registration.datePaid ?? "")}
+                  </dd>
                 </dl>
                 {paymentProofUrl !== null ? (
                   <a
@@ -359,17 +378,7 @@ export function OrganizerDashboard() {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <TopBar
-        href="/organizer"
-        right={
-          <div className="flex items-center gap-4">
-            <span className="hidden text-[13px] font-medium text-muted sm:block">
-              Organizers
-            </span>
-            <AccountBar />
-          </div>
-        }
-      />
+      <TopBar href="/organizer" right={<AccountBar />} />
 
       <main className="flex-1">
         <AuthLoading>
@@ -465,7 +474,7 @@ export function OrganizerDashboard() {
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search a name, group, or number"
                   aria-label="Search registrations"
-                  className="h-10 w-full max-w-[340px] rounded-[10px] border border-line bg-white px-3.5 text-[14.5px] text-ink placeholder:text-faint sm:flex-1"
+                  className="h-10 w-full min-w-[200px] flex-1 rounded-[10px] border border-line bg-white px-3.5 text-[14.5px] text-ink placeholder:text-faint sm:max-w-[340px]"
                 />
                 <select
                   aria-label="Registration type"

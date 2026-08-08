@@ -29,6 +29,11 @@ type ParticipantInput = Infer<typeof participantInputValidator>;
 const REGISTRATION_NUMBER_COUNTER = "registrationNumber";
 const REGISTRATION_NUMBER_PREFIX = "CG26";
 
+// Imported Google Form rows get their own series. Provenance is then obvious
+// at a glance, and the two sequences can never collide.
+const IMPORT_NUMBER_COUNTER = "importRegistrationNumber";
+const IMPORT_NUMBER_PREFIX = "GF26";
+
 function fail(message: string): never {
   throw new ConvexError(message);
 }
@@ -98,25 +103,30 @@ function cleanParticipant(input: ParticipantInput, index: number) {
  * serializable transactions, so a concurrent submit either sees this write or
  * retries — no two registrations can claim the same number.
  */
-async function allocateRegistrationNumber(ctx: MutationCtx): Promise<string> {
+async function allocateRegistrationNumber(
+  ctx: MutationCtx,
+  series: "web" | "import" = "web",
+): Promise<string> {
+  const name =
+    series === "web" ? REGISTRATION_NUMBER_COUNTER : IMPORT_NUMBER_COUNTER;
+  const prefix =
+    series === "web" ? REGISTRATION_NUMBER_PREFIX : IMPORT_NUMBER_PREFIX;
+
   const counter = await ctx.db
     .query("counters")
-    .withIndex("by_name", (q) => q.eq("name", REGISTRATION_NUMBER_COUNTER))
+    .withIndex("by_name", (q) => q.eq("name", name))
     .unique();
 
   let next: number;
   if (counter === null) {
     next = 1;
-    await ctx.db.insert("counters", {
-      name: REGISTRATION_NUMBER_COUNTER,
-      value: next,
-    });
+    await ctx.db.insert("counters", { name, value: next });
   } else {
     next = counter.value + 1;
     await ctx.db.patch(counter._id, { value: next });
   }
 
-  return `${REGISTRATION_NUMBER_PREFIX}-${String(next).padStart(5, "0")}`;
+  return `${prefix}-${String(next).padStart(5, "0")}`;
 }
 
 export const generateUploadUrl = mutation({
@@ -311,6 +321,91 @@ export const submit = mutation({
  * number rather than the document id, so nothing internal ends up in a URL
  * people paste around. Still registrant-scoped.
  */
+const importRowValidator = v.object({
+  idempotencyKey: v.string(),
+  submittedAt: v.optional(v.number()),
+  groupName: v.optional(v.string()),
+  registrantName: v.string(),
+  registrantEmail: v.string(),
+  paymentReference: v.optional(v.string()),
+  datePaid: v.optional(v.string()),
+  paymentProofExternalUrl: v.optional(v.string()),
+  consentAccurate: v.boolean(),
+  consentDataUse: v.boolean(),
+  consentPhotos: v.boolean(),
+  heardFrom: v.optional(heardFromValidator),
+  heardFromOther: v.optional(v.string()),
+  heardFromRaw: v.optional(v.string()),
+  participant: participantInputValidator,
+});
+
+/**
+ * Lands the original Google Form responses. One row becomes one
+ * single-participant registration — see convex/importGoogleForm.ts for why.
+ *
+ * No confirmation emails: these people registered months ago and should not
+ * hear from us again because we moved their record. No amount either — the
+ * sheet records that a payment happened, not what was charged, and a group
+ * member's row priced as a solo registration would be wrong by a hundred pesos.
+ */
+export const importRows = internalMutation({
+  args: { rows: v.array(importRowValidator) },
+  handler: async (ctx, args) => {
+    let created = 0;
+    let skipped = 0;
+
+    for (const row of args.rows) {
+      const existing = await ctx.db
+        .query("registrations")
+        .withIndex("by_idempotencyKey", (q) =>
+          q.eq("idempotencyKey", row.idempotencyKey),
+        )
+        .unique();
+      if (existing !== null) {
+        skipped += 1;
+        continue;
+      }
+
+      const registrationNumber = await allocateRegistrationNumber(ctx, "import");
+
+      const registrationId = await ctx.db.insert("registrations", {
+        registrationNumber,
+        idempotencyKey: row.idempotencyKey,
+        groupName: row.groupName,
+        registrantName: row.registrantName,
+        registrantEmail: row.registrantEmail,
+        registrationType: "regular",
+        participantCount: 1,
+        totalAmount: 0,
+        amountUnknown: true,
+        source: "google-form",
+        submittedAt: row.submittedAt,
+        paymentType: "paid",
+        paymentReference: row.paymentReference,
+        datePaid: row.datePaid,
+        paymentProofExternalUrl: row.paymentProofExternalUrl,
+        consentAccurate: row.consentAccurate,
+        consentDataUse: row.consentDataUse,
+        consentPhotos: row.consentPhotos,
+        heardFrom: row.heardFrom,
+        heardFromOther: row.heardFromOther,
+        heardFromRaw: row.heardFromRaw,
+        // Already confirmed by the Google Form itself, months ago.
+        confirmationEmailStatus: "sent",
+        confirmationEmailSentAt: row.submittedAt,
+      });
+
+      await ctx.db.insert("participants", {
+        registrationId,
+        ...row.participant,
+      });
+      created += 1;
+    }
+
+    return { created, skipped };
+  },
+});
+
 export const getMine = query({
   args: { registrationNumber: v.string() },
   handler: async (ctx, args) => {

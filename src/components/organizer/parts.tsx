@@ -112,11 +112,26 @@ export function ReceiptTag({ registration }: { registration: Registration }) {
   if (registration.paymentType === "exempt") {
     return <span className="text-[13px] text-muted">Not needed</span>;
   }
+  if (registration.paymentProofExternalUrl !== undefined) {
+    return <Pill tone="teal">On Drive</Pill>;
+  }
   return receiptMissing(registration) ? (
     <Pill tone="gold">Missing</Pill>
   ) : (
     <Pill tone="teal">Attached</Pill>
   );
+}
+
+/** Marks the rows that came from the original Google Form. */
+export function SourceTag({ registration }: { registration: Registration }) {
+  if (registration.source !== "google-form") return null;
+  return <Pill tone="muted">Google Form</Pill>;
+}
+
+export function amountText(registration: Registration): string {
+  return registration.amountUnknown === true
+    ? "—"
+    : `₱${registration.totalAmount.toLocaleString("en-PH")}`;
 }
 
 export function EmailTag({ registration }: { registration: Registration }) {

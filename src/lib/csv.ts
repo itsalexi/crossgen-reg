@@ -30,6 +30,7 @@ const HEADERS = [
   "Date Registered",
   "Heard About Us",
   "Photo/Video Consent",
+  "Source",
 ] as const;
 
 function escapeCell(value: string | number | undefined | null): string {
@@ -79,14 +80,15 @@ export function buildParticipantCsv(
           registration.paymentType,
           registration.paymentReference ?? "",
           formatDatePaid(registration.datePaid ?? ""),
-          registration.totalAmount,
-          formatDate(registration._creationTime),
+          registration.amountUnknown === true ? "" : registration.totalAmount,
+          formatDate(registration.submittedAt ?? registration._creationTime),
           heardFromLabel(registration.heardFrom, registration.heardFromOther),
           registration.consentPhotos === undefined
             ? ""
             : registration.consentPhotos
               ? "Yes"
               : "No",
+          registration.source === "google-form" ? "Google Form" : "Website",
         ]
           .map(escapeCell)
           .join(","),

@@ -67,7 +67,9 @@ export default defineSchema({
     idempotencyKey: v.string(),
     groupName: v.optional(v.string()),
 
-    registrantUserId: v.id("users"),
+    // Absent on imported rows: nobody signed in to file them. The registrant
+    // is identified by the name and email the old form captured.
+    registrantUserId: v.optional(v.id("users")),
     // Denormalized so the confirmation email and CSV don't depend on the user
     // record staying put.
     registrantName: v.string(),
@@ -76,6 +78,16 @@ export default defineSchema({
     registrationType: registrationTypeValidator,
     participantCount: v.number(),
     totalAmount: v.number(),
+    // Google Form rows record a payment but not what was charged: a group
+    // member paid the group rate, and treating their row as a one-person
+    // registration would price it wrong. Better no number than a wrong one.
+    amountUnknown: v.optional(v.boolean()),
+
+    // Absent means "web" — every registration predates the import.
+    source: v.optional(v.union(v.literal("web"), v.literal("google-form"))),
+    // The Google Form's own timestamp, so imported rows sort by when the
+    // person actually registered rather than when we imported them.
+    submittedAt: v.optional(v.number()),
 
     paymentType: v.union(v.literal("paid"), v.literal("exempt")),
     exemptionReason: v.optional(exemptionReasonValidator),
@@ -83,6 +95,9 @@ export default defineSchema({
     datePaid: v.optional(v.string()),
     paymentProofStorageId: v.optional(v.id("_storage")),
     paymentProofFileName: v.optional(v.string()),
+    // Imported receipts live in the organizers' Google Drive. The files are
+    // not publicly readable, so we keep the link rather than a copy.
+    paymentProofExternalUrl: v.optional(v.string()),
 
     // Agreed to by the registrant on behalf of everyone on the registration.
     // Optional only so registrations filed before these questions existed
@@ -93,6 +108,8 @@ export default defineSchema({
 
     heardFrom: v.optional(heardFromValidator),
     heardFromOther: v.optional(v.string()),
+    // The old form allowed several answers and free text. Kept verbatim.
+    heardFromRaw: v.optional(v.string()),
 
     confirmationEmailStatus: emailStatusValidator,
     confirmationEmailError: v.optional(v.string()),

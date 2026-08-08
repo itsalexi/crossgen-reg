@@ -27,12 +27,22 @@ import {
   EMPTY_FILTERS,
   filterRows,
   filtersActive,
+  registeredAt,
   uniqueValues,
   type Filters,
 } from "@/lib/organizer";
 import { AdminsSection } from "./AdminsSection";
 import { RegistrationDetail } from "./RegistrationDetail";
-import { BarList, EmailTag, Panel, ReceiptTag, shortDate, StatTile } from "./parts";
+import {
+  amountText,
+  BarList,
+  EmailTag,
+  Panel,
+  ReceiptTag,
+  shortDate,
+  SourceTag,
+  StatTile,
+} from "./parts";
 
 type Section = "overview" | "registrations" | "people" | "admins";
 
@@ -342,7 +352,11 @@ export function OrganizerDashboard() {
                     <StatTile
                       label="Collected"
                       value={formatPeso(stats.amount)}
-                      note={`${stats.receiptsAttached} receipt${stats.receiptsAttached === 1 ? "" : "s"} attached`}
+                      note={
+                        stats.amountUnknownCount > 0
+                          ? `${stats.amountUnknownCount} imported row${stats.amountUnknownCount === 1 ? "" : "s"} with no amount recorded`
+                          : `${stats.receiptsAttached} receipt${stats.receiptsAttached === 1 ? "" : "s"} attached`
+                      }
                     />
                     <StatTile
                       label="Not paying"
@@ -461,6 +475,11 @@ export function OrganizerDashboard() {
                     <h1 className="font-display text-[22px] font-semibold text-ink">
                       {stats.registrations} registration
                       {stats.registrations === 1 ? "" : "s"}
+                      {stats.imported > 0 && (
+                        <span className="ml-2 text-[14px] font-normal text-muted">
+                          · {stats.imported} from the Google Form
+                        </span>
+                      )}
                       {active && (
                         <span className="ml-2 text-[14px] font-normal text-muted">
                           of {allStats.registrations}
@@ -515,13 +534,16 @@ export function OrganizerDashboard() {
                               <td className="px-4 py-3.5 font-semibold text-cg-purple">
                                 {registration.registrationNumber}
                                 <div className="text-[12.5px] font-normal text-muted">
-                                  {shortDate(registration._creationTime)}
+                                  {shortDate(registeredAt(registration))}
                                 </div>
                               </td>
-                              <td className="max-w-[200px] truncate px-4 py-3.5 font-medium text-ink">
-                                {registration.groupName ?? (
-                                  <span className="font-normal text-muted">—</span>
-                                )}
+                              <td className="max-w-[220px] px-4 py-3.5 font-medium text-ink">
+                                <div className="truncate">
+                                  {registration.groupName ?? (
+                                    <span className="font-normal text-muted">—</span>
+                                  )}
+                                </div>
+                                <SourceTag registration={registration} />
                               </td>
                               <td className="px-4 py-3.5 text-ink">
                                 {participants.length}
@@ -549,12 +571,13 @@ export function OrganizerDashboard() {
                               <td
                                 className={cn(
                                   "px-4 py-3.5",
-                                  registration.totalAmount === 0
+                                  registration.totalAmount === 0 ||
+                                    registration.amountUnknown === true
                                     ? "text-muted"
                                     : "font-medium text-ink",
                                 )}
                               >
-                                {formatPeso(registration.totalAmount)}
+                                {amountText(registration)}
                               </td>
                               <td className="px-4 py-3.5">
                                 <ReceiptTag registration={registration} />

@@ -64,7 +64,14 @@ function dayEnd(value: string): number | undefined {
   return Number.isNaN(date.getTime()) ? undefined : date.getTime();
 }
 
+/** Imported rows carry the Google Form's timestamp, not when we imported them. */
+export function registeredAt(registration: Registration): number {
+  return registration.submittedAt ?? registration._creationTime;
+}
+
 export function receiptMissing(registration: Registration): boolean {
+  // An imported row keeps its receipt as a Drive link rather than a file.
+  if (registration.paymentProofExternalUrl !== undefined) return false;
   return (
     registration.paymentType === "paid" &&
     registration.paymentProofStorageId === undefined
@@ -82,10 +89,14 @@ export function buildRows(
     byRegistration.set(participant.registrationId, list);
   }
 
-  return registrations.map((registration) => ({
-    registration,
-    participants: byRegistration.get(registration._id) ?? [],
-  }));
+  return registrations
+    .map((registration) => ({
+      registration,
+      participants: byRegistration.get(registration._id) ?? [],
+    }))
+    // Newest first by when the person actually registered, so the imported
+    // rows fall into the timeline instead of all landing at the top.
+    .sort((a, b) => registeredAt(b.registration) - registeredAt(a.registration));
 }
 
 function matchesRegistrationOnly(row: Row, filters: Filters): boolean {
@@ -107,10 +118,11 @@ function matchesRegistrationOnly(row: Row, filters: Filters): boolean {
     return false;
   }
 
+  const when = registeredAt(registration);
   const from = dayStart(filters.dateFrom);
-  if (from !== undefined && registration._creationTime < from) return false;
+  if (from !== undefined && when < from) return false;
   const to = dayEnd(filters.dateTo);
-  if (to !== undefined && registration._creationTime > to) return false;
+  if (to !== undefined && when > to) return false;
 
   return true;
 }
@@ -197,6 +209,8 @@ export type Stats = {
   receiptsAttached: number;
   receiptsMissing: number;
   emailsFailed: number;
+  amountUnknownCount: number;
+  imported: number;
   bySession: { value: number; title: string; count: number }[];
   byType: { type: RegistrationType; count: number }[];
   byChurch: { name: string; count: number }[];
@@ -231,7 +245,18 @@ export function computeStats(rows: Row[]): Stats {
   return {
     registrations: rows.length,
     participants: people.length,
-    amount: rows.reduce((sum, row) => sum + row.registration.totalAmount, 0),
+    // Only what was actually recorded. Imported rows have no amount, and
+    // guessing one would misstate the money.
+    amount: rows.reduce(
+      (sum, row) =>
+        row.registration.amountUnknown === true
+          ? sum
+          : sum + row.registration.totalAmount,
+      0,
+    ),
+    amountUnknownCount: rows.filter((r) => r.registration.amountUnknown === true)
+      .length,
+    imported: rows.filter((r) => r.registration.source === "google-form").length,
     paidRegistrations: rows.filter((r) => r.registration.paymentType === "paid")
       .length,
     exemptParticipants: rows

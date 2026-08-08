@@ -14,7 +14,7 @@ import {
 } from "@convex/shared";
 import { Button, Eyebrow, Spinner } from "@/components/ui";
 import { buildParticipantCsv, downloadCsv } from "@/lib/csv";
-import { EmailTag, longDate, ReceiptTag } from "./parts";
+import { amountText, EmailTag, longDate, ReceiptTag, SourceTag } from "./parts";
 
 function isImage(name: string | undefined): boolean {
   return /\.(jpe?g|png)$/i.test(name ?? "");
@@ -68,12 +68,15 @@ export function RegistrationDetail({
 
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
         <div className="flex flex-col gap-1.5">
-          <h1 className="font-display text-[26px] leading-tight font-semibold text-ink">
-            {registration.groupName ?? registration.registrantName}
-          </h1>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h1 className="font-display text-[26px] leading-tight font-semibold text-ink">
+              {registration.groupName ?? registration.registrantName}
+            </h1>
+            <SourceTag registration={registration} />
+          </div>
           <span className="text-[14.5px] leading-normal text-muted">
             {registration.registrationNumber} · registered{" "}
-            {longDate(registration._creationTime)} by{" "}
+            {longDate(registration.submittedAt ?? registration._creationTime)} by{" "}
             {registration.registrantEmail}
           </span>
         </div>
@@ -110,7 +113,7 @@ export function RegistrationDetail({
         {[
           ["Type", typeShort(registration.registrationType as RegistrationType)],
           ["People", String(registration.participantCount)],
-          ["Amount", formatPeso(registration.totalAmount)],
+          ["Amount", amountText(registration)],
         ].map(([label, value]) => (
           <div key={label} className="flex flex-col gap-1">
             <Eyebrow>{label}</Eyebrow>
@@ -153,6 +156,13 @@ export function RegistrationDetail({
           </dd>
         </div>
       </dl>
+
+      {registration.amountUnknown === true && (
+        <p className="text-[13px] leading-relaxed text-muted">
+          This came from the Google Form, which recorded that a payment was made
+          but not how much. Check the receipt against the reference number.
+        </p>
+      )}
 
       {registration.confirmationEmailError && (
         <p className="text-[13px] leading-normal text-red-600">
@@ -226,8 +236,22 @@ export function RegistrationDetail({
             </p>
           ) : (
             <div className="overflow-hidden rounded-2xl border border-line bg-white">
-              {paymentProofUrl !== null &&
-              isImage(registration.paymentProofFileName) ? (
+              {registration.paymentProofExternalUrl !== undefined ? (
+                <div className="flex h-44 flex-col items-center justify-center gap-2 bg-surface px-4 text-center">
+                  <span className="text-[13.5px] text-muted">
+                    Kept in the organizers&rsquo; Google Drive
+                  </span>
+                  <a
+                    href={registration.paymentProofExternalUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[14px] font-semibold text-cg-purple hover:underline"
+                  >
+                    Open in Drive
+                  </a>
+                </div>
+              ) : paymentProofUrl !== null &&
+                isImage(registration.paymentProofFileName) ? (
                 <a href={paymentProofUrl} target="_blank" rel="noreferrer">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img

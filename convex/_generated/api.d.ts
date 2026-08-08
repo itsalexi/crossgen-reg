@@ -11,6 +11,7 @@
 import type * as auth from "../auth.js";
 import type * as emails from "../emails.js";
 import type * as http from "../http.js";
+import type * as importGoogleForm from "../importGoogleForm.js";
 import type * as organizer from "../organizer.js";
 import type * as registrations from "../registrations.js";
 import type * as shared from "../shared.js";
@@ -26,6 +27,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   emails: typeof emails;
   http: typeof http;
+  importGoogleForm: typeof importGoogleForm;
   organizer: typeof organizer;
   registrations: typeof registrations;
   shared: typeof shared;

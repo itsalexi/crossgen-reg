@@ -9,24 +9,29 @@ import {
   EVENT,
   formatPeso,
   isExempt,
-  REGISTRATION_TYPES,
+  spellCount,
+  titleCaseCount,
+  typeShort,
   type RegistrationType,
 } from "@convex/shared";
-import { Badge, Card, SectionLabel, Spinner } from "@/components/ui";
+import { AccountBar, BottomBar, TopBar } from "./brand";
+import { Eyebrow, Spinner } from "./ui";
 
-function CheckSeal() {
+function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <span className="flex size-14 items-center justify-center rounded-full bg-cg-gold">
-      <svg viewBox="0 0 24 24" className="size-7 text-ink" fill="none" aria-hidden="true">
-        <path
-          d="m6 12.5 4 4 8-9"
-          stroke="currentColor"
-          strokeWidth="2.25"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    </span>
+    <div className="flex min-h-dvh flex-col">
+      <TopBar right={<AccountBar />} />
+      <main className="flex-1">{children}</main>
+      <BottomBar />
+    </div>
+  );
+}
+
+function Centered({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mx-auto flex w-full max-w-md flex-col items-start gap-4 px-5 py-16 sm:py-24">
+      {children}
+    </div>
   );
 }
 
@@ -36,175 +41,169 @@ export function ConfirmationView({ registrationId }: { registrationId: string })
   });
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-5 py-12">
+    <Shell>
       <AuthLoading>
-        <div className="flex justify-center py-20">
+        <div className="flex justify-center py-24">
           <Spinner className="size-6 text-cg-purple" />
         </div>
       </AuthLoading>
 
       <Unauthenticated>
-        <Card className="text-center">
-          <h1 className="font-display text-xl font-bold text-ink">
-            Sign in to view this registration
+        <Centered>
+          <h1 className="font-display text-[26px] leading-tight font-semibold text-ink">
+            Sign in to see this
           </h1>
-          <p className="mt-2 text-[15px] text-muted">
-            Registrations are only visible to the account that submitted them.
+          <p className="text-[15px] leading-relaxed text-muted">
+            A registration is only visible to the account that sent it in.
           </p>
-        </Card>
+        </Centered>
       </Unauthenticated>
 
       <Authenticated>
         {data === undefined ? (
-          <div className="flex justify-center py-20">
+          <div className="flex justify-center py-24">
             <Spinner className="size-6 text-cg-purple" />
           </div>
         ) : data === null ? (
-          <Card className="text-center">
-            <h1 className="font-display text-xl font-bold text-ink">
-              Registration not found
+          <Centered>
+            <h1 className="font-display text-[26px] leading-tight font-semibold text-ink">
+              We can&rsquo;t find that one
             </h1>
-            <p className="mt-2 text-[15px] text-muted">
-              This registration does not exist, or it belongs to a different
+            <p className="text-[15px] leading-relaxed text-muted">
+              This registration doesn&rsquo;t exist, or it belongs to a different
               account.
             </p>
             <Link
               href="/register"
-              className="mt-5 inline-block text-[15px] font-semibold text-cg-purple hover:underline"
+              className="text-[15px] font-semibold text-cg-purple hover:underline"
             >
               Start a new registration
             </Link>
-          </Card>
+          </Centered>
         ) : (
           (() => {
             const { registration, participants } = data;
             const type = registration.registrationType as RegistrationType;
             const exempt = isExempt(type);
-            const typeLabel =
-              REGISTRATION_TYPES.find((t) => t.value === type)?.label ?? type;
+            const greeting =
+              registration.registrantName.trim().split(/\s+/)[0] || "there";
+            const groupLabel = registration.groupName
+              ? `${registration.groupName}, ${registration.participantCount}`
+              : titleCaseCount(registration.participantCount) +
+                (registration.participantCount === 1 ? " person" : " people");
 
             return (
-              <div className="flex flex-col gap-6">
-                <div className="flex flex-col items-start gap-5 rounded-2xl border border-line bg-white p-7">
-                  <CheckSeal />
-                  <div>
-                    <h1 className="font-display text-2xl font-bold text-ink">
-                      Registration received
-                    </h1>
-                    <p className="mt-2 max-w-lg text-[15px] leading-relaxed text-muted">
-                      Thank you for registering for the {EVENT.name}.{" "}
-                      {exempt
-                        ? "No payment is required for this registration."
-                        : "We have received your registration and your proof of payment."}
-                    </p>
-                  </div>
-
-                  <div className="w-full rounded-xl bg-cg-purple-tint p-5">
-                    <SectionLabel>Registration number</SectionLabel>
-                    <p className="mt-1 font-display text-3xl font-bold tracking-tight text-cg-purple">
+              <div className="mx-auto w-full max-w-[820px]">
+                <div className="flex flex-col gap-5 bg-cg-purple px-6 py-10 sm:gap-5.5 sm:px-9 sm:py-12">
+                  <Eyebrow className="text-cg-gold">See you in September</Eyebrow>
+                  <h1 className="font-display text-[30px] leading-[1.1] font-bold tracking-[-0.03em] text-white sm:text-[38px]">
+                    You&rsquo;re all set, {greeting}.
+                  </h1>
+                  <div className="flex w-fit flex-col gap-1 rounded-2xl bg-white/10 px-5 py-4 sm:flex-row sm:items-center sm:gap-4">
+                    <Eyebrow className="text-white/65">Your number</Eyebrow>
+                    <span className="font-display text-[26px] leading-none font-bold tracking-[0.01em] text-white">
                       {registration.registrationNumber}
-                    </p>
-                    <p className="mt-2 text-[13px] text-muted">
-                      Keep this for your records. We have emailed a copy to{" "}
-                      <span className="font-medium text-ink">
-                        {registration.registrantEmail}
-                      </span>
-                      .
-                    </p>
+                    </span>
                   </div>
                 </div>
 
-                <Card>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {registration.groupName && (
-                      <span className="font-display text-lg font-bold text-ink">
-                        {registration.groupName}
-                      </span>
-                    )}
-                    <Badge tone={exempt ? "teal" : "purple"}>{typeLabel}</Badge>
-                    <span className="text-sm text-muted">
-                      {registration.participantCount}{" "}
-                      {registration.participantCount === 1
-                        ? "participant"
-                        : "participants"}
+                <div className="flex flex-col gap-7 px-6 py-9 sm:px-9">
+                  <p className="max-w-[58ch] text-[16px] leading-relaxed text-ink text-pretty">
+                    {exempt
+                      ? "We've got your registration — nothing to pay for this one."
+                      : "We've got your registration and your receipt."}{" "}
+                    A copy is on its way to{" "}
+                    <span className="font-medium">
+                      {registration.registrantEmail}
                     </span>
-                  </div>
+                    . Bring your number on the day — that&rsquo;s all we need to
+                    find you at the door.
+                  </p>
 
-                  <dl className="mt-5 divide-y divide-line border-y border-line">
-                    <div className="flex items-center justify-between gap-4 py-3">
-                      <dt className="text-sm text-muted">Amount</dt>
-                      <dd className="font-display text-lg font-bold text-ink">
+                  <dl className="grid gap-5 sm:grid-cols-3 sm:gap-0">
+                    <div className="flex flex-col gap-1 sm:pr-6">
+                      <Eyebrow>{registration.groupName ? "Your group" : "Registered"}</Eyebrow>
+                      <dd className="font-display text-[17px] leading-snug font-semibold text-ink">
+                        {groupLabel}
+                      </dd>
+                    </div>
+                    <div className="flex flex-col gap-1 sm:border-l sm:border-line sm:px-6">
+                      <Eyebrow>{exempt ? "Registration fee" : "Sent"}</Eyebrow>
+                      <dd className="font-display text-[17px] leading-snug font-semibold text-ink">
                         {formatPeso(registration.totalAmount)}
                       </dd>
                     </div>
-                    {registration.paymentReference && (
-                      <div className="flex items-center justify-between gap-4 py-3">
-                        <dt className="text-sm text-muted">Payment reference</dt>
-                        <dd className="text-sm font-semibold text-ink">
-                          {registration.paymentReference}
-                        </dd>
-                      </div>
-                    )}
-                    {registration.datePaid && (
-                      <div className="flex items-center justify-between gap-4 py-3">
-                        <dt className="text-sm text-muted">Date paid</dt>
-                        <dd className="text-sm font-semibold text-ink">
-                          {registration.datePaid}
-                        </dd>
-                      </div>
-                    )}
+                    <div className="flex flex-col gap-1 sm:border-l sm:border-line sm:pl-6">
+                      <Eyebrow>See you</Eyebrow>
+                      <dd className="font-display text-[17px] leading-snug font-semibold text-ink">
+                        Sept 26, 2026
+                      </dd>
+                    </div>
                   </dl>
 
-                  <div className="mt-5">
-                    <SectionLabel>Participants</SectionLabel>
-                    <ul className="mt-3 flex flex-col gap-3">
+                  <div className="flex flex-col">
+                    <Eyebrow>
+                      {participants.length === 1
+                        ? "Your session"
+                        : "Everyone and their sessions"}
+                    </Eyebrow>
+                    <div className="mt-2.5">
                       {participants.map((participant) => (
-                        <li key={participant._id}>
-                          <p className="font-semibold text-ink">
+                        <div
+                          key={participant._id}
+                          className="flex flex-col gap-0.5 border-t border-line py-3 last:border-b sm:flex-row sm:justify-between sm:gap-5"
+                        >
+                          <span className="text-[15px] font-medium text-ink">
                             {participant.fullName}
-                          </p>
-                          <p className="text-[13.5px] text-muted">
+                          </span>
+                          <span className="max-w-[46ch] text-[13.5px] leading-snug text-muted sm:text-right sm:text-[14px]">
                             {breakoutTitle(participant.breakoutSession)}
-                          </p>
-                        </li>
+                          </span>
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   </div>
-                </Card>
 
-                <div className="rounded-2xl border border-line bg-white p-6">
-                  <SectionLabel>Event details</SectionLabel>
-                  <p className="mt-2 font-display font-bold text-ink">
-                    {EVENT.name}
-                  </p>
-                  <p className="mt-1 text-[14.5px] leading-relaxed text-muted">
-                    {EVENT.date} ({EVENT.dayOfWeek})
-                    <br />
-                    {EVENT.venue}
-                    <br />
-                    {EVENT.address}
-                  </p>
+                  <div className="flex flex-col gap-1 rounded-2xl bg-surface px-5 py-4.5">
+                    <Eyebrow>Where to be</Eyebrow>
+                    <span className="text-[15.5px] leading-normal font-semibold text-ink">
+                      {EVENT.dayOfWeek}, {EVENT.date}
+                    </span>
+                    <span className="text-[14.5px] leading-normal text-muted">
+                      {EVENT.venue}
+                      <br />
+                      {EVENT.address}
+                    </span>
+                  </div>
+
+                  {!exempt && (
+                    <p className="text-[13px] leading-relaxed text-muted">
+                      This says we received your receipt — not that the payment
+                      has been checked yet. The team goes through them by hand
+                      and will be in touch if anything looks off.
+                    </p>
+                  )}
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Link
+                      href="/register"
+                      className="inline-flex h-12 items-center justify-center rounded-xl border border-line bg-white px-6 text-[15px] font-semibold text-cg-purple transition-colors hover:border-cg-purple-soft hover:bg-cg-purple-tint"
+                    >
+                      Register another group
+                    </Link>
+                    <span className="text-[13px] text-muted">
+                      {spellCount(participants.length)}{" "}
+                      {participants.length === 1 ? "person" : "people"} registered
+                      as {typeShort(type).toLowerCase()}
+                      {participants.length === 1 ? "" : "s"}.
+                    </span>
+                  </div>
                 </div>
-
-                {!exempt && (
-                  <p className="text-[13px] leading-relaxed text-muted">
-                    This confirms that we received your proof of payment. It is not
-                    a confirmation that the payment has been verified — the
-                    CrossGen team reviews payments separately.
-                  </p>
-                )}
-
-                <Link
-                  href="/register"
-                  className="text-center text-[15px] font-semibold text-cg-purple hover:underline"
-                >
-                  Register another group
-                </Link>
               </div>
             );
           })()
         )}
       </Authenticated>
-    </div>
+    </Shell>
   );
 }

@@ -6,11 +6,8 @@ import {
   GENDERS,
   MARITAL_STATUSES,
 } from "@convex/shared";
-import type {
-  ParticipantDraft,
-  ParticipantErrors,
-} from "@/lib/registerForm";
-import { Field, SelectInput, TextInput, cn } from "@/components/ui";
+import { ChoiceCard, Field, SelectInput, TextInput } from "@/components/ui";
+import type { ParticipantDraft, ParticipantErrors } from "@/lib/registerForm";
 
 const GENDER_OPTIONS = GENDERS.map((value) => ({ value, label: value }));
 const MARITAL_OPTIONS = MARITAL_STATUSES.map((value) => ({
@@ -23,14 +20,17 @@ export function ParticipantForm({
   errors,
   onChange,
   idPrefix,
+  who,
 }: {
   participant: ParticipantDraft;
   errors: ParticipantErrors;
   onChange: (patch: Partial<ParticipantDraft>) => void;
   idPrefix: string;
+  /** First name if we have one, so the copy can address a person. */
+  who: string;
 }) {
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6 sm:gap-7">
       <div className="grid gap-5 sm:grid-cols-2">
         <TextInput
           label="Full name"
@@ -41,16 +41,16 @@ export function ParticipantForm({
           onChange={(e) => onChange({ fullName: e.target.value })}
         />
         <TextInput
-          label="Preferred name"
+          label="Nickname"
           optional
           value={participant.preferredName}
           error={errors.preferredName}
-          placeholder="What should we call you?"
+          placeholder="What we'll put on the name tag"
           onChange={(e) => onChange({ preferredName: e.target.value })}
         />
       </div>
 
-      <div className="grid gap-5 sm:grid-cols-3">
+      <div className="grid gap-5 sm:grid-cols-[120px_1fr_1fr]">
         <TextInput
           label="Age"
           type="number"
@@ -81,34 +81,34 @@ export function ParticipantForm({
 
       <div className="grid gap-5 sm:grid-cols-2">
         <TextInput
-          label="Church / organization"
+          label="Church or organization"
           value={participant.churchOrganization}
           error={errors.churchOrganization}
-          placeholder="Your local church or organization"
+          placeholder="Grace Christian Fellowship"
           onChange={(e) => onChange({ churchOrganization: e.target.value })}
         />
         <TextInput
-          label="Ministry involvement in church"
+          label="How they serve there"
           value={participant.ministryInvolvement}
           error={errors.ministryInvolvement}
-          placeholder="e.g. Youth, Music, None yet"
+          placeholder="Youth worship team"
           onChange={(e) => onChange({ ministryInvolvement: e.target.value })}
         />
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
         <TextInput
-          label="Occupation"
+          label="Work or study"
           value={participant.occupation}
           error={errors.occupation}
-          placeholder="e.g. Teacher, Student"
+          placeholder="Teacher, student, business"
           onChange={(e) => onChange({ occupation: e.target.value })}
         />
         <TextInput
-          label="City / municipality"
+          label="City or town"
           value={participant.cityMunicipality}
           error={errors.cityMunicipality}
-          placeholder="e.g. Las Piñas"
+          placeholder="Las Piñas"
           onChange={(e) => onChange({ cityMunicipality: e.target.value })}
         />
       </div>
@@ -120,11 +120,11 @@ export function ParticipantForm({
           inputMode="tel"
           value={participant.mobileNumber}
           error={errors.mobileNumber}
-          placeholder="09XX XXX XXXX"
+          placeholder="0917 123 4567"
           onChange={(e) => onChange({ mobileNumber: e.target.value })}
         />
         <TextInput
-          label="Email address"
+          label="Email"
           type="email"
           inputMode="email"
           value={participant.email}
@@ -134,59 +134,33 @@ export function ParticipantForm({
         />
       </div>
 
-      <Field label="Breakout session" error={errors.breakoutSession}>
-        <div
-          role="radiogroup"
-          aria-label="Breakout session"
-          className="flex flex-col gap-2"
-        >
-          {BREAKOUT_SESSIONS.map((session) => {
-            const id = `${idPrefix}-breakout-${session.value}`;
-            const selected = participant.breakoutSession === String(session.value);
-
-            return (
-              <label
-                key={session.value}
-                htmlFor={id}
-                className={cn(
-                  "flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition-colors",
-                  selected
-                    ? "border-cg-purple bg-cg-purple-tint"
-                    : "border-line bg-white hover:border-cg-purple-soft/50 hover:bg-surface",
-                )}
-              >
-                <input
-                  id={id}
-                  type="radio"
-                  name={`${idPrefix}-breakout`}
-                  className="sr-only"
-                  checked={selected}
-                  onChange={() =>
-                    onChange({ breakoutSession: String(session.value) })
-                  }
-                />
-                <span
-                  className={cn(
-                    "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
-                    selected ? "border-cg-purple" : "border-line",
-                  )}
-                  aria-hidden="true"
-                >
-                  {selected && (
-                    <span className="size-2.5 rounded-full bg-cg-purple" />
-                  )}
-                </span>
-                <span className="text-[14.5px] leading-relaxed text-ink">
-                  <span className="mr-1.5 font-semibold text-cg-purple">
-                    {session.value}.
-                  </span>
-                  {session.title}
-                </span>
-              </label>
-            );
-          })}
+      <fieldset className="flex flex-col gap-3 border-t border-line pt-6">
+        <legend className="flex flex-col gap-1 pb-1">
+          <span className="font-display text-[18px] leading-tight font-semibold tracking-[-0.015em] text-ink">
+            Which session will {who} join?
+          </span>
+          <span className="text-[14px] leading-normal text-muted">
+            Pick one. You can change it any time before you&rsquo;re done.
+          </span>
+        </legend>
+        {errors.breakoutSession && (
+          <p className="text-[12.5px] font-medium text-red-600">
+            {errors.breakoutSession}
+          </p>
+        )}
+        <div className="flex flex-col gap-2">
+          {BREAKOUT_SESSIONS.map((session) => (
+            <ChoiceCard
+              key={session.value}
+              name={`${idPrefix}-breakout`}
+              align="center"
+              selected={participant.breakoutSession === String(session.value)}
+              onSelect={() => onChange({ breakoutSession: String(session.value) })}
+              title={session.title}
+            />
+          ))}
         </div>
-      </Field>
+      </fieldset>
     </div>
   );
 }

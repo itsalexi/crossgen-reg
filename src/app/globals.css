@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  /* CrossGen — purple, gold yellow, blue, light orange */
+  /* CrossGen — flat purple, gold, blue, light orange */
   --color-cg-purple: #3e2a85;
   --color-cg-purple-deep: #291a5c;
   --color-cg-purple-soft: #6b57c0;
@@ -9,8 +9,10 @@
   --color-cg-gold: #f5b800;
   --color-cg-gold-soft: #ffcf47;
   --color-cg-gold-tint: #fff6dd;
+  --color-cg-gold-ink: #8a6800;
   --color-cg-blue: #3f9bd1;
   --color-cg-blue-tint: #e9f3fb;
+  --color-cg-blue-ink: #1f6d99;
   --color-cg-orange: #f0a868;
   --color-cg-orange-tint: #fdf1e6;
 
@@ -21,8 +23,11 @@
 
   --color-ink: #191528;
   --color-muted: #6e6885;
+  --color-faint: #b9b3cc;
   --color-line: #e6e2f0;
+  --color-line-soft: #f0edf6;
   --color-surface: #faf9fd;
+  --color-canvas: #efedf4;
 
   --font-display: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
@@ -31,7 +36,6 @@
 @layer base {
   html {
     -webkit-font-smoothing: antialiased;
-    scroll-behavior: smooth;
   }
 
   body {
@@ -45,10 +49,9 @@
   h3,
   h4 {
     font-family: var(--font-display);
-    letter-spacing: -0.02em;
+    letter-spacing: -0.025em;
   }
 
-  /* One focus ring everywhere, including custom controls. */
   :focus-visible {
     outline: 2px solid var(--color-cg-purple-soft);
     outline-offset: 2px;
@@ -61,34 +64,13 @@
 }
 
 @layer utilities {
-  .cg-hero-weave {
-    background-color: var(--color-cg-purple-deep);
-    background-image:
-      radial-gradient(
-        ellipse 60% 80% at 78% 28%,
-        rgb(63 155 209 / 0.42),
-        transparent 62%
-      ),
-      radial-gradient(
-        ellipse 55% 65% at 16% 78%,
-        rgb(107 87 192 / 0.55),
-        transparent 60%
-      ),
-      radial-gradient(
-        ellipse 42% 52% at 62% 98%,
-        rgb(240 168 104 / 0.3),
-        transparent 65%
-      ),
-      repeating-linear-gradient(
-        115deg,
-        rgb(255 255 255 / 0.035) 0px,
-        rgb(255 255 255 / 0.035) 2px,
-        transparent 2px,
-        transparent 22px
-      );
+  /* The wordmark is set, not drawn — one colour, tight tracking. */
+  .wordmark {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.045em;
   }
 
-  /* Stops the layout shift when a number input reveals its spinner. */
   .no-spinner::-webkit-outer-spin-button,
   .no-spinner::-webkit-inner-spin-button {
     -webkit-appearance: none;

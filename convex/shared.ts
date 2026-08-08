@@ -33,34 +33,47 @@ export type RegistrationType = "regular" | "speaker" | "volunteer" | "sponsor";
 export const REGISTRATION_TYPES: {
   value: RegistrationType;
   label: string;
+  short: string;
   blurb: string;
   exempt: boolean;
 }[] = [
   {
     value: "regular",
-    label: "Regular Participant",
-    blurb: "Attending the summit. Registration fee applies.",
+    label: "Joining as a guest",
+    short: "Guest",
+    blurb: "Coming for the day. Registration fee applies.",
     exempt: false,
   },
   {
     value: "speaker",
-    label: "Speaker",
-    blurb: "Invited to speak or facilitate. No fee.",
+    label: "Speaking or facilitating",
+    short: "Speaker",
+    blurb: "Invited to lead a session. Nothing to pay.",
     exempt: true,
   },
   {
     value: "volunteer",
-    label: "Volunteer",
-    blurb: "Serving on an event team. No fee.",
+    label: "Serving on a team",
+    short: "Volunteer",
+    blurb: "Volunteering on the day. Nothing to pay.",
     exempt: true,
   },
   {
     value: "sponsor",
-    label: "Sponsor",
-    blurb: "Supporting the summit as a partner. No fee.",
+    label: "Supporting as a sponsor",
+    short: "Sponsor",
+    blurb: "Partnering with the summit. Nothing to pay.",
     exempt: true,
   },
 ];
+
+export function typeLabel(type: RegistrationType): string {
+  return REGISTRATION_TYPES.find((t) => t.value === type)?.label ?? type;
+}
+
+export function typeShort(type: RegistrationType): string {
+  return REGISTRATION_TYPES.find((t) => t.value === type)?.short ?? type;
+}
 
 export function isExempt(type: RegistrationType): boolean {
   return type !== "regular";
@@ -84,6 +97,30 @@ export function calculateTotal(
 
 export function formatPeso(amount: number): string {
   return `₱${amount.toLocaleString("en-PH")}`;
+}
+
+const NUMBER_WORDS = [
+  "zero", "one", "two", "three", "four", "five",
+  "six", "seven", "eight", "nine", "ten",
+];
+
+/** "Five of you at the ₱350 group rate" reads better than "5 of you". */
+export function spellCount(count: number): string {
+  return NUMBER_WORDS[count] ?? String(count);
+}
+
+export function titleCaseCount(count: number): string {
+  const word = spellCount(count);
+  return word.charAt(0).toUpperCase() + word.slice(1);
+}
+
+const ORDINALS = [
+  "", "first", "second", "third", "fourth", "fifth",
+  "sixth", "seventh", "eighth", "ninth", "tenth",
+];
+
+export function ordinal(position: number): string {
+  return ORDINALS[position] ?? `${position}th`;
 }
 
 // ------------------------------------------------------- breakout sessions

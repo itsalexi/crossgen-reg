@@ -95,9 +95,11 @@ export function participantIsComplete(participant: ParticipantDraft): boolean {
   return Object.keys(validateParticipant(participant)).length === 0;
 }
 
-export function displayName(participant: ParticipantDraft, index: number): string {
-  const name = participant.fullName.trim();
-  return name.length > 0 ? name : `Participant ${index + 1}`;
+/** First name only, so copy can address someone by name. Empty if unknown. */
+export function firstName(participant: ParticipantDraft): string {
+  const preferred = participant.preferredName.trim();
+  if (preferred.length > 0) return preferred.split(/\s+/)[0];
+  return participant.fullName.trim().split(/\s+/)[0] ?? "";
 }
 
 // ------------------------------------------------------------------ payment

@@ -6,26 +6,26 @@ import { api } from "@convex/_generated/api";
 import {
   ALLOWED_UPLOAD_EXTENSIONS,
   formatPeso,
+  GROUP_RATE,
   GROUP_THRESHOLD,
   PAYMENT_ACCOUNT,
   ratePerPerson,
+  spellCount,
+  titleCaseCount,
 } from "@convex/shared";
 import { CopyButton } from "@/components/CopyButton";
-import {
-  Button,
-  Callout,
-  Field,
-  SectionLabel,
-  Spinner,
-  TextInput,
-  cn,
-} from "@/components/ui";
+import { Button, Eyebrow, Field, Spinner, TextInput, cn } from "@/components/ui";
 import {
   formatBytes,
   validateFile,
   type PaymentDraft,
   type PaymentErrors,
 } from "@/lib/registerForm";
+
+function fileKind(name: string): string {
+  const ext = name.split(".").pop()?.toUpperCase() ?? "FILE";
+  return ext === "JPEG" ? "JPG" : ext.slice(0, 4);
+}
 
 export function PaymentStep({
   payment,
@@ -47,7 +47,7 @@ export function PaymentStep({
   const [dragging, setDragging] = useState(false);
 
   const rate = ratePerPerson(participantCount);
-  const isGroupRate = participantCount >= GROUP_THRESHOLD;
+  const grouped = participantCount >= GROUP_THRESHOLD;
 
   async function upload(file: File) {
     const problem = validateFile(file);
@@ -55,7 +55,6 @@ export function PaymentStep({
       setUploadError(problem);
       return;
     }
-
     setUploadError(null);
     setUploading(true);
     try {
@@ -65,16 +64,14 @@ export function PaymentStep({
         headers: { "Content-Type": file.type },
         body: file,
       });
-      if (!response.ok) {
-        throw new Error(`Upload failed with status ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`Upload failed (${response.status})`);
       const { storageId } = (await response.json()) as { storageId: string };
       onChange({ storageId, fileName: file.name, fileSize: file.size });
     } catch (error) {
       setUploadError(
         error instanceof Error
-          ? `Upload failed: ${error.message}`
-          : "Upload failed. Try again.",
+          ? `That didn't upload — ${error.message}. Try again?`
+          : "That didn't upload. Try again?",
       );
     } finally {
       setUploading(false);
@@ -83,72 +80,55 @@ export function PaymentStep({
 
   return (
     <div className="flex flex-col gap-7">
-      {/* ---------------------------------------------------------- summary */}
-      <div className="rounded-2xl border-2 border-cg-gold bg-cg-gold-tint p-6">
-        <SectionLabel>Total amount due</SectionLabel>
-        <p className="mt-2 font-display text-4xl font-bold text-ink">
+      {/* ------------------------------------------------------ the total */}
+      <div className="flex flex-col gap-1 rounded-2xl bg-cg-purple p-5 sm:flex-row sm:items-end sm:justify-between sm:gap-6 sm:px-6 sm:py-5.5">
+        <div className="flex flex-col gap-1">
+          <Eyebrow className="text-white/60">Your total</Eyebrow>
+          <span className="text-[14px] leading-normal text-white/80">
+            {titleCaseCount(participantCount)} of you at the {formatPeso(rate)}{" "}
+            {grouped ? "group rate" : "rate"}
+          </span>
+        </div>
+        <span className="font-display text-[36px] leading-none font-bold tracking-[-0.03em] text-cg-gold sm:text-[40px]">
           {formatPeso(total)}
-        </p>
-        <p className="mt-2 text-[14.5px] text-[#7a5c00]">
-          {participantCount} {participantCount === 1 ? "participant" : "participants"}{" "}
-          × {formatPeso(rate)}
-          {isGroupRate && (
-            <span className="ml-1.5 rounded-full bg-cg-gold px-2 py-0.5 text-[11.5px] font-bold text-ink">
-              GROUP RATE
-            </span>
-          )}
-        </p>
-        {!isGroupRate && (
-          <p className="mt-3 text-[13px] leading-relaxed text-[#7a5c00]">
-            Add {GROUP_THRESHOLD - participantCount} more{" "}
-            {GROUP_THRESHOLD - participantCount === 1 ? "participant" : "participants"}{" "}
-            to this registration to reach the group rate of {formatPeso(350)} per
-            person.
-          </p>
-        )}
+        </span>
       </div>
 
-      {/* ---------------------------------------------------------- account */}
-      <div>
-        <SectionLabel>Send payment to</SectionLabel>
-        <dl className="mt-3 divide-y divide-line rounded-xl border border-line">
-          {[
-            ["Bank", PAYMENT_ACCOUNT.bank],
-            ["Account name", PAYMENT_ACCOUNT.accountName],
-            ["Branch", PAYMENT_ACCOUNT.branch],
-          ].map(([label, value]) => (
-            <div
-              key={label}
-              className="flex items-center justify-between gap-4 px-4 py-3"
-            >
-              <dt className="text-sm text-muted">{label}</dt>
-              <dd className="text-sm font-semibold text-ink">{value}</dd>
-            </div>
-          ))}
-          <div className="flex items-center justify-between gap-4 px-4 py-3">
-            <dt className="text-sm text-muted">Account number</dt>
-            <dd className="flex items-center gap-2.5">
-              <span className="font-mono text-sm font-semibold text-ink">
-                {PAYMENT_ACCOUNT.accountNumber}
-              </span>
-              <CopyButton value={PAYMENT_ACCOUNT.accountNumber} />
+      {/* --------------------------------------------------- where to send */}
+      <div className="flex flex-col gap-4 border-b border-line pb-6 sm:flex-row sm:items-end sm:justify-between sm:gap-5">
+        <div className="flex flex-col gap-2">
+          <Eyebrow>Deposit to</Eyebrow>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-5 gap-y-1.5 text-[14.5px] leading-normal">
+            <dt className="text-muted">Bank</dt>
+            <dd className="font-medium">
+              {PAYMENT_ACCOUNT.bank} · {PAYMENT_ACCOUNT.branch}
             </dd>
-          </div>
-        </dl>
+            <dt className="text-muted">Account name</dt>
+            <dd className="font-medium">{PAYMENT_ACCOUNT.accountName}</dd>
+            <dt className="text-muted">Account number</dt>
+            <dd className="font-semibold tracking-[0.02em]">
+              {PAYMENT_ACCOUNT.accountNumber}
+            </dd>
+          </dl>
+        </div>
+        <CopyButton
+          value={PAYMENT_ACCOUNT.accountNumber}
+          label="Copy number"
+          className="h-10 w-full justify-center px-4 text-[14px] sm:w-auto"
+        />
       </div>
 
-      {/* ----------------------------------------------------------- fields */}
+      {/* ------------------------------------------------------ the fields */}
       <div className="grid gap-5 sm:grid-cols-2">
         <TextInput
-          label="Payment reference number"
+          label="Reference number on the slip"
           value={payment.paymentReference}
           error={errors.paymentReference}
-          placeholder="e.g. BDO123456"
-          hint="The reference or transaction number on your receipt."
+          placeholder="BDO123456"
           onChange={(e) => onChange({ paymentReference: e.target.value })}
         />
         <TextInput
-          label="Date paid"
+          label="When you paid"
           type="date"
           value={payment.datePaid}
           error={errors.datePaid}
@@ -156,11 +136,11 @@ export function PaymentStep({
         />
       </div>
 
-      {/* ----------------------------------------------------------- upload */}
+      {/* ------------------------------------------------------ the upload */}
       <Field
-        label="Proof of payment"
+        label="Photo of the receipt"
         error={errors.storageId ?? uploadError ?? undefined}
-        hint="JPG, PNG, or PDF. Maximum 10 MB."
+        hint={`A photo or PDF is fine, up to 10 MB. One for ${participantCount > 1 ? "the whole group" : "your registration"}.`}
       >
         <input
           ref={fileInput}
@@ -175,40 +155,30 @@ export function PaymentStep({
         />
 
         {payment.storageId !== null ? (
-          <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-            <svg
-              viewBox="0 0 20 20"
-              className="size-5 shrink-0 text-emerald-600"
-              fill="none"
-              aria-hidden="true"
-            >
-              <circle cx="10" cy="10" r="8.25" stroke="currentColor" strokeWidth="1.5" />
-              <path
-                d="m6.5 10.25 2.25 2.25 4.75-5"
-                stroke="currentColor"
-                strokeWidth="1.75"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-emerald-900">
-                {payment.fileName}
-              </p>
-              <p className="text-[12.5px] text-emerald-700">
-                {formatBytes(payment.fileSize)} · uploaded
-              </p>
+          <div className="flex items-center justify-between gap-4 rounded-2xl border border-line bg-surface px-4 py-4">
+            <div className="flex min-w-0 items-center gap-3.5">
+              <span className="flex size-10 flex-none items-center justify-center rounded-[10px] bg-cg-blue-tint text-[12px] font-semibold text-cg-blue-ink">
+                {fileKind(payment.fileName)}
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-[14.5px] font-medium text-ink">
+                  {payment.fileName}
+                </p>
+                <p className="text-[13px] text-muted">
+                  {formatBytes(payment.fileSize)}
+                </p>
+              </div>
             </div>
             <Button
               type="button"
               size="sm"
-              variant="ghost"
+              variant="outline"
               onClick={() => {
                 onChange({ storageId: null, fileName: "", fileSize: 0 });
                 setUploadError(null);
               }}
             >
-              Replace
+              Change
             </Button>
           </div>
         ) : (
@@ -228,45 +198,27 @@ export function PaymentStep({
               if (file) void upload(file);
             }}
             className={cn(
-              "flex w-full flex-col items-center gap-2 rounded-xl border-2 border-dashed p-8 transition-colors",
+              "flex min-h-24 w-full flex-col items-center justify-center gap-1 rounded-2xl border-[1.5px] border-dashed p-5 transition-colors",
               dragging
-                ? "border-cg-purple bg-cg-purple-tint"
-                : "border-line bg-surface hover:border-cg-purple-soft/60 hover:bg-cg-purple-tint/40",
+                ? "border-cg-purple-soft bg-cg-purple-tint"
+                : "border-[#cfc9de] bg-surface hover:border-cg-purple-soft hover:bg-cg-purple-tint",
               uploading && "cursor-wait opacity-70",
             )}
           >
             {uploading ? (
               <>
                 <Spinner className="size-5 text-cg-purple" />
-                <span className="text-sm font-medium text-muted">Uploading…</span>
+                <span className="text-[14px] font-medium text-muted">
+                  Uploading…
+                </span>
               </>
             ) : (
               <>
-                <svg
-                  viewBox="0 0 24 24"
-                  className="size-6 text-cg-purple"
-                  fill="none"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M12 15.5V4m0 0L7.5 8.5M12 4l4.5 4.5"
-                    stroke="currentColor"
-                    strokeWidth="1.75"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M3.5 15v2.5a3 3 0 0 0 3 3h11a3 3 0 0 0 3-3V15"
-                    stroke="currentColor"
-                    strokeWidth="1.75"
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <span className="text-sm font-semibold text-ink">
-                  Upload your screenshot or receipt
+                <span className="text-[15px] font-semibold text-cg-purple">
+                  Take a photo or choose a file
                 </span>
-                <span className="text-[12.5px] text-muted">
-                  Click to browse, or drag a file here
+                <span className="text-[13px] text-muted">
+                  Photo or PDF, up to 10 MB
                 </span>
               </>
             )}
@@ -274,10 +226,12 @@ export function PaymentStep({
         )}
       </Field>
 
-      <Callout tone="info">
-        We record what you submit here. We do not verify payments automatically —
-        the CrossGen team reviews them separately.
-      </Callout>
+      <p className="text-[13px] leading-normal text-muted">
+        We keep what you send here for the team to check by hand. Nothing is
+        verified automatically, so don&rsquo;t worry if it takes a few days.
+        {participantCount >= GROUP_THRESHOLD &&
+          ` The ${formatPeso(GROUP_RATE)} rate is already applied for ${spellCount(participantCount)}.`}
+      </p>
     </div>
   );
 }

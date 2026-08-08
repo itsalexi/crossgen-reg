@@ -1,7 +1,11 @@
 "use client";
 
-import type { ButtonHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
-import type { InputHTMLAttributes } from "react";
+import type {
+  ButtonHTMLAttributes,
+  InputHTMLAttributes,
+  ReactNode,
+  SelectHTMLAttributes,
+} from "react";
 import { useId } from "react";
 
 export function cn(...parts: (string | false | null | undefined)[]): string {
@@ -11,23 +15,22 @@ export function cn(...parts: (string | false | null | undefined)[]): string {
 // ------------------------------------------------------------------ button
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "secondary" | "ghost" | "danger";
+  variant?: "primary" | "outline" | "quiet";
   size?: "sm" | "md" | "lg";
   loading?: boolean;
+  full?: boolean;
 };
 
-const BUTTON_VARIANTS: Record<string, string> = {
-  primary:
-    "bg-cg-gold text-ink hover:bg-cg-gold-soft active:bg-cg-gold shadow-sm shadow-cg-gold/30",
-  secondary:
-    "bg-white text-cg-purple border border-line hover:border-cg-purple-soft hover:bg-cg-purple-tint",
-  ghost: "bg-transparent text-muted hover:text-ink hover:bg-surface",
-  danger: "bg-white text-red-600 border border-red-200 hover:bg-red-50",
+const VARIANTS: Record<string, string> = {
+  primary: "bg-cg-gold text-ink hover:bg-cg-gold-soft",
+  outline:
+    "bg-white text-cg-purple border border-line hover:bg-cg-purple-tint hover:border-cg-purple-soft",
+  quiet: "bg-transparent text-muted hover:text-ink",
 };
 
-const BUTTON_SIZES: Record<string, string> = {
-  sm: "h-9 px-3.5 text-sm rounded-lg",
-  md: "h-11 px-5 text-[15px] rounded-xl",
+const SIZES: Record<string, string> = {
+  sm: "h-9.5 px-3.5 text-[13.5px] rounded-[10px]",
+  md: "h-12 px-6 text-[15px] rounded-xl",
   lg: "h-13 px-7 text-base rounded-xl",
 };
 
@@ -35,6 +38,7 @@ export function Button({
   variant = "primary",
   size = "md",
   loading = false,
+  full = false,
   className,
   children,
   disabled,
@@ -45,10 +49,11 @@ export function Button({
       {...props}
       disabled={disabled || loading}
       className={cn(
-        "inline-flex items-center justify-center gap-2 font-semibold transition-all duration-150",
-        "disabled:cursor-not-allowed disabled:opacity-50",
-        BUTTON_VARIANTS[variant],
-        BUTTON_SIZES[size],
+        "inline-flex items-center justify-center gap-2 font-semibold transition-colors",
+        "disabled:cursor-not-allowed disabled:opacity-45",
+        VARIANTS[variant],
+        SIZES[size],
+        full && "w-full",
         className,
       )}
     >
@@ -66,14 +71,7 @@ export function Spinner({ className }: { className?: string }) {
       fill="none"
       aria-hidden="true"
     >
-      <circle
-        cx="12"
-        cy="12"
-        r="9"
-        stroke="currentColor"
-        strokeWidth="3"
-        opacity="0.25"
-      />
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" opacity="0.25" />
       <path
         d="M21 12a9 9 0 0 0-9-9"
         stroke="currentColor"
@@ -86,29 +84,28 @@ export function Spinner({ className }: { className?: string }) {
 
 // ------------------------------------------------------------------- field
 
-const CONTROL_CLASS =
-  "w-full rounded-xl border bg-white px-3.5 text-[15px] text-ink transition-colors " +
-  "placeholder:text-muted/60 focus:outline-none focus:ring-4";
+// 16px on phones so iOS doesn't zoom the viewport on focus; 15px from sm up.
+const CONTROL =
+  "w-full rounded-xl border bg-white px-3.5 h-12 sm:h-11 text-[16px] sm:text-[15px] " +
+  "text-ink transition-colors placeholder:text-faint focus:outline-none";
 
-const CONTROL_OK =
-  "border-line focus:border-cg-purple-soft focus:ring-cg-purple-soft/15";
-
-const CONTROL_ERROR = "border-red-300 focus:border-red-400 focus:ring-red-100";
+const CONTROL_OK = "border-line focus:border-cg-purple-soft";
+const CONTROL_BAD = "border-red-300 focus:border-red-400";
 
 export function Field({
   label,
   error,
   hint,
   optional,
-  children,
   htmlFor,
+  children,
 }: {
   label: string;
   error?: string;
   hint?: string;
   optional?: boolean;
-  children: ReactNode;
   htmlFor?: string;
+  children: ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
@@ -123,9 +120,9 @@ export function Field({
       </label>
       {children}
       {error ? (
-        <p className="text-[12.5px] font-medium text-red-600">{error}</p>
+        <p className="text-[12.5px] leading-snug font-medium text-red-600">{error}</p>
       ) : hint ? (
-        <p className="text-[12.5px] text-muted">{hint}</p>
+        <p className="text-[12.5px] leading-snug text-muted">{hint}</p>
       ) : null}
     </div>
   );
@@ -146,27 +143,16 @@ export function TextInput({
   className,
   ...props
 }: TextInputProps) {
-  const generatedId = useId();
-  const id = props.id ?? generatedId;
+  const generated = useId();
+  const id = props.id ?? generated;
 
   return (
-    <Field
-      label={label}
-      error={error}
-      hint={hint}
-      optional={optional}
-      htmlFor={id}
-    >
+    <Field label={label} error={error} hint={hint} optional={optional} htmlFor={id}>
       <input
         {...props}
         id={id}
         aria-invalid={error ? true : undefined}
-        className={cn(
-          CONTROL_CLASS,
-          "h-11",
-          error ? CONTROL_ERROR : CONTROL_OK,
-          className,
-        )}
+        className={cn(CONTROL, error ? CONTROL_BAD : CONTROL_OK, className)}
       />
     </Field>
   );
@@ -176,7 +162,6 @@ type SelectInputProps = SelectHTMLAttributes<HTMLSelectElement> & {
   label: string;
   error?: string;
   hint?: string;
-  optional?: boolean;
   placeholder?: string;
   options: readonly { value: string | number; label: string }[];
 };
@@ -185,39 +170,32 @@ export function SelectInput({
   label,
   error,
   hint,
-  optional,
-  placeholder = "Select…",
+  placeholder = "Choose one",
   options,
   className,
   ...props
 }: SelectInputProps) {
-  const generatedId = useId();
-  const id = props.id ?? generatedId;
+  const generated = useId();
+  const id = props.id ?? generated;
 
   return (
-    <Field
-      label={label}
-      error={error}
-      hint={hint}
-      optional={optional}
-      htmlFor={id}
-    >
+    <Field label={label} error={error} hint={hint} htmlFor={id}>
       <div className="relative">
         <select
           {...props}
           id={id}
           aria-invalid={error ? true : undefined}
           className={cn(
-            CONTROL_CLASS,
-            "h-11 cursor-pointer appearance-none pr-10",
-            props.value === "" && "text-muted/70",
-            error ? CONTROL_ERROR : CONTROL_OK,
+            CONTROL,
+            "cursor-pointer appearance-none pr-10",
+            props.value === "" && "text-faint",
+            error ? CONTROL_BAD : CONTROL_OK,
             className,
           )}
         >
           <option value="">{placeholder}</option>
           {options.map((option) => (
-            <option key={option.value} value={option.value}>
+            <option key={option.value} value={option.value} className="text-ink">
               {option.label}
             </option>
           ))}
@@ -241,9 +219,74 @@ export function SelectInput({
   );
 }
 
-// ------------------------------------------------------------ misc surfaces
+/** The bordered card used for every choice in a radio group. */
+export function ChoiceCard({
+  selected,
+  onSelect,
+  name,
+  title,
+  blurb,
+  align = "start",
+}: {
+  selected: boolean;
+  onSelect: () => void;
+  name: string;
+  title: ReactNode;
+  blurb?: string;
+  align?: "start" | "center";
+}) {
+  const id = useId();
 
-export function Card({
+  return (
+    <label
+      htmlFor={id}
+      className={cn(
+        "flex cursor-pointer gap-3.5 rounded-xl border px-4 py-3.5 transition-colors sm:px-[18px]",
+        align === "start" ? "items-start" : "items-center",
+        selected
+          ? "border-[1.5px] border-cg-purple-soft bg-cg-purple-tint"
+          : "border-line bg-white hover:border-cg-purple-soft hover:bg-surface",
+      )}
+    >
+      <input
+        id={id}
+        type="radio"
+        name={name}
+        checked={selected}
+        onChange={onSelect}
+        className="sr-only"
+      />
+      <span
+        className={cn(
+          "size-[18px] flex-none rounded-full bg-white transition-all",
+          align === "start" && "mt-0.5",
+          selected
+            ? "border-5 border-cg-purple"
+            : "border-[1.5px] border-faint",
+        )}
+        aria-hidden="true"
+      />
+      <span className="flex flex-col gap-0.5">
+        <span
+          className={cn(
+            "text-[15px] leading-snug sm:text-[15px]",
+            blurb ? "font-semibold text-[16px]" : selected ? "font-medium" : "font-normal",
+            "text-ink",
+          )}
+        >
+          {title}
+        </span>
+        {blurb && (
+          <span className="text-[14px] leading-normal text-muted">{blurb}</span>
+        )}
+      </span>
+    </label>
+  );
+}
+
+// ------------------------------------------------------------------ pieces
+
+export function Eyebrow({
   children,
   className,
 }: {
@@ -251,61 +294,35 @@ export function Card({
   className?: string;
 }) {
   return (
-    <div
+    <span
       className={cn(
-        "rounded-2xl border border-line bg-white p-6 sm:p-7",
-        className,
+        "text-[11.5px] font-semibold tracking-[0.09em] uppercase",
+        className ?? "text-muted",
       )}
     >
       {children}
-    </div>
+    </span>
   );
 }
 
-export function Callout({
-  tone = "info",
-  title,
-  children,
-}: {
-  tone?: "info" | "warn" | "error" | "success";
-  title?: string;
-  children: ReactNode;
-}) {
-  const tones = {
-    info: "bg-cg-blue-tint border-cg-blue/25 text-ink",
-    warn: "bg-cg-orange-tint border-cg-orange/35 text-ink",
-    error: "bg-red-50 border-red-200 text-red-900",
-    success: "bg-emerald-50 border-emerald-200 text-emerald-900",
-  } as const;
-
-  return (
-    <div className={cn("rounded-xl border p-4 text-sm", tones[tone])}>
-      {title && <p className="mb-1 font-semibold">{title}</p>}
-      <div className="leading-relaxed">{children}</div>
-    </div>
-  );
-}
-
-export function Badge({
+export function Pill({
   children,
   tone = "purple",
 }: {
   children: ReactNode;
-  tone?: "purple" | "gold" | "blue" | "teal" | "orange" | "neutral";
+  tone?: "purple" | "teal" | "gold" | "muted";
 }) {
   const tones = {
     purple: "bg-cg-purple-tint text-cg-purple",
-    gold: "bg-cg-gold-tint text-[#8a6800]",
-    blue: "bg-cg-blue-tint text-[#1f6d99]",
     teal: "bg-pcec-teal-tint text-pcec-teal-deep",
-    orange: "bg-cg-orange-tint text-[#a5622a]",
-    neutral: "bg-surface text-muted",
+    gold: "bg-cg-gold-tint text-cg-gold-ink",
+    muted: "bg-surface text-muted",
   } as const;
 
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-1 text-[11.5px] font-semibold tracking-wide",
+        "inline-flex items-center rounded-full px-3 py-1.5 text-[12.5px] font-semibold",
         tones[tone],
       )}
     >
@@ -314,10 +331,57 @@ export function Badge({
   );
 }
 
-export function SectionLabel({ children }: { children: ReactNode }) {
+export function Callout({
+  tone = "gold",
+  title,
+  children,
+}: {
+  tone?: "gold" | "teal" | "error";
+  title?: string;
+  children: ReactNode;
+}) {
+  const tones = {
+    gold: "bg-cg-gold-tint text-ink",
+    teal: "bg-pcec-teal-tint text-ink",
+    error: "bg-red-50 text-red-900",
+  } as const;
+  const titles = {
+    gold: "text-cg-gold-ink",
+    teal: "text-pcec-teal-deep",
+    error: "text-red-700",
+  } as const;
+
   return (
-    <p className="text-[11.5px] font-semibold tracking-[0.09em] text-muted uppercase">
-      {children}
-    </p>
+    <div className={cn("rounded-xl px-4.5 py-4", tones[tone])}>
+      {title && (
+        <p className={cn("text-[14.5px] font-semibold", titles[tone])}>{title}</p>
+      )}
+      <div className="text-[14.5px] leading-normal">{children}</div>
+    </div>
+  );
+}
+
+/** label / value row with a hairline above it — the design's main list idiom. */
+export function Row({
+  label,
+  value,
+  strong,
+}: {
+  label: ReactNode;
+  value: ReactNode;
+  strong?: boolean;
+}) {
+  return (
+    <div className="flex justify-between gap-5 border-t border-line py-3">
+      <span className="text-[14.5px] text-muted">{label}</span>
+      <span
+        className={cn(
+          "text-right text-[14.5px] text-ink",
+          strong ? "font-semibold" : "font-medium",
+        )}
+      >
+        {value}
+      </span>
+    </div>
   );
 }

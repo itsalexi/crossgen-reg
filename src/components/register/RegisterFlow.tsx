@@ -11,32 +11,37 @@ import {
 } from "convex/react";
 import { ConvexError } from "convex/values";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import {
   calculateTotal,
   EVENT,
   formatPeso,
+  GROUP_RATE,
   GROUP_THRESHOLD,
   isExempt,
   MAX_PARTICIPANTS,
+  ordinal,
   REGISTRATION_TYPES,
+  spellCount,
+  titleCaseCount,
   type RegistrationType,
 } from "@convex/shared";
+import { AccountBar, BottomBar, TopBar } from "@/components/brand";
 import {
   Button,
   Callout,
-  Card,
-  SectionLabel,
+  ChoiceCard,
+  Eyebrow,
   Spinner,
   TextInput,
   cn,
 } from "@/components/ui";
 import {
-  displayName,
   emptyParticipant,
   emptyPayment,
+  firstName,
   participantIsComplete,
   validateParticipant,
   validatePayment,
@@ -49,76 +54,37 @@ import { ParticipantForm } from "./ParticipantForm";
 import { PaymentStep } from "./PaymentStep";
 import { ReviewStep } from "./ReviewStep";
 
-type Step = "type" | "participants" | "payment" | "review";
+type Step = "type" | "people" | "payment" | "review";
+
+const STEP_TITLES: Record<Step, string> = {
+  type: "Who's coming",
+  people: "Their details",
+  payment: "Payment",
+  review: "One last look",
+};
 
 function stepsFor(type: RegistrationType): Step[] {
   return isExempt(type)
-    ? ["type", "participants", "review"]
-    : ["type", "participants", "payment", "review"];
+    ? ["type", "people", "review"]
+    : ["type", "people", "payment", "review"];
 }
 
-const STEP_LABELS: Record<Step, string> = {
-  type: "Type",
-  participants: "Participants",
-  payment: "Payment",
-  review: "Review",
-};
+// ------------------------------------------------------------- sign-in gate
 
-// --------------------------------------------------------------- chrome bits
-
-function StepBar({ steps, current }: { steps: Step[]; current: Step }) {
-  const currentIndex = steps.indexOf(current);
-
-  return (
-    <ol className="flex items-center gap-2" aria-label="Registration progress">
-      {steps.map((step, index) => {
-        const state =
-          index < currentIndex ? "done" : index === currentIndex ? "now" : "todo";
-
-        return (
-          <li key={step} className="flex flex-1 items-center gap-2">
-            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-              <span
-                className={cn(
-                  "h-1 rounded-full transition-colors",
-                  state === "todo" ? "bg-line" : "bg-cg-gold",
-                )}
-              />
-              <span
-                className={cn(
-                  "truncate text-[12px] font-semibold",
-                  state === "now"
-                    ? "text-ink"
-                    : state === "done"
-                      ? "text-muted"
-                      : "text-muted/60",
-                )}
-              >
-                {STEP_LABELS[step]}
-              </span>
-            </div>
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
-function SignInPanel() {
+function SignInScreen() {
   const { signIn } = useAuthActions();
   const [pending, setPending] = useState(false);
 
   return (
-    <Card className="text-center">
-      <h2 className="font-display text-xl font-bold text-ink">
-        Sign in to register
-      </h2>
-      <p className="mx-auto mt-2 max-w-sm text-[15px] leading-relaxed text-muted">
-        We use your Google account to identify you as the registrant and to send
-        your confirmation email.
+    <div className="mx-auto flex w-full max-w-md flex-col items-start gap-5 px-5 py-16 sm:py-24">
+      <h1 className="font-display text-[30px] leading-tight font-semibold text-ink">
+        First, tell us who you are
+      </h1>
+      <p className="text-[15px] leading-relaxed text-muted">
+        Sign in with Google so we know who to send the confirmation to. You can
+        register your whole family from one account.
       </p>
       <Button
-        className="mt-6"
         size="lg"
         loading={pending}
         onClick={() => {
@@ -127,7 +93,7 @@ function SignInPanel() {
         }}
       >
         {!pending && (
-          <svg viewBox="0 0 18 18" className="size-4.5" aria-hidden="true">
+          <svg viewBox="0 0 18 18" className="size-[18px]" aria-hidden="true">
             <path
               fill="#4285F4"
               d="M17.64 9.2c0-.64-.06-1.25-.17-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62Z"
@@ -148,7 +114,63 @@ function SignInPanel() {
         )}
         Continue with Google
       </Button>
-    </Card>
+    </div>
+  );
+}
+
+// -------------------------------------------------------------- step header
+
+function StepHeader({
+  index,
+  total,
+  detail,
+}: {
+  index: number;
+  total: number;
+  detail: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 border-b border-line px-5 py-3.5 sm:px-10 sm:py-4">
+      <span className="flex-none rounded-full bg-cg-purple-tint px-3 py-1.5 text-[13px] font-semibold text-cg-purple">
+        Step {index + 1} of {total}
+      </span>
+      <span className="hidden truncate text-[14px] font-medium text-muted sm:block">
+        {detail}
+      </span>
+      <div className="ml-2 h-1 flex-1 overflow-hidden rounded-full bg-line">
+        <div
+          className="h-1 rounded-full bg-cg-purple-soft transition-[width] duration-300"
+          style={{ width: `${((index + 1) / total) * 100}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+/** The 300px explanatory column the design puts to the left of every step. */
+function StepAside({
+  title,
+  blurb,
+  children,
+}: {
+  title: string;
+  blurb?: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-4 lg:sticky lg:top-6">
+      <div className="flex flex-col gap-2.5">
+        <h1 className="font-display text-[26px] leading-[1.15] font-semibold text-ink sm:text-[30px]">
+          {title}
+        </h1>
+        {blurb && (
+          <p className="text-[15px] leading-relaxed text-muted text-pretty">
+            {blurb}
+          </p>
+        )}
+      </div>
+      {children}
+    </div>
   );
 }
 
@@ -160,8 +182,6 @@ export function RegisterFlow() {
   const me = useQuery(api.users.me, isAuthenticated ? {} : "skip");
   const submitRegistration = useMutation(api.registrations.submit);
 
-  // Generated once per mounted form. Makes a retried submit return the original
-  // registration instead of creating a second one.
   const [idempotencyKey] = useState(() => crypto.randomUUID());
 
   const [registrationType, setRegistrationType] =
@@ -173,22 +193,21 @@ export function RegisterFlow() {
   const [payment, setPayment] = useState<PaymentDraft>(emptyPayment());
 
   const [step, setStep] = useState<Step>("type");
-  const [activeParticipant, setActiveParticipant] = useState(0);
-  const [participantErrors, setParticipantErrors] = useState<ParticipantErrors[]>(
-    [{}],
-  );
+  const [active, setActive] = useState(0);
+  const [participantErrors, setParticipantErrors] = useState<ParticipantErrors[]>([{}]);
   const [paymentErrors, setPaymentErrors] = useState<PaymentErrors>({});
+  const [groupNameError, setGroupNameError] = useState<string | undefined>();
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const steps = stepsFor(registrationType);
+  const stepIndex = steps.indexOf(step);
   const exempt = isExempt(registrationType);
-  const total = calculateTotal(registrationType, participants.length);
+  const count = participants.length;
+  const total = calculateTotal(registrationType, count);
   const topRef = useRef<HTMLDivElement>(null);
   const prefilled = useRef(false);
 
-  // Prefill the first participant from the Google account, once. Later edits
-  // by the user are never overwritten.
   useEffect(() => {
     if (prefilled.current || me == null) return;
     prefilled.current = true;
@@ -199,17 +218,20 @@ export function RegisterFlow() {
     });
   }, [me]);
 
+  function scrollTop() {
+    topRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+  }
+
   function goTo(next: Step) {
     setStep(next);
     setSubmitError(null);
-    topRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+    scrollTop();
   }
 
   function patchParticipant(index: number, patch: Partial<ParticipantDraft>) {
     setParticipants((current) =>
       current.map((p, i) => (i === index ? { ...p, ...patch } : p)),
     );
-    // Clear only the fields being edited, so untouched errors stay visible.
     setParticipantErrors((current) =>
       current.map((errors, i) => {
         if (i !== index) return errors;
@@ -222,43 +244,60 @@ export function RegisterFlow() {
     );
   }
 
-  function setParticipantCount(count: number) {
-    const clamped = Math.max(1, Math.min(MAX_PARTICIPANTS, count));
+  function setCount(next: number) {
+    const clamped = Math.max(1, Math.min(MAX_PARTICIPANTS, next));
+
     setParticipants((current) => {
       if (clamped === current.length) return current;
       if (clamped < current.length) return current.slice(0, clamped);
+      // Most families share a church and a city. Carry those over so the
+      // second through fifth person are half-filled before anyone starts.
+      const seed = {
+        churchOrganization: current[0].churchOrganization,
+        cityMunicipality: current[0].cityMunicipality,
+      };
       return [
         ...current,
-        ...Array.from({ length: clamped - current.length }, emptyParticipant),
+        ...Array.from({ length: clamped - current.length }, () => ({
+          ...emptyParticipant(),
+          ...seed,
+        })),
       ];
     });
-    setParticipantErrors((current) => {
-      if (clamped === current.length) return current;
-      if (clamped < current.length) return current.slice(0, clamped);
-      return [
-        ...current,
-        ...Array.from({ length: clamped - current.length }, () => ({})),
-      ];
-    });
-    setActiveParticipant((index) => Math.min(index, clamped - 1));
+
+    setParticipantErrors((current) =>
+      clamped < current.length
+        ? current.slice(0, clamped)
+        : [
+            ...current,
+            ...Array.from({ length: clamped - current.length }, () => ({})),
+          ],
+    );
+    setActive((index) => Math.min(index, clamped - 1));
   }
 
-  function advanceFromParticipant() {
-    const errors = validateParticipant(participants[activeParticipant]);
+  function leaveTypeStep() {
+    if (count > 1 && groupName.trim().length === 0) {
+      setGroupNameError("Give the group a name so organizers can find you.");
+      return;
+    }
+    goTo("people");
+  }
+
+  function advanceFromPerson() {
+    const errors = validateParticipant(participants[active]);
     if (Object.keys(errors).length > 0) {
       setParticipantErrors((current) =>
-        current.map((e, i) => (i === activeParticipant ? errors : e)),
+        current.map((e, i) => (i === active ? errors : e)),
       );
-      topRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+      scrollTop();
       return;
     }
-
-    if (activeParticipant < participants.length - 1) {
-      setActiveParticipant(activeParticipant + 1);
-      topRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+    if (active < count - 1) {
+      setActive(active + 1);
+      scrollTop();
       return;
     }
-
     goTo(exempt ? "review" : "payment");
   }
 
@@ -272,17 +311,14 @@ export function RegisterFlow() {
   }
 
   async function handleSubmit() {
-    // Re-validate everything: a user can reach review, go back, break a field,
-    // and jump forward again.
     const allErrors = participants.map(validateParticipant);
-    const firstBroken = allErrors.findIndex((e) => Object.keys(e).length > 0);
-    if (firstBroken !== -1) {
+    const broken = allErrors.findIndex((e) => Object.keys(e).length > 0);
+    if (broken !== -1) {
       setParticipantErrors(allErrors);
-      setActiveParticipant(firstBroken);
-      goTo("participants");
+      setActive(broken);
+      goTo("people");
       return;
     }
-
     if (!exempt) {
       const errors = validatePayment(payment);
       if (Object.keys(errors).length > 0) {
@@ -324,314 +360,284 @@ export function RegisterFlow() {
                 fileName: payment.fileName,
               },
       });
-
       router.push(`/registration/${result.registrationId}`);
     } catch (error) {
       setSubmitError(
         error instanceof ConvexError
           ? String(error.data)
-          : "Something went wrong submitting your registration. Please try again.",
+          : "Something went wrong sending this in. Please try again.",
       );
       setSubmitting(false);
     }
   }
 
-  const completedCount = useMemo(
-    () => participants.filter(participantIsComplete).length,
-    [participants],
-  );
+  const activeName = firstName(participants[active]) || "this person";
+  const doneCount = participants.filter(participantIsComplete).length;
 
   return (
-    <div ref={topRef} className="mx-auto w-full max-w-2xl scroll-mt-24 px-5 py-10">
+    <div className="flex min-h-dvh flex-col">
+      <TopBar right={<AccountBar />} />
+
       <AuthLoading>
-        <div className="flex justify-center py-20">
+        <div className="flex flex-1 items-center justify-center py-24">
           <Spinner className="size-6 text-cg-purple" />
         </div>
       </AuthLoading>
 
       <Unauthenticated>
-        <SignInPanel />
+        <main className="flex-1">
+          <SignInScreen />
+        </main>
       </Unauthenticated>
 
       <Authenticated>
-        <StepBar steps={steps} current={step} />
+        <StepHeader
+          index={stepIndex}
+          total={steps.length}
+          detail={
+            step === "people" && count > 1
+              ? `${activeName}, ${ordinal(active + 1)} of ${spellCount(count)}`
+              : STEP_TITLES[step]
+          }
+        />
 
-        <div className="mt-8">
+        <main ref={topRef} className="flex-1 scroll-mt-4">
           {/* ------------------------------------------------------- type */}
           {step === "type" && (
-            <div className="flex flex-col gap-7">
-              <div>
-                <h1 className="font-display text-2xl font-bold text-ink">
-                  What kind of registration is this?
-                </h1>
-                <p className="mt-1.5 text-[15px] text-muted">
-                  One type per registration — everyone you add here shares it.
-                </p>
-              </div>
+            <div className="mx-auto grid w-full max-w-[1200px] gap-8 px-5 py-10 sm:px-10 sm:py-12 lg:grid-cols-[300px_1fr] lg:gap-16">
+              <StepAside
+                title="Who's coming with you?"
+                blurb="Register everyone at once and we'll keep them together. If someone is serving or speaking, they can register separately."
+              />
 
-              <div
-                role="radiogroup"
-                aria-label="Registration type"
-                className="grid gap-3 sm:grid-cols-2"
-              >
-                {REGISTRATION_TYPES.map((option) => {
-                  const selected = registrationType === option.value;
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      role="radio"
-                      aria-checked={selected}
-                      onClick={() => setRegistrationType(option.value)}
-                      className={cn(
-                        "rounded-2xl border p-5 text-left transition-colors",
-                        selected
-                          ? "border-cg-purple bg-cg-purple-tint"
-                          : "border-line bg-white hover:border-cg-purple-soft/50 hover:bg-surface",
-                      )}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="font-display font-bold text-ink">
-                          {option.label}
-                        </span>
-                        <span
-                          className={cn(
-                            "flex size-5 shrink-0 items-center justify-center rounded-full border-2",
-                            selected ? "border-cg-purple" : "border-line",
-                          )}
-                          aria-hidden="true"
-                        >
-                          {selected && (
-                            <span className="size-2.5 rounded-full bg-cg-purple" />
-                          )}
-                        </span>
-                      </div>
-                      <p className="mt-1.5 text-[13.5px] leading-relaxed text-muted">
-                        {option.blurb}
-                      </p>
-                    </button>
-                  );
-                })}
-              </div>
+              <div className="flex max-w-[640px] flex-col gap-2.5">
+                {REGISTRATION_TYPES.map((option) => (
+                  <ChoiceCard
+                    key={option.value}
+                    name="registration-type"
+                    selected={registrationType === option.value}
+                    onSelect={() => setRegistrationType(option.value)}
+                    title={option.label}
+                    blurb={option.blurb}
+                  />
+                ))}
 
-              <div className="rounded-2xl border border-line bg-white p-6">
-                <SectionLabel>How many participants?</SectionLabel>
-                <div className="mt-3 flex items-center gap-4">
-                  <div className="flex items-center gap-1 rounded-xl border border-line p-1">
-                    <button
-                      type="button"
-                      aria-label="Remove a participant"
-                      disabled={participants.length <= 1}
-                      onClick={() => setParticipantCount(participants.length - 1)}
-                      className="flex size-9 items-center justify-center rounded-lg text-lg font-semibold text-cg-purple transition-colors hover:bg-cg-purple-tint disabled:opacity-30 disabled:hover:bg-transparent"
-                    >
-                      −
-                    </button>
-                    <span className="w-10 text-center font-display text-lg font-bold text-ink">
-                      {participants.length}
+                <div className="mt-5 grid gap-5 border-t border-line pt-6 sm:grid-cols-[180px_1fr]">
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[13px] font-medium text-ink">
+                      How many of you?
                     </span>
-                    <button
-                      type="button"
-                      aria-label="Add a participant"
-                      disabled={participants.length >= MAX_PARTICIPANTS}
-                      onClick={() => setParticipantCount(participants.length + 1)}
-                      className="flex size-9 items-center justify-center rounded-lg text-lg font-semibold text-cg-purple transition-colors hover:bg-cg-purple-tint disabled:opacity-30 disabled:hover:bg-transparent"
-                    >
-                      +
-                    </button>
+                    <div className="flex h-12 w-fit items-center gap-1 rounded-xl border border-line p-1 sm:h-11">
+                      <button
+                        type="button"
+                        aria-label="One fewer person"
+                        disabled={count <= 1}
+                        onClick={() => setCount(count - 1)}
+                        className="flex size-9 items-center justify-center rounded-lg text-lg font-semibold text-cg-purple hover:bg-cg-purple-tint disabled:opacity-30 disabled:hover:bg-transparent"
+                      >
+                        −
+                      </button>
+                      <span className="w-10 text-center font-display text-lg font-bold text-ink">
+                        {count}
+                      </span>
+                      <button
+                        type="button"
+                        aria-label="One more person"
+                        disabled={count >= MAX_PARTICIPANTS}
+                        onClick={() => setCount(count + 1)}
+                        className="flex size-9 items-center justify-center rounded-lg text-lg font-semibold text-cg-purple hover:bg-cg-purple-tint disabled:opacity-30 disabled:hover:bg-transparent"
+                      >
+                        +
+                      </button>
+                    </div>
                   </div>
 
-                  {!exempt && (
-                    <p className="text-[14.5px] text-muted">
-                      Total:{" "}
-                      <span className="font-display text-lg font-bold text-ink">
-                        {formatPeso(total)}
-                      </span>
-                      {participants.length >= GROUP_THRESHOLD && (
-                        <span className="ml-2 rounded-full bg-cg-gold-tint px-2 py-0.5 text-[11.5px] font-bold text-[#8a6800]">
-                          GROUP RATE
-                        </span>
-                      )}
-                    </p>
+                  {count > 1 && (
+                    <TextInput
+                      label="What should we call your group?"
+                      value={groupName}
+                      error={groupNameError}
+                      placeholder="Canamo Family"
+                      onChange={(e) => {
+                        setGroupName(e.target.value);
+                        setGroupNameError(undefined);
+                      }}
+                    />
                   )}
                 </div>
 
-                {!exempt && participants.length === GROUP_THRESHOLD - 1 && (
-                  <p className="mt-3 text-[13px] leading-relaxed text-cg-purple">
-                    Add one more participant to unlock the group rate — {formatPeso(1750)}{" "}
-                    for {GROUP_THRESHOLD} instead of {formatPeso(total)} for{" "}
-                    {participants.length}.
-                  </p>
-                )}
-
-                {participants.length > 1 && (
-                  <div className="mt-5">
-                    <TextInput
-                      label="Group name"
-                      value={groupName}
-                      placeholder="e.g. Canamo Family"
-                      hint="How the organizers will see this group on their list."
-                      onChange={(e) => setGroupName(e.target.value)}
-                    />
+                {!exempt && count >= GROUP_THRESHOLD && (
+                  <div className="mt-4">
+                    <Callout tone="gold" title="You're getting the group rate">
+                      {titleCaseCount(count)} of you at {formatPeso(GROUP_RATE)}{" "}
+                      each — {formatPeso(total)} altogether, instead of{" "}
+                      {formatPeso(450)} each.
+                    </Callout>
                   </div>
                 )}
-              </div>
 
-              {exempt && (
-                <Callout tone="info">
-                  No payment is required for this registration type. You will skip
-                  the payment step entirely.
-                </Callout>
-              )}
+                {!exempt && count === GROUP_THRESHOLD - 1 && (
+                  <div className="mt-4">
+                    <Callout tone="gold" title="One more and the price drops">
+                      Add a fifth person and everyone pays{" "}
+                      {formatPeso(GROUP_RATE)} instead of {formatPeso(450)} —{" "}
+                      {formatPeso(GROUP_RATE * GROUP_THRESHOLD)} for five,
+                      against {formatPeso(total)} for four.
+                    </Callout>
+                  </div>
+                )}
 
-              <div className="flex justify-end">
-                <Button
-                  size="lg"
-                  onClick={() => {
-                    if (participants.length > 1 && groupName.trim().length === 0) {
-                      return;
-                    }
-                    goTo("participants");
-                  }}
-                  disabled={participants.length > 1 && groupName.trim().length === 0}
-                >
-                  Continue
-                </Button>
+                {exempt && (
+                  <div className="mt-4">
+                    <Callout tone="teal">
+                      Nothing to pay for this kind of registration — we&rsquo;ll
+                      skip straight past the payment step.
+                    </Callout>
+                  </div>
+                )}
+
+                <div className="mt-6 flex items-center gap-4">
+                  <Button onClick={leaveTypeStep}>Continue</Button>
+                </div>
               </div>
             </div>
           )}
 
-          {/* ----------------------------------------------- participants */}
-          {step === "participants" && (
-            <div className="flex flex-col gap-7">
-              <div>
-                <div className="flex items-baseline justify-between gap-4">
-                  <h1 className="font-display text-2xl font-bold text-ink">
-                    {participants.length === 1
-                      ? "Your details"
-                      : `Participant ${activeParticipant + 1} of ${participants.length}`}
-                  </h1>
-                  {participants.length > 1 && (
-                    <span className="text-[13px] text-muted">
-                      {completedCount}/{participants.length} complete
+          {/* ----------------------------------------------------- people */}
+          {step === "people" && (
+            <div className="mx-auto grid w-full max-w-[1200px] gap-8 px-5 py-10 sm:px-10 sm:py-12 lg:grid-cols-[300px_1fr] lg:gap-16">
+              <StepAside
+                title={
+                  count === 1
+                    ? "Tell us about yourself"
+                    : `Tell us about ${activeName}`
+                }
+                blurb={
+                  count > 1 && active > 0
+                    ? "We've carried over the church and city from the first person. Change them if they're different."
+                    : "This is what the organizers will use to prepare for the day."
+                }
+              >
+                {count > 1 && (
+                  <nav
+                    aria-label="People in this registration"
+                    className="flex flex-col gap-0.5 border-t border-line pt-3.5"
+                  >
+                    {participants.map((participant, index) => {
+                      const isActive = index === active;
+                      const done = participantIsComplete(participant);
+                      const name =
+                        participant.fullName.trim() ||
+                        `${ordinal(index + 1).replace(/^./, (c) => c.toUpperCase())} person`;
+
+                      return (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => {
+                            setActive(index);
+                            scrollTop();
+                          }}
+                          aria-current={isActive ? "step" : undefined}
+                          className={cn(
+                            "flex items-center justify-between gap-3 rounded-[10px] px-3 py-2.5 text-left text-[14px] transition-colors",
+                            isActive
+                              ? "bg-cg-purple-tint font-semibold text-cg-purple"
+                              : "font-medium text-ink hover:bg-surface",
+                          )}
+                        >
+                          <span className="truncate">{name}</span>
+                          {isActive ? (
+                            <span className="flex-none text-[13px]">Now</span>
+                          ) : done ? (
+                            <span className="flex-none text-[13px] font-semibold text-pcec-teal">
+                              Done
+                            </span>
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                  </nav>
+                )}
+              </StepAside>
+
+              <div className="flex max-w-[720px] flex-col gap-7">
+                <ParticipantForm
+                  participant={participants[active]}
+                  errors={participantErrors[active] ?? {}}
+                  idPrefix={`p${active}`}
+                  who={count === 1 ? "you" : activeName}
+                  onChange={(patch) => patchParticipant(active, patch)}
+                />
+
+                <div className="flex flex-wrap items-center gap-3 pt-1">
+                  <Button onClick={advanceFromPerson}>
+                    {active < count - 1
+                      ? "Next person"
+                      : exempt
+                        ? "One last look"
+                        : "On to payment"}
+                  </Button>
+                  <Button
+                    variant="quiet"
+                    onClick={() => {
+                      if (active > 0) {
+                        setActive(active - 1);
+                        scrollTop();
+                      } else {
+                        goTo("type");
+                      }
+                    }}
+                  >
+                    Back
+                  </Button>
+                  {count > 1 && (
+                    <span className="ml-auto text-[13px] text-muted">
+                      {doneCount} of {count} saved
                     </span>
                   )}
                 </div>
-                <p className="mt-1.5 text-[15px] text-muted">
-                  Everyone attending needs their own details. Participants must be{" "}
-                  {EVENT.minAge} or older.
-                </p>
-              </div>
-
-              {participants.length > 1 && (
-                <div className="flex flex-wrap gap-2">
-                  {participants.map((participant, index) => (
-                    <button
-                      key={index}
-                      type="button"
-                      onClick={() => setActiveParticipant(index)}
-                      className={cn(
-                        "max-w-[16ch] truncate rounded-lg border px-3 py-1.5 text-[13px] font-medium transition-colors",
-                        index === activeParticipant
-                          ? "border-cg-purple bg-cg-purple text-white"
-                          : participantIsComplete(participant)
-                            ? "border-line bg-white text-ink hover:border-cg-purple-soft"
-                            : "border-dashed border-line bg-surface text-muted hover:border-cg-purple-soft",
-                      )}
-                    >
-                      {displayName(participant, index)}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              <Card>
-                <ParticipantForm
-                  participant={participants[activeParticipant]}
-                  errors={participantErrors[activeParticipant] ?? {}}
-                  idPrefix={`p${activeParticipant}`}
-                  onChange={(patch) => patchParticipant(activeParticipant, patch)}
-                />
-              </Card>
-
-              <div className="flex items-center justify-between gap-4">
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    if (activeParticipant > 0) {
-                      setActiveParticipant(activeParticipant - 1);
-                      topRef.current?.scrollIntoView({ block: "start" });
-                    } else {
-                      goTo("type");
-                    }
-                  }}
-                >
-                  Back
-                </Button>
-                <Button size="lg" onClick={advanceFromParticipant}>
-                  {activeParticipant < participants.length - 1
-                    ? "Next participant"
-                    : exempt
-                      ? "Review registration"
-                      : "Continue to payment"}
-                </Button>
               </div>
             </div>
           )}
 
           {/* ---------------------------------------------------- payment */}
           {step === "payment" && (
-            <div className="flex flex-col gap-7">
-              <div>
-                <h1 className="font-display text-2xl font-bold text-ink">
-                  Payment
-                </h1>
-                <p className="mt-1.5 text-[15px] text-muted">
-                  Send the total below, then record the details of your payment.
-                </p>
-              </div>
-
-              <PaymentStep
-                payment={payment}
-                errors={paymentErrors}
-                participantCount={participants.length}
-                total={total}
-                onChange={(patch) => {
-                  setPayment((current) => ({ ...current, ...patch }));
-                  setPaymentErrors((current) => {
-                    const next = { ...current };
-                    for (const key of Object.keys(patch) as (keyof PaymentDraft)[]) {
-                      delete next[key];
-                    }
-                    return next;
-                  });
-                }}
+            <div className="mx-auto grid w-full max-w-[1200px] gap-8 px-5 py-10 sm:px-10 sm:py-12 lg:grid-cols-[300px_1fr] lg:gap-16">
+              <StepAside
+                title="Send it over, then show us the receipt"
+                blurb="Deposit to the account below, then attach a photo of the slip so the team can tick your group off the list."
               />
-
-              <div className="flex items-center justify-between gap-4">
-                <Button variant="secondary" onClick={() => goTo("participants")}>
-                  Back
-                </Button>
-                <Button size="lg" onClick={advanceFromPayment}>
-                  Review registration
-                </Button>
+              <div className="flex max-w-[720px] flex-col gap-7">
+                <PaymentStep
+                  payment={payment}
+                  errors={paymentErrors}
+                  participantCount={count}
+                  total={total}
+                  onChange={(patch) => {
+                    setPayment((current) => ({ ...current, ...patch }));
+                    setPaymentErrors((current) => {
+                      const next = { ...current };
+                      for (const key of Object.keys(patch) as (keyof PaymentDraft)[]) {
+                        delete next[key];
+                      }
+                      return next;
+                    });
+                  }}
+                />
+                <div className="flex items-center gap-3">
+                  <Button onClick={advanceFromPayment}>Continue</Button>
+                  <Button variant="quiet" onClick={() => goTo("people")}>
+                    Back
+                  </Button>
+                </div>
               </div>
             </div>
           )}
 
           {/* ----------------------------------------------------- review */}
           {step === "review" && (
-            <div className="flex flex-col gap-7">
-              <div>
-                <h1 className="font-display text-2xl font-bold text-ink">
-                  Review your registration
-                </h1>
-                <p className="mt-1.5 text-[15px] text-muted">
-                  Check everything below. You will get a confirmation email right
-                  after you submit.
-                </p>
-              </div>
-
+            <div className="mx-auto w-full max-w-[820px] px-5 py-10 sm:px-9 sm:py-12">
               <ReviewStep
                 registrationType={registrationType}
                 groupName={groupName}
@@ -640,34 +646,41 @@ export function RegisterFlow() {
                 total={total}
                 onEditType={() => goTo("type")}
                 onEditParticipant={(index) => {
-                  setActiveParticipant(index);
-                  goTo("participants");
+                  setActive(index);
+                  goTo("people");
                 }}
                 onEditPayment={() => goTo("payment")}
               />
 
               {submitError !== null && (
-                <Callout tone="error" title="Could not submit">
-                  {submitError}
-                </Callout>
+                <div className="mt-6">
+                  <Callout tone="error" title="That didn't go through">
+                    {submitError}
+                  </Callout>
+                </div>
               )}
 
-              <div className="flex items-center justify-between gap-4">
+              <div className="mt-8 flex flex-wrap items-center gap-4">
+                <Button size="lg" loading={submitting} onClick={() => void handleSubmit()}>
+                  Send it in
+                </Button>
+                <span className="text-[13.5px] text-muted">
+                  We&rsquo;ll email you a copy right away.
+                </span>
                 <Button
-                  variant="secondary"
+                  variant="quiet"
                   disabled={submitting}
-                  onClick={() => goTo(exempt ? "participants" : "payment")}
+                  onClick={() => goTo(exempt ? "people" : "payment")}
                 >
                   Back
-                </Button>
-                <Button size="lg" loading={submitting} onClick={() => void handleSubmit()}>
-                  Submit registration
                 </Button>
               </div>
             </div>
           )}
-        </div>
+        </main>
       </Authenticated>
+
+      <BottomBar />
     </div>
   );
 }

@@ -2,26 +2,42 @@
 
 import {
   breakoutTitle,
-  EVENT,
   formatPeso,
   GROUP_THRESHOLD,
   isExempt,
   ratePerPerson,
-  REGISTRATION_TYPES,
+  spellCount,
+  titleCaseCount,
+  typeShort,
   type RegistrationType,
 } from "@convex/shared";
-import { Badge, SectionLabel } from "@/components/ui";
+import { Eyebrow } from "@/components/ui";
 import type { ParticipantDraft, PaymentDraft } from "@/lib/registerForm";
 
-function EditLink({ onClick }: { onClick: () => void }) {
+function EditButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="text-[13px] font-semibold text-cg-purple underline-offset-2 hover:underline"
+      className="text-[13.5px] font-semibold text-cg-purple underline-offset-2 hover:underline"
     >
       Edit
     </button>
+  );
+}
+
+function SectionHead({
+  label,
+  onEdit,
+}: {
+  label: string;
+  onEdit: () => void;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-4 pb-2.5">
+      <Eyebrow>{label}</Eyebrow>
+      <EditButton onClick={onEdit} />
+    </div>
   );
 }
 
@@ -45,127 +61,108 @@ export function ReviewStep({
   onEditPayment: () => void;
 }) {
   const exempt = isExempt(registrationType);
-  const typeLabel =
-    REGISTRATION_TYPES.find((t) => t.value === registrationType)?.label ??
-    registrationType;
   const count = participants.length;
   const rate = ratePerPerson(count);
+  const grouped = count >= GROUP_THRESHOLD;
+
+  const heading =
+    groupName.trim().length > 0
+      ? groupName.trim()
+      : participants[0].fullName.trim() || "Your registration";
+
+  const subtitle = exempt
+    ? `${titleCaseCount(count)} ${count === 1 ? "person" : "people"}, ${typeShort(registrationType).toLowerCase()}`
+    : count === 1
+      ? "Just you, joining as a guest"
+      : `${titleCaseCount(count)} of you, joining as guests`;
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* -------------------------------------------------------- the basics */}
-      <section className="rounded-2xl border border-line bg-white p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            {groupName.trim().length > 0 && (
-              <p className="font-display text-xl font-bold text-ink">
-                {groupName.trim()}
-              </p>
-            )}
-            <div className="mt-1.5 flex flex-wrap items-center gap-2">
-              <Badge tone={exempt ? "teal" : "purple"}>{typeLabel}</Badge>
-              <span className="text-sm text-muted">
-                {count} {count === 1 ? "participant" : "participants"}
-              </span>
-            </div>
-          </div>
-          <EditLink onClick={onEditType} />
+    <div className="flex flex-col gap-8">
+      <div className="flex items-baseline justify-between gap-6">
+        <div className="flex flex-col gap-1.5">
+          <h1 className="font-display text-[26px] leading-tight font-semibold text-ink sm:text-[30px]">
+            {heading}
+          </h1>
+          <span className="text-[15px] text-muted">{subtitle}</span>
         </div>
+        <EditButton onClick={onEditType} />
+      </div>
+
+      {/* ------------------------------------------------------- everyone */}
+      <section className="flex flex-col">
+        <SectionHead
+          label={count === 1 ? "Your details" : "Everyone in your group"}
+          onEdit={() => onEditParticipant(0)}
+        />
+        {participants.map((participant, index) => (
+          <button
+            key={index}
+            type="button"
+            onClick={() => onEditParticipant(index)}
+            className="flex flex-col gap-1 border-t border-line py-3 text-left last:border-b hover:bg-surface sm:flex-row sm:justify-between sm:gap-5"
+          >
+            <span className="text-[15px] leading-snug font-medium text-ink">
+              {participant.fullName.trim()}
+            </span>
+            <span className="max-w-[46ch] text-[13.5px] leading-snug text-muted sm:text-right sm:text-[14px]">
+              {breakoutTitle(Number(participant.breakoutSession))}
+            </span>
+          </button>
+        ))}
       </section>
 
-      {/* ------------------------------------------------------- participants */}
-      <section>
-        <SectionLabel>Participants</SectionLabel>
-        <ul className="mt-3 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-white">
-          {participants.map((participant, index) => (
-            <li
-              key={index}
-              className="flex items-start justify-between gap-4 p-5"
-            >
-              <div className="min-w-0">
-                <p className="font-semibold text-ink">
-                  {participant.fullName.trim()}
-                  {participant.preferredName.trim().length > 0 && (
-                    <span className="ml-1.5 font-normal text-muted">
-                      ({participant.preferredName.trim()})
-                    </span>
-                  )}
-                </p>
-                <p className="mt-0.5 text-[13.5px] text-muted">
-                  {participant.age} · {participant.gender} ·{" "}
-                  {participant.maritalStatus} · {participant.cityMunicipality}
-                </p>
-                <p className="mt-2 text-[13.5px] leading-relaxed text-cg-purple">
-                  {breakoutTitle(Number(participant.breakoutSession))}
-                </p>
-                <p className="mt-1.5 text-[13px] text-muted">
-                  {participant.email} · {participant.mobileNumber}
-                </p>
-              </div>
-              <EditLink onClick={() => onEditParticipant(index)} />
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {/* ------------------------------------------------------------ payment */}
-      <section>
-        <SectionLabel>Payment</SectionLabel>
+      {/* -------------------------------------------------------- payment */}
+      <section className="flex flex-col">
+        <SectionHead label="Payment" onEdit={exempt ? onEditType : onEditPayment} />
 
         {exempt ? (
-          <div className="mt-3 rounded-2xl border border-pcec-teal/30 bg-pcec-teal-tint p-6">
-            <p className="font-display text-2xl font-bold text-ink">
+          <div className="flex items-baseline justify-between gap-5 border-t border-line py-3">
+            <span className="text-[14.5px] text-muted">
+              Nothing to pay for a {typeShort(registrationType).toLowerCase()}{" "}
+              registration
+            </span>
+            <span className="font-display text-[20px] font-bold text-ink">
               {formatPeso(0)}
-            </p>
-            <p className="mt-1.5 text-[14.5px] text-pcec-teal-deep">
-              No payment is required for a {typeLabel.toLowerCase()} registration.
-            </p>
+            </span>
           </div>
         ) : (
-          <div className="mt-3 rounded-2xl border border-line bg-white p-6">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-[14.5px] text-muted">
-                  {count === 1 ? "Regular rate" : count >= GROUP_THRESHOLD ? "Group rate" : "Regular rate"}
-                  : {formatPeso(rate)} / person × {count}
-                </p>
-                <p className="mt-1 font-display text-3xl font-bold text-ink">
-                  {formatPeso(total)}
-                </p>
-              </div>
-              <EditLink onClick={onEditPayment} />
+          <>
+            <div className="flex justify-between gap-5 border-t border-line py-3">
+              <span className="text-[14.5px] text-muted">Rate</span>
+              <span className="text-[14.5px] font-medium text-ink">
+                {formatPeso(rate)} each{grouped ? ", group rate" : ""}
+              </span>
             </div>
-
-            <dl className="mt-5 divide-y divide-line border-t border-line">
-              <div className="flex items-center justify-between gap-4 py-3">
-                <dt className="text-sm text-muted">Payment reference</dt>
-                <dd className="text-sm font-semibold text-ink">
-                  {payment.paymentReference}
-                </dd>
-              </div>
-              <div className="flex items-center justify-between gap-4 py-3">
-                <dt className="text-sm text-muted">Date paid</dt>
-                <dd className="text-sm font-semibold text-ink">
-                  {payment.datePaid}
-                </dd>
-              </div>
-              <div className="flex items-center justify-between gap-4 py-3">
-                <dt className="text-sm text-muted">Proof of payment</dt>
-                <dd className="max-w-[55%] truncate text-sm font-semibold text-ink">
-                  {payment.fileName}
-                </dd>
-              </div>
-            </dl>
-          </div>
+            <div className="flex justify-between gap-5 border-t border-line py-3">
+              <span className="text-[14.5px] text-muted">Reference</span>
+              <span className="text-[14.5px] font-medium text-ink">
+                {payment.paymentReference}
+                {payment.datePaid && ` · paid ${payment.datePaid}`}
+              </span>
+            </div>
+            <div className="flex justify-between gap-5 border-t border-line py-3">
+              <span className="text-[14.5px] text-muted">Receipt</span>
+              <span className="max-w-[24ch] truncate text-[14.5px] font-medium text-ink">
+                {payment.fileName}
+              </span>
+            </div>
+            <div className="flex items-baseline justify-between gap-5 border-t-[1.5px] border-ink pt-4">
+              <span className="font-display text-[16px] font-semibold text-ink">
+                Total
+              </span>
+              <span className="font-display text-[26px] leading-none font-bold tracking-[-0.02em] text-ink">
+                {formatPeso(total)}
+              </span>
+            </div>
+          </>
         )}
       </section>
 
-      {/* ------------------------------------------------------------ privacy */}
       <p className="text-[13px] leading-relaxed text-muted">
-        By submitting, you agree that the information above is used for
-        registration, event communication, breakout session assignment, and
-        participant care for the {EVENT.name}. Access is limited to authorized
-        organizers.
+        Sending this in shares {spellCount(count)}{" "}
+        {count === 1 ? "person's" : "people's"} details with the CrossGen
+        organizing team, for registration, event updates, session assignment,
+        and looking after everyone on the day.
       </p>
     </div>
   );

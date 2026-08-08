@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/modernist-8ad6b238-0b69-4f99-8c24-5c0771a89f67/styles.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#E7E4DF; font-family:"Archivo",system-ui,sans-serif; }
+  a { color:#4E2FA0; }
+  a:hover { color:#241357; }
+  input, select, textarea, button { font-family:"Archivo",system-ui,sans-serif; }
+  *:focus-visible { outline:3px solid #F2B807; outline-offset:2px; }
+</style>
+</helmet>
+
+<section style="padding:56px 56px 72px; display:flex; flex-direction:column; gap:40px">
+  <div style="display:flex; flex-direction:column; gap:8px; max-width:820px">
+    <div style="font:700 12px/1 Archivo; letter-spacing:.18em; text-transform:uppercase; color:#4E2FA0">Turn 2 · Desktop first, stripped back</div>
+    <h1 style="margin:0; font:800 40px/1.05 Archivo; letter-spacing:-.02em; color:#1E1B22">Landing cut down, step bar replaced, two emails</h1>
+    <p style="margin:0; font:400 17px/1.5 Archivo; color:#5B5563; text-wrap:pretty">The landing now carries four facts and one button. The person-chips are gone — one line of text and a five-cell bar in their place. Desktop is the primary layout; the phone comp is the same column at 390.</p>
+  </div>
+
+  <div style="display:flex; flex-wrap:wrap; gap:48px; align-items:flex-start">
+
+    <div id="2a" style="display:flex; flex-direction:column; gap:14px">
+      <div style="display:flex; align-items:baseline; gap:12px">
+        <span style="font:800 13px/1 Archivo; letter-spacing:.1em; background:#241357; color:#fff; padding:7px 10px">2a</span>
+        <span style="font:700 16px/1 Archivo; color:#1E1B22">Landing — desktop</span>
+        <span style="font:400 15px/1 Archivo; color:#5B5563">1280 × 720</span>
+      </div>
+      <div style="width:1280px; height:720px; background:#fff; box-shadow:0 12px 32px rgba(45,43,43,.22); display:grid; grid-template-columns:1fr 1fr; overflow:hidden">
+        <div style="background:#3A2078; overflow:hidden">
+          <img src="uploads/Header.png" alt="CrossGen Family Summit 2026" style="width:100%; height:100%; object-fit:cover; display:block" />
+        </div>
+        <div style="padding:64px 64px 48px; display:flex; flex-direction:column">
+          <div style="font:700 12px/1 Archivo; letter-spacing:.18em; text-transform:uppercase; color:#4E2FA0">CrossGen Family Summit 2026</div>
+          <h2 style="margin:20px 0 0; font:800 54px/1.02 Archivo; letter-spacing:-.025em; color:#241357; max-width:13ch">Pamilyang Sama-Sama</h2>
+          <div style="height:2px; background:#241357; margin:32px 0 0"></div>
+          <div style="display:flex; gap:20px; padding:16px 0; border-bottom:1px solid #D8D4CE">
+            <span style="width:68px; flex:none; font:600 13px/1.5 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Kailan</span>
+            <span style="font:600 18px/1.35 Archivo; color:#1E1B22">Sabado, 26 Setyembre 2026 · 8AM–5PM</span>
+          </div>
+          <div style="display:flex; gap:20px; padding:16px 0; border-bottom:1px solid #D8D4CE">
+            <span style="width:68px; flex:none; font:600 13px/1.5 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Saan</span>
+            <span style="font:600 18px/1.35 Archivo; color:#1E1B22">GCF South Metro, Las Piñas</span>
+          </div>
+          <div style="display:flex; gap:20px; padding:16px 0; border-bottom:2px solid #241357">
+            <span style="width:68px; flex:none; font:600 13px/1.5 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Bayad</span>
+            <span style="font:600 18px/1.35 Archivo; color:#1E1B22">₱850 kada tao<span style="color:#5B5563; font-weight:400"> · ₱750 kung lima o higit pa</span></span>
+          </div>
+          <div style="margin-top:auto; display:flex; align-items:center; gap:24px">
+            <button type="button" style="height:60px; padding:0 28px; background:#4E2FA0; color:#fff; border:none; font:700 19px Archivo; cursor:pointer" style-hover="background:#241357">Mag-register na</button>
+            <span style="font:400 15px/1.45 Archivo; color:#5B5563">Edad 14 pataas.<br />Mga 5 minuto kada tao.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="2b" style="display:flex; flex-direction:column; gap:14px">
+      <div style="display:flex; align-items:baseline; gap:12px">
+        <span style="font:800 13px/1 Archivo; letter-spacing:.1em; background:#241357; color:#fff; padding:7px 10px">2b</span>
+        <span style="font:700 16px/1 Archivo; color:#1E1B22">Landing — phone</span>
+        <span style="font:400 15px/1 Archivo; color:#5B5563">390 × 720</span>
+      </div>
+      <div style="width:390px; height:720px; background:#fff; box-shadow:0 12px 32px rgba(45,43,43,.22); display:flex; flex-direction:column; overflow:hidden">
+        <div style="height:190px; flex:none; background:#3A2078; overflow:hidden">
+          <img src="uploads/Header.png" alt="CrossGen Family Summit 2026" style="width:100%; height:100%; object-fit:cover; display:block" />
+        </div>
+        <div style="padding:24px 20px 8px; display:flex; flex-direction:column; flex:1; min-height:0">
+          <div style="font:700 12px/1 Archivo; letter-spacing:.16em; text-transform:uppercase; color:#4E2FA0">CrossGen Family Summit 2026</div>
+          <h2 style="margin:12px 0 0; font:800 34px/1.05 Archivo; letter-spacing:-.025em; color:#241357">Pamilyang Sama-Sama</h2>
+          <div style="height:2px; background:#241357; margin:20px 0 0"></div>
+          <div style="display:flex; gap:14px; padding:13px 0; border-bottom:1px solid #D8D4CE">
+            <span style="width:58px; flex:none; font:600 12px/1.5 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Kailan</span>
+            <span style="font:600 16px/1.3 Archivo; color:#1E1B22">Sab, 26 Set 2026 · 8AM–5PM</span>
+          </div>
+          <div style="display:flex; gap:14px; padding:13px 0; border-bottom:1px solid #D8D4CE">
+            <span style="width:58px; flex:none; font:600 12px/1.5 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Saan</span>
+            <span style="font:600 16px/1.3 Archivo; color:#1E1B22">GCF South Metro, Las Piñas</span>
+          </div>
+          <div style="display:flex; gap:14px; padding:13px 0; border-bottom:2px solid #241357">
+            <span style="width:58px; flex:none; font:600 12px/1.5 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Bayad</span>
+            <span style="font:600 16px/1.3 Archivo; color:#1E1B22">₱850 kada tao<span style="color:#5B5563; font-weight:400"> · ₱750 kung lima+</span></span>
+          </div>
+        </div>
+        <div style="flex:none; border-top:2px solid #241357; padding:12px 20px 16px; display:flex; flex-direction:column; gap:8px">
+          <button type="button" style="height:56px; width:100%; background:#4E2FA0; color:#fff; border:none; font:700 18px Archivo; text-align:left; padding:0 20px; cursor:pointer" style-hover="background:#241357">Mag-register na</button>
+          <span style="font:400 14px/1.4 Archivo; color:#5B5563">Edad 14 pataas. Mga 5 minuto kada tao.</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="2c" style="display:flex; flex-direction:column; gap:14px">
+      <div style="display:flex; align-items:baseline; gap:12px">
+        <span style="font:800 13px/1 Archivo; letter-spacing:.1em; background:#241357; color:#fff; padding:7px 10px">2c</span>
+        <span style="font:700 16px/1 Archivo; color:#1E1B22">Form — desktop, new step bar</span>
+        <span style="font:400 15px/1 Archivo; color:#5B5563">1280 wide</span>
+      </div>
+      <div style="width:1280px; background:#F4F2F0; box-shadow:0 12px 32px rgba(45,43,43,.22); display:flex; flex-direction:column">
+        <div style="background:#fff; border-bottom:2px solid #241357; padding:16px 48px; display:flex; align-items:center; justify-content:space-between; gap:24px">
+          <span style="font:800 16px/1 Archivo; letter-spacing:-.01em; color:#241357">CrossGen Family Summit 2026</span>
+          <span style="font:400 14px/1 Archivo; color:#5B5563">Naka-save · 2 minuto ang nakalipas</span>
+        </div>
+
+        <div style="background:#fff; border-bottom:2px solid #241357; padding:20px 48px 22px; display:flex; flex-direction:column; gap:10px">
+          <div style="display:flex; align-items:baseline; justify-content:space-between; gap:24px">
+            <span style="font:700 16px/1.2 Archivo; color:#1E1B22">Ikatlong tao sa lima<span style="font-weight:400; color:#5B5563"> — Andi</span></span>
+            <button type="button" style="height:36px; padding:0 4px; background:none; border:none; font:600 14px Archivo; color:#4E2FA0; text-decoration:underline; text-underline-offset:4px; cursor:pointer">Bumalik sa naunang tao</button>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:3px">
+            <div style="height:8px; background:#4E2FA0"></div>
+            <div style="height:8px; background:#4E2FA0"></div>
+            <div style="height:8px; background:#F2B807"></div>
+            <div style="height:8px; background:#E5E1DC"></div>
+            <div style="height:8px; background:#E5E1DC"></div>
+          </div>
+        </div>
+
+        <div style="padding:40px 48px 48px; display:grid; grid-template-columns:280px 1fr; gap:48px; align-items:start">
+          <div style="display:flex; flex-direction:column; gap:10px; position:sticky; top:24px">
+            <h3 style="margin:0; font:800 26px/1.1 Archivo; letter-spacing:-.02em; color:#241357">Detalye ni Andi</h3>
+            <p style="margin:0; font:400 15px/1.5 Archivo; color:#5B5563; text-wrap:pretty">Kinopya na namin ang simbahan at bayan mula sa unang tao. Palitan lang kung iba.</p>
+          </div>
+
+          <div style="background:#fff; border:2px solid #241357; padding:32px; display:flex; flex-direction:column; gap:28px">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px">
+              <label style="display:flex; flex-direction:column; gap:8px">
+                <span style="font:600 13px/1 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Buong pangalan</span>
+                <input type="text" value="Andrea Mendoza-Villar" style="height:52px; border:2px solid #241357; background:#fff; padding:0 14px; font:500 17px Archivo; color:#1E1B22" />
+              </label>
+              <label style="display:flex; flex-direction:column; gap:8px">
+                <span style="font:600 13px/1 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Palayaw</span>
+                <input type="text" value="Andi" style="height:52px; border:2px solid #241357; background:#fff; padding:0 14px; font:500 17px Archivo; color:#1E1B22" />
+              </label>
+            </div>
+
+            <div style="display:grid; grid-template-columns:120px 1fr 1fr; gap:24px; align-items:start">
+              <label style="display:flex; flex-direction:column; gap:8px">
+                <span style="font:600 13px/1 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Edad</span>
+                <input type="text" value="17" inputmode="numeric" style="height:52px; border:2px solid #241357; background:#fff; padding:0 14px; font:500 17px Archivo; color:#1E1B22" />
+              </label>
+              <div style="display:flex; flex-direction:column; gap:8px">
+                <span style="font:600 13px/1 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Kasarian</span>
+                <div style="display:flex; border:2px solid #241357">
+                  <div style="flex:1; height:52px; display:flex; align-items:center; padding:0 14px; background:#241357; color:#fff; font:700 16px Archivo">Babae</div>
+                  <div style="flex:1; height:52px; display:flex; align-items:center; padding:0 14px; border-left:2px solid #241357; font:500 16px Archivo; color:#1E1B22">Lalaki</div>
+                </div>
+              </div>
+              <label style="display:flex; flex-direction:column; gap:8px">
+                <span style="font:600 13px/1 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Marital status</span>
+                <select style="height:52px; border:2px solid #241357; background:#fff; padding:0 12px; font:500 17px Archivo; color:#1E1B22">
+                  <option>Single</option>
+                  <option>Married</option>
+                  <option>Widowed</option>
+                  <option>Solo parent</option>
+                </select>
+              </label>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; align-items:start">
+              <label style="display:flex; flex-direction:column; gap:8px">
+                <span style="font:600 13px/1 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Mobile number</span>
+                <input type="text" value="0917 123" inputmode="tel" style="height:52px; border:2px solid #B3261E; background:#fff; padding:0 14px; font:500 17px Archivo; color:#1E1B22" />
+                <span style="font:500 14px/1.4 Archivo; color:#B3261E">Parang kulang po — 11 digits, hal. 0917 123 4567.</span>
+              </label>
+              <label style="display:flex; flex-direction:column; gap:8px">
+                <span style="font:600 13px/1 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Email</span>
+                <input type="email" placeholder="Pwedeng iwanan kung wala" inputmode="email" style="height:52px; border:2px solid #241357; background:#fff; padding:0 14px; font:500 17px Archivo; color:#1E1B22" />
+              </label>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px">
+              <label style="display:flex; flex-direction:column; gap:8px">
+                <span style="font:600 13px/1 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Simbahan o organisasyon</span>
+                <input type="text" value="Grace Christian Fellowship" style="height:52px; border:2px solid #241357; background:#fff; padding:0 14px; font:500 17px Archivo; color:#1E1B22" />
+              </label>
+              <label style="display:flex; flex-direction:column; gap:8px">
+                <span style="font:600 13px/1 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Lungsod o bayan</span>
+                <input type="text" value="Las Piñas" style="height:52px; border:2px solid #241357; background:#fff; padding:0 14px; font:500 17px Archivo; color:#1E1B22" />
+              </label>
+            </div>
+
+            <div style="height:2px; background:#241357"></div>
+
+            <fieldset style="border:none; margin:0; padding:0; display:flex; flex-direction:column; gap:14px">
+              <legend style="padding:0; display:flex; flex-direction:column; gap:4px">
+                <span style="font:700 20px/1.25 Archivo; color:#241357">Aling breakout session ang sasalihan ni Andi?</span>
+                <span style="font:400 15px/1.45 Archivo; color:#5B5563">Isa lang po. Pwede pang palitan bago mag-submit.</span>
+              </legend>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:3px">
+                <div style="display:flex; gap:12px; align-items:flex-start; padding:16px; background:#fff; border:2px solid #D8D4CE; min-height:76px">
+                  <div style="width:22px; height:22px; border:2px solid #5B5563; flex:none; margin-top:2px"></div>
+                  <span style="font:500 16px/1.35 Archivo; color:#1E1B22">Making Family Discipleship Work at Home and In Our Church</span>
+                </div>
+                <div style="display:flex; gap:12px; align-items:flex-start; padding:16px; background:#fff; border:2px solid #D8D4CE; min-height:76px">
+                  <div style="width:22px; height:22px; border:2px solid #5B5563; flex:none; margin-top:2px"></div>
+                  <span style="font:500 16px/1.35 Archivo; color:#1E1B22">Family Flourishing: Well-Being &amp; Mental Health</span>
+                </div>
+                <div style="display:flex; gap:12px; align-items:flex-start; padding:16px; background:#fff; border:2px solid #D8D4CE; min-height:76px">
+                  <div style="width:22px; height:22px; border:2px solid #5B5563; flex:none; margin-top:2px"></div>
+                  <span style="font:500 16px/1.35 Archivo; color:#1E1B22">Solo Parenting and Discipleship</span>
+                </div>
+                <div style="display:flex; gap:12px; align-items:flex-start; padding:16px; background:#EFEBFA; border:2px solid #4E2FA0; min-height:76px">
+                  <div style="width:22px; height:22px; border:2px solid #4E2FA0; background:#4E2FA0; flex:none; margin-top:2px; display:flex; align-items:center; justify-content:center"><div style="width:8px; height:8px; background:#fff"></div></div>
+                  <span style="font:600 16px/1.35 Archivo; color:#241357">Faith and Family Connection in the Digital Age</span>
+                </div>
+                <div style="display:flex; gap:12px; align-items:flex-start; padding:16px; background:#fff; border:2px solid #D8D4CE; min-height:76px; grid-column:1 / -1">
+                  <div style="width:22px; height:22px; border:2px solid #5B5563; flex:none; margin-top:2px"></div>
+                  <span style="font:500 16px/1.35 Archivo; color:#1E1B22">Fearfully &amp; Wonderfully Made: Navigating Sex, Gender, and Identity</span>
+                </div>
+              </div>
+            </fieldset>
+
+            <div style="display:flex; align-items:center; gap:20px; padding-top:4px">
+              <button type="button" style="height:56px; padding:0 28px; background:#4E2FA0; color:#fff; border:none; font:700 18px Archivo; cursor:pointer" style-hover="background:#241357">I-save, tapos ika-4 na tao</button>
+              <button type="button" style="height:56px; padding:0 12px; background:none; border:none; font:700 17px Archivo; color:#4E2FA0; text-decoration:underline; text-underline-offset:4px; cursor:pointer">I-save muna, balikan mamaya</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="2d" style="display:flex; flex-direction:column; gap:14px">
+      <div style="display:flex; align-items:baseline; gap:12px">
+        <span style="font:800 13px/1 Archivo; letter-spacing:.1em; background:#241357; color:#fff; padding:7px 10px">2d</span>
+        <span style="font:700 16px/1 Archivo; color:#1E1B22">Email — confirmation</span>
+        <span style="font:400 15px/1 Archivo; color:#5B5563">600px</span>
+      </div>
+      <div style="width:640px; background:#E7E4DF; padding:20px; display:flex; flex-direction:column; gap:12px">
+        <div style="display:flex; flex-direction:column; gap:2px; padding:0 4px">
+          <span style="font:700 14px/1.3 Archivo; color:#1E1B22">Subject: Confirmed na po kayo — CrossGen 2026, 5 katao</span>
+          <span style="font:400 13px/1.3 Archivo; color:#5B5563">Preheader: Ito ang inyong reference code at ang dapat dalhin sa Sabado.</span>
+        </div>
+        <div style="background:#fff; display:flex; flex-direction:column">
+          <div style="background:#241357; padding:20px 32px; display:flex; align-items:baseline; justify-content:space-between; gap:16px">
+            <span style="font:800 16px/1 Archivo; letter-spacing:-.01em; color:#fff">CrossGen Family Summit 2026</span>
+            <span style="font:600 12px/1 Archivo; letter-spacing:.1em; text-transform:uppercase; color:#F2B807">Confirmed</span>
+          </div>
+          <div style="padding:32px; display:flex; flex-direction:column; gap:20px">
+            <h3 style="margin:0; font:800 28px/1.1 Archivo; letter-spacing:-.02em; color:#241357">Salamat po, Grace — nakumpirma na ang lima ninyo.</h3>
+            <p style="margin:0; font:400 16px/1.55 Archivo; color:#1E1B22; text-wrap:pretty">Natanggap namin ang inyong bayad. Ipakita na lang ang reference code sa registration table sa Sabado — hindi na kailangang mag-print.</p>
+            <div style="border:2px solid #241357; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; gap:16px">
+              <span style="font:600 13px/1 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Reference</span>
+              <span style="font:800 26px/1 Archivo; letter-spacing:.04em; color:#241357">CG26-4K7Q</span>
+            </div>
+            <div style="display:flex; flex-direction:column; border-top:2px solid #241357">
+              <div style="display:flex; gap:16px; padding:12px 0; border-bottom:1px solid #D8D4CE">
+                <span style="width:96px; flex:none; font:600 13px/1.4 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Kailan</span>
+                <span style="font:600 16px/1.35 Archivo; color:#1E1B22">Sabado, 26 Setyembre 2026 · 8AM–5PM</span>
+              </div>
+              <div style="display:flex; gap:16px; padding:12px 0; border-bottom:1px solid #D8D4CE">
+                <span style="width:96px; flex:none; font:600 13px/1.4 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Saan</span>
+                <span style="font:600 16px/1.35 Archivo; color:#1E1B22">GCF South Metro, Daang Hari Road, Las Piñas</span>
+              </div>
+              <div style="display:flex; gap:16px; padding:12px 0; border-bottom:2px solid #241357">
+                <span style="width:96px; flex:none; font:600 13px/1.4 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Bayad</span>
+                <span style="font:600 16px/1.35 Archivo; color:#1E1B22">₱3,750 — 5 katao sa group rate</span>
+              </div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px">
+              <span style="font:700 15px/1 Archivo; color:#241357">Ang inyong grupo</span>
+              <div style="display:flex; flex-direction:column; gap:2px">
+                <div style="display:flex; justify-content:space-between; gap:16px; padding:10px 12px; background:#F4F2F0"><span style="font:600 15px/1.3 Archivo; color:#1E1B22">Grace Mendoza-Villar</span><span style="font:400 14px/1.3 Archivo; color:#5B5563">Solo Parenting and Discipleship</span></div>
+                <div style="display:flex; justify-content:space-between; gap:16px; padding:10px 12px; background:#F4F2F0"><span style="font:600 15px/1.3 Archivo; color:#1E1B22">Boy Villar</span><span style="font:400 14px/1.3 Archivo; color:#5B5563">Family Flourishing</span></div>
+                <div style="display:flex; justify-content:space-between; gap:16px; padding:10px 12px; background:#F4F2F0"><span style="font:600 15px/1.3 Archivo; color:#1E1B22">Andi</span><span style="font:400 14px/1.3 Archivo; color:#5B5563">Faith and Family in the Digital Age</span></div>
+                <div style="display:flex; justify-content:space-between; gap:16px; padding:10px 12px; background:#F4F2F0"><span style="font:600 15px/1.3 Archivo; color:#1E1B22">Marco Villar</span><span style="font:400 14px/1.3 Archivo; color:#5B5563">Family Discipleship at Home</span></div>
+                <div style="display:flex; justify-content:space-between; gap:16px; padding:10px 12px; background:#F4F2F0"><span style="font:600 15px/1.3 Archivo; color:#1E1B22">Tita Nene</span><span style="font:400 14px/1.3 Archivo; color:#5B5563">Fearfully &amp; Wonderfully Made</span></div>
+              </div>
+            </div>
+            <a href="#2d" style="height:52px; background:#4E2FA0; color:#fff; text-decoration:none; font:700 17px Archivo; display:flex; align-items:center; padding:0 24px">Tingnan o baguhin ang registration</a>
+            <p style="margin:0; font:400 14px/1.5 Archivo; color:#5B5563">Kung may mali sa listahan, pindutin ang link sa itaas o i-reply lang ang email na ito bago mag-19 Setyembre.</p>
+          </div>
+          <div style="background:#17869E; padding:16px 32px; display:flex; align-items:center; gap:12px">
+            <img src="uploads/569127857_10163235341753711_5975990902531341423_n.jpeg" alt="PCEC Family Commission" style="width:32px; height:32px; object-fit:cover; display:block; flex:none" />
+            <span style="font:600 13px/1.4 Archivo; color:#fff">PCEC Family Commission · Natanggap ninyo ito dahil nag-register kayo sa CrossGen 2026.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="2e" style="display:flex; flex-direction:column; gap:14px">
+      <div style="display:flex; align-items:baseline; gap:12px">
+        <span style="font:800 13px/1 Archivo; letter-spacing:.1em; background:#241357; color:#fff; padding:7px 10px">2e</span>
+        <span style="font:700 16px/1 Archivo; color:#1E1B22">Email — bayad hinihintay pa</span>
+        <span style="font:400 15px/1 Archivo; color:#5B5563">600px</span>
+      </div>
+      <div style="width:640px; background:#E7E4DF; padding:20px; display:flex; flex-direction:column; gap:12px">
+        <div style="display:flex; flex-direction:column; gap:2px; padding:0 4px">
+          <span style="font:700 14px/1.3 Archivo; color:#1E1B22">Subject: Nakuha na namin ang form ninyo — bayad na lang ang kulang</span>
+          <span style="font:400 13px/1.3 Archivo; color:#5B5563">Preheader: Naka-hold ang 5 slot ninyo hanggang 12 Setyembre.</span>
+        </div>
+        <div style="background:#fff; display:flex; flex-direction:column">
+          <div style="background:#241357; padding:20px 32px; display:flex; align-items:baseline; justify-content:space-between; gap:16px">
+            <span style="font:800 16px/1 Archivo; letter-spacing:-.01em; color:#fff">CrossGen Family Summit 2026</span>
+            <span style="font:600 12px/1 Archivo; letter-spacing:.1em; text-transform:uppercase; color:#F2B807">Hinihintay ang bayad</span>
+          </div>
+          <div style="padding:32px; display:flex; flex-direction:column; gap:20px">
+            <h3 style="margin:0; font:800 28px/1.1 Archivo; letter-spacing:-.02em; color:#241357">Nasa amin na ang detalye ng lima ninyo.</h3>
+            <p style="margin:0; font:400 16px/1.55 Archivo; color:#1E1B22; text-wrap:pretty">Naka-hold ang mga slot hanggang <strong>Sabado, 12 Setyembre</strong>. Pagkatapos magbayad, i-attach na lang ang screenshot sa link sa ibaba — kami na ang bahala sa kumpirmasyon.</p>
+            <div style="border:2px solid #241357; display:flex; flex-direction:column">
+              <div style="background:#241357; padding:10px 20px"><span style="font:600 12px/1 Archivo; letter-spacing:.1em; text-transform:uppercase; color:#F2B807">Bayaran</span></div>
+              <div style="padding:16px 20px; display:flex; flex-direction:column; gap:12px">
+                <div style="display:flex; justify-content:space-between; gap:16px"><span style="font:400 15px/1.3 Archivo; color:#5B5563">5 katao × ₱750 group rate</span><span style="font:800 22px/1 Archivo; color:#241357">₱3,750</span></div>
+                <div style="height:1px; background:#D8D4CE"></div>
+                <div style="display:flex; gap:16px"><span style="width:88px; flex:none; font:600 13px/1.4 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">GCash</span><span style="font:600 15px/1.35 Archivo; color:#1E1B22">0917 555 2026 · PCEC Family Comm.</span></div>
+                <div style="display:flex; gap:16px"><span style="width:88px; flex:none; font:600 13px/1.4 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Bank</span><span style="font:600 15px/1.35 Archivo; color:#1E1B22">BPI 1234-5678-90 · PCEC Inc.</span></div>
+              </div>
+            </div>
+            <a href="#2e" style="height:52px; background:#4E2FA0; color:#fff; text-decoration:none; font:700 17px Archivo; display:flex; align-items:center; padding:0 24px">I-attach ang resibo</a>
+            <p style="margin:0; font:400 14px/1.5 Archivo; color:#5B5563">Nabayaran na? Balewalain na lang po ang email na ito.</p>
+          </div>
+          <div style="background:#17869E; padding:16px 32px; display:flex; align-items:center; gap:12px">
+            <img src="uploads/569127857_10163235341753711_5975990902531341423_n.jpeg" alt="PCEC Family Commission" style="width:32px; height:32px; object-fit:cover; display:block; flex:none" />
+            <span style="font:600 13px/1.4 Archivo; color:#fff">PCEC Family Commission · Natanggap ninyo ito dahil nag-register kayo sa CrossGen 2026.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section style="padding:56px 56px 96px; display:flex; flex-direction:column; gap:40px; border-top:2px solid #241357">
+  <div style="display:flex; flex-direction:column; gap:8px; max-width:760px">
+    <div style="font:700 12px/1 Archivo; letter-spacing:.18em; text-transform:uppercase; color:#4E2FA0">Turn 1 · CrossGen Family Summit 2026</div>
+    <h1 style="margin:0; font:800 40px/1.05 Archivo; letter-spacing:-.02em; color:#1E1B22">Foundations, landing, and the participant details screen</h1>
+    <p style="margin:0; font:400 17px/1.5 Archivo; color:#5B5563; text-wrap:pretty">Modernist structure — flush-left, square corners, 2px rules — carrying the CrossGen palette. Phone comps are drawn at 390px, the common mid-range Android width.</p>
+  </div>
+
+  <div style="display:flex; flex-wrap:wrap; gap:48px; align-items:flex-start">
+
+    <div id="1a" style="display:flex; flex-direction:column; gap:14px; width:820px">
+      <div style="display:flex; align-items:baseline; gap:12px">
+        <span style="font:800 13px/1 Archivo; letter-spacing:.1em; background:#241357; color:#fff; padding:7px 10px">1a</span>
+        <span style="font:700 16px/1 Archivo; color:#1E1B22">Foundations</span>
+        <span style="font:400 15px/1 Archivo; color:#5B5563">type, color, spacing, controls, states</span>
+      </div>
+
+      <div style="background:#F4F2F0; border:2px solid #241357; padding:32px; display:flex; flex-direction:column; gap:36px">
+
+        <div style="display:flex; flex-direction:column; gap:14px">
+          <div style="font:700 12px/1 Archivo; letter-spacing:.16em; text-transform:uppercase; color:#5B5563">Color</div>
+          <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:2px">
+            <div style="background:#241357; color:#fff; padding:16px; min-height:96px; display:flex; flex-direction:column; justify-content:space-between"><span style="font:700 14px Archivo">Purple 900</span><span style="font:500 13px Archivo; opacity:.75">#241357 · headings, ink on light</span></div>
+            <div style="background:#4E2FA0; color:#fff; padding:16px; display:flex; flex-direction:column; justify-content:space-between"><span style="font:700 14px Archivo">Purple 600</span><span style="font:500 13px Archivo; opacity:.8">#4E2FA0 · primary action</span></div>
+            <div style="background:#EFEBFA; color:#241357; padding:16px; display:flex; flex-direction:column; justify-content:space-between"><span style="font:700 14px Archivo">Purple 100</span><span style="font:500 13px Archivo; color:#5B5563">#EFEBFA · selected fills</span></div>
+            <div style="background:#F2B807; color:#241357; padding:16px; display:flex; flex-direction:column; justify-content:space-between"><span style="font:700 14px Archivo">Gold 500</span><span style="font:500 13px Archivo">#F2B807 · focus, progress, wins</span></div>
+            <div style="background:#17869E; color:#fff; padding:16px; display:flex; flex-direction:column; justify-content:space-between"><span style="font:700 14px Archivo">Teal 600</span><span style="font:500 13px Archivo; opacity:.85">#17869E · PCEC, done marks</span></div>
+            <div style="background:#B5714A; color:#fff; padding:16px; display:flex; flex-direction:column; justify-content:space-between"><span style="font:700 14px Archivo">Copper 500</span><span style="font:500 13px Archivo; opacity:.85">#B5714A · artwork stripe only</span></div>
+            <div style="background:#2F6FBF; color:#fff; padding:16px; display:flex; flex-direction:column; justify-content:space-between"><span style="font:700 14px Archivo">Blue 600</span><span style="font:500 13px Archivo; opacity:.85">#2F6FBF · links, info notes</span></div>
+            <div style="background:#B3261E; color:#fff; padding:16px; display:flex; flex-direction:column; justify-content:space-between"><span style="font:700 14px Archivo">Error 700</span><span style="font:500 13px Archivo; opacity:.85">#B3261E · 5.9:1 on white</span></div>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:2px">
+            <div style="background:#fff; color:#1E1B22; padding:12px 16px; border:1px solid #D8D4CE"><span style="font:700 13px Archivo">Surface #FFFFFF</span></div>
+            <div style="background:#F4F2F0; color:#1E1B22; padding:12px 16px; border:1px solid #D8D4CE"><span style="font:700 13px Archivo">Ground #F4F2F0</span></div>
+            <div style="background:#fff; color:#5B5563; padding:12px 16px; border:1px solid #D8D4CE"><span style="font:700 13px Archivo">Muted text #5B5563</span></div>
+            <div style="background:#fff; color:#1E1B22; padding:12px 16px; border:1px solid #D8D4CE"><span style="font:700 13px Archivo">Line #D8D4CE</span></div>
+          </div>
+          <p style="margin:0; font:400 14px/1.5 Archivo; color:#5B5563; max-width:70ch">Gold never carries text on white — it earns its keep as focus ring, progress fill and the group-discount moment. Copper stays inside the artwork. Purple 900 on white is 14.2:1; purple 600 on white 8.4:1; white on purple 600 8.4:1.</p>
+        </div>
+
+        <div style="height:2px; background:#241357"></div>
+
+        <div style="display:flex; flex-direction:column; gap:12px">
+          <div style="font:700 12px/1 Archivo; letter-spacing:.16em; text-transform:uppercase; color:#5B5563">Type — Archivo</div>
+          <div style="display:grid; grid-template-columns:120px 1fr; gap:10px 24px; align-items:baseline">
+            <span style="font:500 13px Archivo; color:#5B5563">Display 34/1.05 800</span><span style="font:800 34px/1.05 Archivo; letter-spacing:-.02em; color:#241357">Pamilyang Sama-Sama</span>
+            <span style="font:500 13px Archivo; color:#5B5563">Title 24/1.15 800</span><span style="font:800 24px/1.15 Archivo; color:#241357">Sino ang ire-register?</span>
+            <span style="font:500 13px Archivo; color:#5B5563">Section 18/1.25 700</span><span style="font:700 18px/1.25 Archivo; color:#1E1B22">Ikatlong tao sa lima</span>
+            <span style="font:500 13px Archivo; color:#5B5563">Body 17/1.5 400</span><span style="font:400 17px/1.5 Archivo; color:#1E1B22">Salamat sa inyong interest na maging bahagi ng CrossGen 2026.</span>
+            <span style="font:500 13px Archivo; color:#5B5563">Input 17/1.2 500</span><span style="font:500 17px/1.2 Archivo; color:#1E1B22">Grace Mendoza-Villar</span>
+            <span style="font:500 13px Archivo; color:#5B5563">Label 13 600 caps</span><span style="font:600 13px/1 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Mobile number</span>
+            <span style="font:500 13px Archivo; color:#5B5563">Help 14/1.45 400</span><span style="font:400 14px/1.45 Archivo; color:#5B5563">Ipapadala namin dito ang confirmation.</span>
+          </div>
+        </div>
+
+        <div style="height:2px; background:#241357"></div>
+
+        <div style="display:flex; flex-direction:column; gap:14px">
+          <div style="font:700 12px/1 Archivo; letter-spacing:.16em; text-transform:uppercase; color:#5B5563">Spacing &amp; layout</div>
+          <div style="display:flex; align-items:flex-end; gap:16px">
+            <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-start"><div style="width:4px; height:32px; background:#4E2FA0"></div><span style="font:500 12px Archivo; color:#5B5563">4</span></div>
+            <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-start"><div style="width:8px; height:32px; background:#4E2FA0"></div><span style="font:500 12px Archivo; color:#5B5563">8</span></div>
+            <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-start"><div style="width:12px; height:32px; background:#4E2FA0"></div><span style="font:500 12px Archivo; color:#5B5563">12</span></div>
+            <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-start"><div style="width:16px; height:32px; background:#4E2FA0"></div><span style="font:500 12px Archivo; color:#5B5563">16</span></div>
+            <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-start"><div style="width:24px; height:32px; background:#4E2FA0"></div><span style="font:500 12px Archivo; color:#5B5563">24</span></div>
+            <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-start"><div style="width:32px; height:32px; background:#4E2FA0"></div><span style="font:500 12px Archivo; color:#5B5563">32</span></div>
+          </div>
+          <p style="margin:0; font:400 14px/1.5 Archivo; color:#5B5563; max-width:70ch">Phone gutter 20px, one column, fields stacked full-bleed to the gutter. 16px between a label and its field, 24px between fields, 32px between groups, a 2px purple rule between sections. Desktop lifts the same column to 560px centred, with the artwork as a left panel. Nothing is centred except the wordmark inside the artwork.</p>
+        </div>
+
+        <div style="height:2px; background:#241357"></div>
+
+        <div style="display:flex; flex-direction:column; gap:20px">
+          <div style="font:700 12px/1 Archivo; letter-spacing:.16em; text-transform:uppercase; color:#5B5563">Controls · all 52px tall, 48px minimum tap</div>
+          <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center">
+            <button type="button" style="height:52px; padding:0 24px; background:#4E2FA0; color:#fff; border:none; font:700 17px Archivo; text-align:left; cursor:pointer" style-hover="background:#241357">Mag-register na</button>
+            <button type="button" style="height:52px; padding:0 24px; background:#fff; color:#241357; border:2px solid #241357; font:700 17px Archivo; cursor:pointer" style-hover="background:#EFEBFA">Balikan mamaya</button>
+            <button type="button" style="height:52px; padding:0 12px; background:transparent; color:#4E2FA0; border:none; font:700 17px Archivo; text-decoration:underline; text-underline-offset:4px; cursor:pointer" style-hover="color:#241357">I-edit</button>
+            <button type="button" disabled style="height:52px; padding:0 24px; background:#4E2FA0; color:#fff; border:none; font:700 17px Archivo; opacity:.45">Ipadala</button>
+            <span style="font:400 14px Archivo; color:#5B5563">focus: 3px gold ring, 2px offset</span>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:24px">
+            <label style="display:flex; flex-direction:column; gap:8px">
+              <span style="font:600 13px/1 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Palayaw</span>
+              <input type="text" placeholder="Ano ang itatawag namin?" style="height:52px; border:2px solid #241357; background:#fff; padding:0 14px; font:500 17px Archivo; color:#1E1B22" />
+              <span style="font:400 14px/1.4 Archivo; color:#5B5563">Ito ang ilalagay sa ID.</span>
+            </label>
+            <label style="display:flex; flex-direction:column; gap:8px">
+              <span style="font:600 13px/1 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Marital status</span>
+              <select style="height:52px; border:2px solid #241357; background:#fff; padding:0 12px; font:500 17px Archivo; color:#1E1B22; appearance:none">
+                <option>Single</option>
+                <option>Married</option>
+                <option>Widowed</option>
+                <option>Solo parent</option>
+              </select>
+              <span style="font:400 14px/1.4 Archivo; color:#5B5563">Chevron sits right, label flush left.</span>
+            </label>
+            <div style="display:flex; flex-direction:column; gap:8px">
+              <span style="font:600 13px/1 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Mobile number — error</span>
+              <input type="text" value="0917 123" style="height:52px; border:2px solid #B3261E; background:#fff; padding:0 14px; font:500 17px Archivo; color:#1E1B22" />
+              <span style="font:500 14px/1.4 Archivo; color:#B3261E">Parang kulang po — 11 digits, hal. 0917 123 4567.</span>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; align-items:start">
+            <div style="display:flex; flex-direction:column; gap:8px">
+              <span style="font:600 13px/1 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Segmented choice</span>
+              <div style="display:flex; border:2px solid #241357">
+                <div style="flex:1; height:52px; display:flex; align-items:center; padding:0 16px; background:#241357; color:#fff; font:700 16px Archivo">Babae</div>
+                <div style="flex:1; height:52px; display:flex; align-items:center; padding:0 16px; border-left:2px solid #241357; font:500 16px Archivo; color:#1E1B22">Lalaki</div>
+              </div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px">
+              <span style="font:600 13px/1 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Choice group — selected / rest</span>
+              <div style="display:flex; flex-direction:column; gap:2px">
+                <div style="display:flex; gap:12px; align-items:flex-start; padding:14px 16px; background:#EFEBFA; border:2px solid #4E2FA0">
+                  <div style="width:22px; height:22px; border:2px solid #4E2FA0; background:#4E2FA0; flex:none; margin-top:1px; display:flex; align-items:center; justify-content:center"><div style="width:8px; height:8px; background:#fff"></div></div>
+                  <span style="font:600 16px/1.35 Archivo; color:#241357">Solo Parenting and Discipleship</span>
+                </div>
+                <div style="display:flex; gap:12px; align-items:flex-start; padding:14px 16px; background:#fff; border:2px solid #D8D4CE">
+                  <div style="width:22px; height:22px; border:2px solid #5B5563; flex:none; margin-top:1px"></div>
+                  <span style="font:500 16px/1.35 Archivo; color:#1E1B22">Family Flourishing: Well-Being &amp; Mental Health</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; align-items:start">
+            <div style="display:flex; flex-direction:column; gap:8px">
+              <span style="font:600 13px/1 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Empty state</span>
+              <div style="border:2px dashed #BAB6B6; background:#fff; padding:24px 20px; display:flex; flex-direction:column; gap:8px; align-items:flex-start">
+                <span style="font:700 17px Archivo; color:#241357">Wala pang naka-attach</span>
+                <span style="font:400 15px/1.45 Archivo; color:#5B5563">Kuhaan ng screenshot ang inyong transfer, tapos i-attach dito.</span>
+                <button type="button" style="height:48px; padding:0 20px; background:#fff; color:#241357; border:2px solid #241357; font:700 16px Archivo; cursor:pointer">Pumili ng larawan</button>
+              </div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px">
+              <span style="font:600 13px/1 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Error state — page level</span>
+              <div style="border-left:6px solid #B3261E; background:#fff; border-top:2px solid #D8D4CE; border-right:2px solid #D8D4CE; border-bottom:2px solid #D8D4CE; padding:16px 18px; display:flex; flex-direction:column; gap:6px">
+                <span style="font:700 16px Archivo; color:#B3261E">May dalawang kulang pa po</span>
+                <span style="font:400 15px/1.45 Archivo; color:#1E1B22">Nasa ika-3 tao: mobile number at breakout session. Pindutin para diretso doon.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="1b" style="display:flex; flex-direction:column; gap:14px">
+      <div style="display:flex; align-items:baseline; gap:12px">
+        <span style="font:800 13px/1 Archivo; letter-spacing:.1em; background:#241357; color:#fff; padding:7px 10px">1b</span>
+        <span style="font:700 16px/1 Archivo; color:#1E1B22">Landing</span>
+        <span style="font:400 15px/1 Archivo; color:#5B5563">390 × 844</span>
+      </div>
+      <div style="width:390px; height:844px; background:#fff; box-shadow:0 12px 32px rgba(45,43,43,.22); display:flex; flex-direction:column; overflow:hidden">
+        <div style="height:250px; flex:none; overflow:hidden; background:#3A2078">
+          <img src="uploads/Header.png" alt="CrossGen Family Summit 2026" style="width:100%; height:100%; object-fit:cover; object-position:center; display:block" />
+        </div>
+        <div style="padding:24px 20px 20px; display:flex; flex-direction:column; gap:20px; flex:1; min-height:0; overflow-y:auto">
+          <div style="display:flex; flex-direction:column; gap:10px">
+            <div style="font:700 12px/1 Archivo; letter-spacing:.16em; text-transform:uppercase; color:#4E2FA0">CrossGen Family Summit 2026</div>
+            <h2 style="margin:0; font:800 30px/1.08 Archivo; letter-spacing:-.02em; color:#241357">Pamilyang Sama-Sama, Henerasyong Nagkaka&#8209;isa</h2>
+            <p style="margin:0; font:400 17px/1.5 Archivo; color:#1E1B22; text-wrap:pretty">Isang araw ng learning, encouragement, at fellowship para sa buong pamilya. Excited kaming makasama kayo.</p>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:0; border-top:2px solid #241357">
+            <div style="display:flex; gap:14px; padding:14px 0; border-bottom:1px solid #D8D4CE">
+              <span style="width:74px; flex:none; font:600 13px/1.3 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Kailan</span>
+              <span style="font:600 17px/1.35 Archivo; color:#1E1B22">Sabado, ika-26 ng Setyembre 2026</span>
+            </div>
+            <div style="display:flex; gap:14px; padding:14px 0; border-bottom:2px solid #241357">
+              <span style="width:74px; flex:none; font:600 13px/1.3 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Saan</span>
+              <span style="font:600 17px/1.35 Archivo; color:#1E1B22">GCF South Metro<br /><span style="font:400 15px/1.4 Archivo; color:#5B5563">Daang Hari Road, Almanza Dos, Las Piñas</span></span>
+            </div>
+          </div>
+
+          <blockquote style="margin:0; padding:0 0 0 16px; border-left:4px solid #F2B807; font:400 15px/1.5 Archivo; color:#1E1B22; text-wrap:pretty">“Sa alinmang lahi, ang iyong ginawa ay papupurihan, ihahayag nila ang mga gawa Mong makapangyarihan.”<span style="display:block; margin-top:6px; font:700 14px Archivo; color:#5B5563">Awit 145:4</span></blockquote>
+
+        </div>
+        <div style="flex:none; background:#fff; border-top:2px solid #241357; padding:12px 20px 14px; display:flex; flex-direction:column; gap:8px">
+          <button type="button" style="height:56px; width:100%; background:#4E2FA0; color:#fff; border:none; font:700 18px Archivo; text-align:left; padding:0 20px; cursor:pointer" style-hover="background:#241357">Mag-register na</button>
+          <p style="margin:0; font:400 14px/1.45 Archivo; color:#5B5563">Para sa edad 14 pataas. Pasensya na po, walang childcare sa venue.</p>
+        </div>
+        <div style="flex:none; background:#17869E; padding:12px 20px; display:flex; align-items:center; gap:12px">
+          <img src="uploads/569127857_10163235341753711_5975990902531341423_n.jpeg" alt="PCEC Family Commission" style="width:36px; height:36px; object-fit:cover; display:block; flex:none" />
+          <span style="font:600 13px/1.35 Archivo; color:#fff">Dala ng PCEC Family Commission</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="1c" style="display:flex; flex-direction:column; gap:14px">
+      <div style="display:flex; align-items:baseline; gap:12px">
+        <span style="font:800 13px/1 Archivo; letter-spacing:.1em; background:#241357; color:#fff; padding:7px 10px">1c</span>
+        <span style="font:700 16px/1 Archivo; color:#1E1B22">Bawat tao — details</span>
+        <span style="font:400 15px/1 Archivo; color:#5B5563">390 wide, full scroll shown</span>
+      </div>
+      <div style="width:390px; background:#fff; box-shadow:0 12px 32px rgba(45,43,43,.22); display:flex; flex-direction:column">
+
+        <div style="position:sticky; top:0; background:#fff; border-bottom:2px solid #241357; padding:14px 20px 12px; display:flex; flex-direction:column; gap:12px; z-index:2">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px">
+            <span style="font:700 18px/1.2 Archivo; color:#241357">Ikatlong tao sa lima</span>
+            <button type="button" style="height:44px; padding:0 4px; background:none; border:none; font:700 15px Archivo; color:#4E2FA0; text-decoration:underline; text-underline-offset:4px; cursor:pointer">I-save muna</button>
+          </div>
+          <div style="display:flex; gap:8px">
+            <button type="button" style="flex:1; min-width:0; height:48px; padding:0 8px; background:#fff; border:2px solid #17869E; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:2px; cursor:pointer" style-hover="background:#E8F4F7">
+              <span style="font:700 13px/1 Archivo; color:#17869E">✓ Tapos</span>
+              <span style="font:500 13px/1 Archivo; color:#1E1B22; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%">Grace</span>
+            </button>
+            <button type="button" style="flex:1; min-width:0; height:48px; padding:0 8px; background:#fff; border:2px solid #17869E; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:2px; cursor:pointer" style-hover="background:#E8F4F7">
+              <span style="font:700 13px/1 Archivo; color:#17869E">✓ Tapos</span>
+              <span style="font:500 13px/1 Archivo; color:#1E1B22; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%">Boy</span>
+            </button>
+            <div style="flex:1; min-width:0; height:48px; padding:0 8px; background:#241357; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:2px">
+              <span style="font:700 13px/1 Archivo; color:#F2B807">Ngayon</span>
+              <span style="font:500 13px/1 Archivo; color:#fff">Ikatlo</span>
+            </div>
+            <div style="flex:1; min-width:0; height:48px; padding:0 8px; background:#fff; border:2px solid #D8D4CE; display:flex; align-items:center"><span style="font:500 13px/1 Archivo; color:#5B5563">Ika-4</span></div>
+            <div style="flex:1; min-width:0; height:48px; padding:0 8px; background:#fff; border:2px solid #D8D4CE; display:flex; align-items:center"><span style="font:500 13px/1 Archivo; color:#5B5563">Ika-5</span></div>
+          </div>
+          <div style="height:6px; background:#EFEBFA"><div style="width:40%; height:6px; background:#F2B807"></div></div>
+        </div>
+
+        <div style="padding:20px; display:flex; flex-direction:column; gap:24px">
+
+          <div style="border-left:6px solid #B3261E; border-top:2px solid #D8D4CE; border-right:2px solid #D8D4CE; border-bottom:2px solid #D8D4CE; padding:14px 16px; display:flex; flex-direction:column; gap:4px">
+            <span style="font:700 16px/1.3 Archivo; color:#B3261E">May kulang pa po sa ikalawang tao</span>
+            <span style="font:400 15px/1.45 Archivo; color:#1E1B22">Walang breakout session si Boy. <a href="#1c" style="color:#4E2FA0; font-weight:700">Balikan siya</a> — hindi mawawala ang nailagay niyo dito.</span>
+          </div>
+
+          <label style="display:flex; flex-direction:column; gap:8px">
+            <span style="font:600 13px/1 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Buong pangalan</span>
+            <input type="text" value="Andrea Mendoza-Villar" style="height:52px; border:2px solid #241357; background:#fff; padding:0 14px; font:500 17px Archivo; color:#1E1B22" />
+          </label>
+
+          <label style="display:flex; flex-direction:column; gap:8px">
+            <span style="font:600 13px/1 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Palayaw</span>
+            <input type="text" value="Andi" style="height:52px; border:2px solid #241357; background:#fff; padding:0 14px; font:500 17px Archivo; color:#1E1B22" />
+            <span style="font:400 14px/1.4 Archivo; color:#5B5563">Ito ang ilalagay sa ID niya.</span>
+          </label>
+
+          <div style="display:grid; grid-template-columns:96px 1fr; gap:16px; align-items:start">
+            <label style="display:flex; flex-direction:column; gap:8px">
+              <span style="font:600 13px/1 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Edad</span>
+              <input type="text" value="17" inputmode="numeric" style="height:52px; border:2px solid #241357; background:#fff; padding:0 14px; font:500 17px Archivo; color:#1E1B22" />
+            </label>
+            <div style="display:flex; flex-direction:column; gap:8px">
+              <span style="font:600 13px/1 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Kasarian</span>
+              <div style="display:flex; border:2px solid #241357">
+                <div style="flex:1; height:52px; display:flex; align-items:center; padding:0 14px; background:#241357; color:#fff; font:700 16px Archivo">Babae</div>
+                <div style="flex:1; height:52px; display:flex; align-items:center; padding:0 14px; border-left:2px solid #241357; font:500 16px Archivo; color:#1E1B22">Lalaki</div>
+              </div>
+            </div>
+          </div>
+
+          <label style="display:flex; flex-direction:column; gap:8px">
+            <span style="font:600 13px/1 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Marital status</span>
+            <select style="height:52px; border:2px solid #241357; background:#fff; padding:0 12px; font:500 17px Archivo; color:#1E1B22">
+              <option>Single</option>
+              <option>Married</option>
+              <option>Widowed</option>
+              <option>Solo parent</option>
+            </select>
+          </label>
+
+          <label style="display:flex; flex-direction:column; gap:8px">
+            <span style="font:600 13px/1 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Simbahan o organisasyon</span>
+            <input type="text" value="Grace Christian Fellowship" style="height:52px; border:2px solid #241357; background:#fff; padding:0 14px; font:500 17px Archivo; color:#1E1B22" />
+            <span style="font:400 14px/1.4 Archivo; color:#5B5563">Kinopya na namin mula kay Grace — palitan kung iba.</span>
+          </label>
+
+          <label style="display:flex; flex-direction:column; gap:8px">
+            <span style="font:600 13px/1 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Ministry involvement</span>
+            <input type="text" placeholder="Hal. youth worship team" style="height:52px; border:2px solid #241357; background:#fff; padding:0 14px; font:500 17px Archivo; color:#1E1B22" />
+          </label>
+
+          <label style="display:flex; flex-direction:column; gap:8px">
+            <span style="font:600 13px/1 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Trabaho</span>
+            <input type="text" value="Estudyante" style="height:52px; border:2px solid #241357; background:#fff; padding:0 14px; font:500 17px Archivo; color:#1E1B22" />
+          </label>
+
+          <div style="display:flex; flex-direction:column; gap:8px">
+            <span style="font:600 13px/1 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Mobile number</span>
+            <input type="text" value="0917 123" inputmode="tel" style="height:52px; border:2px solid #B3261E; background:#fff; padding:0 14px; font:500 17px Archivo; color:#1E1B22" />
+            <span style="font:500 14px/1.4 Archivo; color:#B3261E">Parang kulang po — 11 digits, hal. 0917 123 4567.</span>
+          </div>
+
+          <label style="display:flex; flex-direction:column; gap:8px">
+            <span style="font:600 13px/1 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Email</span>
+            <input type="email" placeholder="Pwedeng iwanan kung wala" inputmode="email" style="height:52px; border:2px solid #241357; background:#fff; padding:0 14px; font:500 17px Archivo; color:#1E1B22" />
+          </label>
+
+          <label style="display:flex; flex-direction:column; gap:8px">
+            <span style="font:600 13px/1 Archivo; letter-spacing:.06em; text-transform:uppercase; color:#5B5563">Lungsod o bayan</span>
+            <input type="text" value="Las Piñas" style="height:52px; border:2px solid #241357; background:#fff; padding:0 14px; font:500 17px Archivo; color:#1E1B22" />
+          </label>
+
+          <div style="height:2px; background:#241357"></div>
+
+          <fieldset style="border:none; margin:0; padding:0; display:flex; flex-direction:column; gap:12px">
+            <legend style="padding:0; display:flex; flex-direction:column; gap:4px">
+              <span style="font:700 18px/1.25 Archivo; color:#241357">Aling breakout session ang sasalihan ni Andi?</span>
+              <span style="font:400 15px/1.45 Archivo; color:#5B5563">Isa lang po. Pwede pa itong palitan bago kayo mag-submit.</span>
+            </legend>
+            <div style="display:flex; flex-direction:column; gap:2px">
+              <div style="display:flex; gap:12px; align-items:flex-start; padding:14px 16px; background:#fff; border:2px solid #D8D4CE; min-height:56px">
+                <div style="width:22px; height:22px; border:2px solid #5B5563; flex:none; margin-top:2px"></div>
+                <span style="font:500 16px/1.35 Archivo; color:#1E1B22">Making Family Discipleship Work at Home and In Our Church</span>
+              </div>
+              <div style="display:flex; gap:12px; align-items:flex-start; padding:14px 16px; background:#fff; border:2px solid #D8D4CE; min-height:56px">
+                <div style="width:22px; height:22px; border:2px solid #5B5563; flex:none; margin-top:2px"></div>
+                <span style="font:500 16px/1.35 Archivo; color:#1E1B22">Family Flourishing: Well-Being &amp; Mental Health</span>
+              </div>
+              <div style="display:flex; gap:12px; align-items:flex-start; padding:14px 16px; background:#fff; border:2px solid #D8D4CE; min-height:56px">
+                <div style="width:22px; height:22px; border:2px solid #5B5563; flex:none; margin-top:2px"></div>
+                <span style="font:500 16px/1.35 Archivo; color:#1E1B22">Solo Parenting and Discipleship</span>
+              </div>
+              <div style="display:flex; gap:12px; align-items:flex-start; padding:14px 16px; background:#EFEBFA; border:2px solid #4E2FA0; min-height:56px">
+                <div style="width:22px; height:22px; border:2px solid #4E2FA0; background:#4E2FA0; flex:none; margin-top:2px; display:flex; align-items:center; justify-content:center"><div style="width:8px; height:8px; background:#fff"></div></div>
+                <span style="font:600 16px/1.35 Archivo; color:#241357">Faith and Family Connection in the Digital Age</span>
+              </div>
+              <div style="display:flex; gap:12px; align-items:flex-start; padding:14px 16px; background:#fff; border:2px solid #D8D4CE; min-height:56px">
+                <div style="width:22px; height:22px; border:2px solid #5B5563; flex:none; margin-top:2px"></div>
+                <span style="font:500 16px/1.35 Archivo; color:#1E1B22">Fearfully &amp; Wonderfully Made: Navigating Sex, Gender, and Identity</span>
+              </div>
+            </div>
+          </fieldset>
+        </div>
+
+        <div style="position:sticky; bottom:0; background:#fff; border-top:2px solid #241357; padding:12px 20px 16px; display:flex; flex-direction:column; gap:8px">
+          <button type="button" style="height:56px; width:100%; background:#4E2FA0; color:#fff; border:none; font:700 18px Archivo; text-align:left; padding:0 20px; cursor:pointer" style-hover="background:#241357">I-save, tapos ika-4 na tao</button>
+          <span style="font:400 14px/1.4 Archivo; color:#5B5563">Naka-save na ang una at ikalawa. Pwede kayong huminto at bumalik mamaya.</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+</x-dc>
+</body>
+</html>

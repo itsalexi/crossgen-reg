@@ -3,7 +3,6 @@
 import { useAuthActions } from "@convex-dev/auth/react";
 import { Authenticated, Unauthenticated, useConvexAuth } from "convex/react";
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
@@ -63,27 +62,6 @@ function RegisterButton() {
   );
 }
 
-const FEE_LINE = `${formatPeso(REGULAR_RATE)} each, or ${formatPeso(GROUP_RATE)} when you come as ${GROUP_THRESHOLD} or more.`;
-
-function Copy() {
-  return (
-    <>
-      <Eyebrow className="text-white/60">
-        {EVENT.dayOfWeek}, {EVENT.date}
-      </Eyebrow>
-
-      <h1 className="max-w-[13ch] font-display text-[2.25rem] leading-[1.06] font-bold tracking-[-0.03em] text-white sm:text-[2.75rem] lg:text-[3.375rem]">
-        {EVENT.tagline.split(",")[0]}
-      </h1>
-
-      <p className="max-w-[38ch] text-[16px] leading-relaxed text-white/80 sm:text-[17px]">
-        A day together at {EVENT.venue}, Las Piñas. Bring your family — everyone{" "}
-        {EVENT.minAge} and up is welcome.
-      </p>
-    </>
-  );
-}
-
 export function LandingScreen() {
   return (
     <div className="flex min-h-dvh flex-col">
@@ -98,70 +76,69 @@ export function LandingScreen() {
         }
       />
 
-      {/* ------------------------------------------------------------ phone */}
-      {/* Banner band, then one purple field with the button pinned to the
-          bottom — no footer bar competing for the thumb. */}
-      <main className="flex flex-1 flex-col lg:hidden">
-        <div className="relative h-40 flex-none overflow-hidden bg-[#3d2b86] sm:h-52">
+      <main className="flex-1">
+        <div className="mx-auto w-full max-w-[880px]">
+          {/* Shown whole, at its own proportions — the way a Google Form
+              header behaves. No crop, so nothing of the lockup is lost. */}
           <Image
             src="/brand/header.png"
-            alt="CrossGen Family Summit 2026"
-            fill
+            alt="CrossGen Family Summit 2026 — Pamilyang Sama-Sama, Henerasyong Nagkaka-isa"
+            width={2000}
+            height={420}
             priority
-            sizes="100vw"
-            className="object-cover object-center"
+            sizes="(min-width: 880px) 880px, 100vw"
+            className="h-auto w-full sm:rounded-b-2xl"
           />
-        </div>
 
-        <div className="flex flex-1 flex-col gap-4.5 bg-cg-purple px-6 py-8 sm:px-10 sm:py-10">
-          <Copy />
-          <div className="mt-auto flex flex-col gap-3 pt-6">
-            <RegisterButton />
-            <span className="text-[14px] leading-normal text-white/70">
-              {FEE_LINE}
-            </span>
-            <Link
-              href="/privacy"
-              className="text-[13px] text-white/50 underline-offset-2 hover:text-white/80 hover:underline"
-            >
-              What we do with your details
-            </Link>
+          <div className="flex flex-col gap-6 px-6 py-9 sm:px-10 sm:py-12">
+            <div className="flex flex-col gap-3">
+              <Eyebrow>
+                {EVENT.dayOfWeek}, {EVENT.date}
+              </Eyebrow>
+              <h1 className="font-display text-[2rem] leading-[1.1] font-bold tracking-[-0.03em] text-ink sm:text-[2.5rem]">
+                {EVENT.tagline}
+              </h1>
+            </div>
+
+            <p className="max-w-[52ch] text-[16.5px] leading-relaxed text-muted text-pretty sm:text-[17px]">
+              Isang araw tayong magkakasama sa {EVENT.venue}, Daang Hari Road,
+              Las Piñas — para sa learning, encouragement, at fellowship bilang
+              mga pamilya. Bukas ito sa lahat ng edad {EVENT.minAge} pataas.
+            </p>
+
+            <dl className="flex flex-col gap-3 border-y border-line py-5 sm:flex-row sm:gap-0">
+              <div className="flex flex-col gap-1 sm:pr-8">
+                <Eyebrow>On your own or with family</Eyebrow>
+                <dd className="text-[15px] font-medium text-ink">
+                  {formatPeso(REGULAR_RATE)} each
+                </dd>
+              </div>
+              <div className="flex flex-col gap-1 sm:border-l sm:border-line sm:pl-8">
+                <Eyebrow>Coming as {GROUP_THRESHOLD} or more</Eyebrow>
+                <dd className="text-[15px] font-medium text-ink">
+                  {formatPeso(GROUP_RATE)} each
+                </dd>
+              </div>
+            </dl>
+
+            <div className="flex flex-col gap-3 pt-1">
+              <RegisterButton />
+              <span className="text-[13.5px] leading-normal text-muted">
+                Speakers, volunteers, and sponsors register free — pick that
+                when you start.
+              </span>
+            </div>
+
+            <p className="text-[13px] leading-relaxed text-muted">
+              Paalala: ang CrossGen Family Summit ay para sa edad{" "}
+              {EVENT.minAge} pataas. Pasensya na po — walang mapaglalagakan ng
+              mga mumunting bata sa venue.
+            </p>
           </div>
         </div>
       </main>
 
-      {/* ---------------------------------------------------------- desktop */}
-      {/* The split from the design. The lockup crop is 700×420, so a panel of
-          roughly this shape trims almost nothing off it. */}
-      <main className="hidden flex-1 lg:grid lg:grid-cols-[1.05fr_0.95fr]">
-        <div className="flex min-h-[460px] flex-col justify-center gap-6 bg-cg-purple px-14 py-16">
-          <Copy />
-          <div className="flex flex-col gap-3.5 pt-2">
-            <RegisterButton />
-            <span className="text-[14.5px] leading-normal text-white/70">
-              {FEE_LINE}
-            </span>
-          </div>
-        </div>
-
-        {/* Contained, not cover: the panel is portrait and the crop is 1.67:1,
-            so covering would slice the wordmark. The letterbox is invisible
-            because the panel matches the artwork's own purple. */}
-        <div className="relative overflow-hidden bg-[#3a2f7d]">
-          <Image
-            src="/brand/header-lockup.png"
-            alt="CrossGen Family Summit 2026"
-            fill
-            priority
-            sizes="48vw"
-            className="object-contain object-center"
-          />
-        </div>
-      </main>
-
-      <div className="hidden lg:block">
-        <BottomBar />
-      </div>
+      <BottomBar />
     </div>
   );
 }

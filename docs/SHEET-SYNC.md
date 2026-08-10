@@ -1,10 +1,17 @@
 # Google Sheet sync
 
-The **Sync now** button on the organizer dashboard replaces the contents of a
-Google Sheet with the current participant list — one row per person, both
-website and Google Form registrations together.
+The **Sync now** button on the organizer dashboard does two things, in order:
 
-Nothing syncs automatically. Someone presses the button.
+1. **Pulls** any new responses from the original Google Form into the database.
+2. **Pushes** every participant out to a Google Sheet, one row per person,
+   website and Google Form registrations together.
+
+The old form stays live because its QR codes are already printed and in
+circulation, so this is the route its answers take to reach the dashboard.
+Nothing runs on a schedule — someone presses the button.
+
+A failed pull does not block the push, and the dashboard reports it: a Drive
+hiccup should not also stop the sheet being brought up to date.
 
 ## Why it works this way
 

@@ -166,6 +166,9 @@ export default defineSchema({
     lastError: v.optional(v.string()),
     rows: v.number(),
     byEmail: v.string(),
+    // New Google Form responses pulled in during the same press.
+    imported: v.optional(v.number()),
+    importError: v.optional(v.string()),
   }).index("by_key", ["key"]),
 
   // Convex has no autoincrement. Sequential registration numbers come from an

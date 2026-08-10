@@ -343,6 +343,8 @@ export const recordSheetSync = internalMutation({
     rows: v.number(),
     byEmail: v.string(),
     at: v.number(),
+    imported: v.optional(v.number()),
+    importError: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
@@ -357,6 +359,8 @@ export const recordSheetSync = internalMutation({
       lastError: args.lastError,
       rows: args.rows,
       byEmail: args.byEmail,
+      imported: args.imported,
+      importError: args.importError,
     };
 
     if (existing === null) await ctx.db.insert("syncState", next);
@@ -365,15 +369,35 @@ export const recordSheetSync = internalMutation({
 });
 
 /**
- * The Sync button. An action rather than a mutation because it reaches out to
- * Google, and the result is recorded either way so the dashboard can show what
- * happened rather than swallowing a failure.
+ * The Sync button: pull, then push.
+ *
+ * The old Google Form is still live — its QR codes are already printed and in
+ * circulation — so anyone filling it in is invisible here until their row is
+ * imported. Syncing therefore pulls new Form responses first, then mirrors
+ * everything out to the sheet.
+ *
+ * A failed pull does not block the push: a Drive hiccup should not also stop
+ * the sheet being brought up to date. It is reported instead.
  */
 export const syncToSheet = action({
   args: {},
-  handler: async (ctx): Promise<{ rows: number }> => {
+  handler: async (
+    ctx,
+  ): Promise<{ rows: number; imported: number; importError?: string }> => {
     const me: Access | null = await ctx.runQuery(api.organizer.whoAmI, {});
     if (me === null) throw new ConvexError("Organizers only.");
+
+    let imported = 0;
+    let importError: string | undefined;
+    try {
+      const pulled = (await ctx.runAction(internal.importGoogleForm.run, {})) as {
+        created?: number;
+      };
+      imported = pulled.created ?? 0;
+    } catch (error) {
+      importError =
+        error instanceof Error ? error.message : "Could not read the Google Form.";
+    }
 
     try {
       const result = await ctx.runAction(internal.sheetSync.push, {
@@ -384,8 +408,10 @@ export const syncToSheet = action({
         rows: result.rows,
         byEmail: me.email,
         at: Date.now(),
+        imported,
+        importError,
       });
-      return result;
+      return { ...result, imported, importError };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       await ctx.runMutation(internal.organizer.recordSheetSync, {
@@ -394,6 +420,8 @@ export const syncToSheet = action({
         rows: 0,
         byEmail: me.email,
         at: Date.now(),
+        imported,
+        importError,
       });
       throw new ConvexError(message);
     }

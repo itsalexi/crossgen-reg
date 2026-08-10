@@ -68,9 +68,10 @@ export function AdminsSection() {
           <div>
             <Eyebrow>Google Sheet</Eyebrow>
             <p className="mt-1.5 text-[14.5px] leading-relaxed text-muted">
-              Pushes every participant to the shared sheet, replacing what is
-              there. Nothing syncs on its own — press this when you want the
-              sheet brought up to date.
+              Pulls any new Google Form responses in, then pushes every
+              participant out to the shared sheet, replacing what is there. The
+              old form is still live, so this is how its answers reach the
+              dashboard. Nothing runs on its own.
             </p>
           </div>
           <Button
@@ -80,7 +81,19 @@ export function AdminsSection() {
               setSyncing(true);
               setSyncMessage(null);
               void syncToSheet()
-                .then((r) => setSyncMessage(`Sheet updated — ${r.rows} rows.`))
+                .then((r) =>
+                  setSyncMessage(
+                    [
+                      r.imported > 0
+                        ? `Pulled ${r.imported} new form response${r.imported === 1 ? "" : "s"}.`
+                        : "No new form responses.",
+                      `Sheet updated — ${r.rows} rows.`,
+                      r.importError ? `Form could not be read: ${r.importError}` : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" "),
+                  ),
+                )
                 .catch((caught) =>
                   setSyncMessage(
                     caught instanceof ConvexError
@@ -99,7 +112,9 @@ export function AdminsSection() {
           {syncState == null
             ? "Never synced."
             : syncState.lastStatus === "ok"
-              ? `Last synced ${longDate(syncState.lastSyncedAt)} by ${syncState.byEmail} — ${syncState.rows} rows.`
+              ? `Last synced ${longDate(syncState.lastSyncedAt)} by ${syncState.byEmail} — ${syncState.rows} rows${
+                  syncState.imported ? `, ${syncState.imported} pulled from the form` : ""
+                }.`
               : `Last attempt ${longDate(syncState.lastSyncedAt)} failed: ${syncState.lastError}`}
         </p>
 

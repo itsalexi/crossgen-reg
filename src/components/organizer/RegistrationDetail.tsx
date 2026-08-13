@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
+import { ConvexError } from "convex/values";
 import { useState } from "react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
@@ -12,7 +13,7 @@ import {
   typeShort,
   type RegistrationType,
 } from "@convex/shared";
-import { Button, Eyebrow, Spinner } from "@/components/ui";
+import { Button, ConfirmDialog, Eyebrow, Spinner } from "@/components/ui";
 import { buildParticipantCsv, downloadCsv } from "@/lib/csv";
 import { amountText, EmailTag, longDate, ReceiptTag, SourceTag } from "./parts";
 
@@ -31,6 +32,10 @@ export function RegistrationDetail({
   const resend = useMutation(api.organizer.resendConfirmation);
   const [resending, setResending] = useState(false);
   const [resent, setResent] = useState(false);
+  const remove = useMutation(api.organizer.deleteRegistration);
+  const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   if (detail === undefined) {
     return (
@@ -291,6 +296,80 @@ export function RegistrationDetail({
           )}
         </div>
       </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50/40 px-5 py-4">
+        <div>
+          <p className="text-[14.5px] font-semibold text-ink">
+            Remove this registration
+          </p>
+          <p className="mt-0.5 text-[13.5px] leading-relaxed text-muted">
+            Deletes {registration.participantCount}{" "}
+            {registration.participantCount === 1 ? "person" : "people"} and the
+            uploaded receipt. This cannot be undone.
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          className="border-red-200 text-red-600 hover:border-red-300 hover:bg-red-50"
+          onClick={() => {
+            setDeleteError(null);
+            setConfirming(true);
+          }}
+        >
+          Remove
+        </Button>
+      </div>
+
+      {deleteError !== null && (
+        <p className="text-[13px] font-medium text-red-600">{deleteError}</p>
+      )}
+
+      {confirming && (
+      <ConfirmDialog
+        title="Remove this registration?"
+        confirmWord={registration.registrationNumber}
+        confirmLabel="Remove permanently"
+        busy={deleting}
+        onCancel={() => setConfirming(false)}
+        onConfirm={() => {
+          setDeleting(true);
+          setDeleteError(null);
+          void remove({ registrationId })
+            .then(() => {
+              setConfirming(false);
+              onBack();
+            })
+            .catch((caught) => {
+              setDeleteError(
+                caught instanceof ConvexError
+                  ? String(caught.data)
+                  : "Could not remove that registration.",
+              );
+              setConfirming(false);
+            })
+            .finally(() => setDeleting(false));
+        }}
+      >
+        <p>
+          <strong className="text-ink">
+            {registration.groupName ?? registration.registrantName}
+          </strong>{" "}
+          — {registration.participantCount}{" "}
+          {registration.participantCount === 1 ? "person" : "people"}
+          {registration.paymentType === "paid" &&
+            registration.paymentReference !== undefined && (
+              <> · paid under {registration.paymentReference}</>
+            )}
+          .
+        </p>
+        <p className="mt-2">
+          Everyone on it goes, along with the uploaded receipt. The payment
+          record for that reference stays, because it may cover other
+          registrations.
+        </p>
+      </ConfirmDialog>
+      )}
     </div>
   );
 }

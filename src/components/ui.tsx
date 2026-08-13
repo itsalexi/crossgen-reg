@@ -6,7 +6,7 @@ import type {
   ReactNode,
   SelectHTMLAttributes,
 } from "react";
-import { useId } from "react";
+import { useEffect, useId, useState } from "react";
 
 export function cn(...parts: (string | false | null | undefined)[]): string {
   return parts.filter(Boolean).join(" ");
@@ -341,6 +341,96 @@ export function Checkbox({
       </span>
       <span className="text-[14.5px] leading-normal text-ink">{label}</span>
     </label>
+  );
+}
+
+/**
+ * Confirmation dialog for something that cannot be undone. Deliberately not a
+ * generic modal: it takes the exact words the person must type, so a
+ * destructive action can never be a stray click on a focused button.
+ */
+export function ConfirmDialog({
+  title,
+  children,
+  confirmWord,
+  confirmLabel,
+  busy,
+  onCancel,
+  onConfirm,
+}: {
+  title: string;
+  children: ReactNode;
+  confirmWord: string;
+  confirmLabel: string;
+  busy?: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  // Mounted only while open, so the typed confirmation resets by construction
+  // rather than by an effect racing the render that opened it.
+  const [typed, setTyped] = useState("");
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancel();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+
+  const matches = typed.trim().toUpperCase() === confirmWord.toUpperCase();
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-4 backdrop-blur-[2px] sm:items-center"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onCancel();
+      }}
+    >
+      <div className="w-full max-w-[460px] rounded-2xl bg-white p-6 shadow-xl">
+        <h2 className="font-display text-[20px] leading-tight font-semibold text-ink">
+          {title}
+        </h2>
+        <div className="mt-3 text-[14.5px] leading-relaxed text-muted">
+          {children}
+        </div>
+
+        <label className="mt-5 flex flex-col gap-1.5">
+          <span className="text-[13px] font-medium text-ink">
+            Type <span className="font-mono font-semibold">{confirmWord}</span> to
+            confirm
+          </span>
+          <input
+            autoFocus
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            className="h-11 w-full rounded-xl border border-line bg-white px-3.5 font-mono text-[15px] text-ink"
+          />
+        </label>
+
+        <div className="mt-6 flex items-center justify-end gap-3">
+          <Button variant="quiet" onClick={onCancel} disabled={busy}>
+            Cancel
+          </Button>
+          <button
+            type="button"
+            disabled={!matches || busy === true}
+            onClick={onConfirm}
+            className={cn(
+              "inline-flex h-12 items-center justify-center gap-2 rounded-xl px-6 text-[15px] font-semibold transition-colors",
+              "bg-red-600 text-white hover:bg-red-700",
+              "disabled:cursor-not-allowed disabled:bg-red-600/40",
+            )}
+          >
+            {busy === true && <Spinner />}
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

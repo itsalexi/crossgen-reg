@@ -179,6 +179,48 @@ export const resendAllFailed = mutation({
   },
 });
 
+/**
+ * Deletes a registration and everyone on it.
+ *
+ * Irreversible, so the UI makes the organizer type the registration number
+ * first. The uploaded proof of payment goes too — leaving the blob behind
+ * would keep someone's bank receipt in storage after their record is gone.
+ *
+ * The payment record is deliberately left alone: it is keyed by reference and
+ * may cover registrations that are staying.
+ */
+export const deleteRegistration = mutation({
+  args: { registrationId: v.id("registrations") },
+  handler: async (ctx, args) => {
+    await requireOrganizer(ctx);
+
+    const registration = await ctx.db.get(args.registrationId);
+    if (registration === null) throw new ConvexError("Registration not found.");
+
+    const participants = await ctx.db
+      .query("participants")
+      .withIndex("by_registrationId", (q) =>
+        q.eq("registrationId", args.registrationId),
+      )
+      .collect();
+
+    for (const participant of participants) {
+      await ctx.db.delete(participant._id);
+    }
+
+    if (registration.paymentProofStorageId !== undefined) {
+      await ctx.storage.delete(registration.paymentProofStorageId);
+    }
+
+    await ctx.db.delete(args.registrationId);
+
+    return {
+      registrationNumber: registration.registrationNumber,
+      participants: participants.length,
+    };
+  },
+});
+
 // -------------------------------------------------------------- payments
 
 /** Records what actually arrived for one payment reference. */

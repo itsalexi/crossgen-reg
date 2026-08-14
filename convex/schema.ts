@@ -152,6 +152,12 @@ export default defineSchema({
    */
   payments: defineTable({
     reference: v.string(),
+    // "received" carries a real amount. The other two are the organizer
+    // saying something about a deposit that has not arrived or does not add
+    // up — the amount is meaningless for those and stays 0.
+    status: v.optional(
+      v.union(v.literal("received"), v.literal("unpaid"), v.literal("problem")),
+    ),
     amountReceived: v.number(),
     note: v.optional(v.string()),
     verifiedByEmail: v.string(),

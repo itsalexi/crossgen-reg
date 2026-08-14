@@ -280,6 +280,9 @@ export const deleteRegistration = mutation({
 export const recordPayment = mutation({
   args: {
     reference: v.string(),
+    status: v.optional(
+      v.union(v.literal("received"), v.literal("unpaid"), v.literal("problem")),
+    ),
     amountReceived: v.number(),
     note: v.optional(v.string()),
   },
@@ -288,7 +291,11 @@ export const recordPayment = mutation({
 
     const reference = args.reference.trim();
     if (reference.length === 0) throw new ConvexError("Missing reference.");
-    if (!Number.isFinite(args.amountReceived) || args.amountReceived < 0) {
+    const status = args.status ?? "received";
+    if (
+      status === "received" &&
+      (!Number.isFinite(args.amountReceived) || args.amountReceived <= 0)
+    ) {
       throw new ConvexError("Enter the amount that arrived, in pesos.");
     }
 
@@ -300,7 +307,8 @@ export const recordPayment = mutation({
 
     const next = {
       reference,
-      amountReceived: args.amountReceived,
+      status,
+      amountReceived: status === "received" ? args.amountReceived : 0,
       note: note.length > 0 ? note : undefined,
       verifiedByEmail: me.email,
       verifiedAt: Date.now(),

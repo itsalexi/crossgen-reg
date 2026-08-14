@@ -6,12 +6,25 @@ import { useMemo, useState } from "react";
 import { api } from "@convex/_generated/api";
 import type { Doc } from "@convex/_generated/dataModel";
 import { formatDatePaid, formatPeso } from "@convex/shared";
-import { Button, Callout, Eyebrow, cn } from "@/components/ui";
+import { Button, Callout, Eyebrow, Pill, cn } from "@/components/ui";
 import type { Id } from "@convex/_generated/dataModel";
 import type { Row } from "@/lib/organizer";
 import { StatTile } from "./parts";
 
 type Payment = Doc<"payments">;
+
+type Status = "received" | "unpaid" | "problem";
+
+function statusOf(record: Payment | undefined): Status | undefined {
+  if (record === undefined) return undefined;
+  return (record.status ?? "received") as Status;
+}
+
+const STATUS_LABEL: Record<Status, string> = {
+  received: "Received",
+  unpaid: "Not paid yet",
+  problem: "Needs sorting",
+};
 
 /**
  * One deposit often covers several people — 31 references across 65 imported
@@ -67,11 +80,17 @@ function buildGroups(rows: Row[], payments: Payment[]): Group[] {
       };
     })
     .sort((a, b) => {
-      // Unreconciled first — that is the work.
-      if ((a.record === undefined) !== (b.record === undefined)) {
-        return a.record === undefined ? -1 : 1;
-      }
-      return a.reference.localeCompare(b.reference);
+      // Things needing a decision float up: broken first, then untouched,
+      // then known-unpaid, then the ones that are settled.
+      const rank = (g: Group) => {
+        const status = statusOf(g.record);
+        if (status === "problem") return 0;
+        if (status === undefined) return 1;
+        if (status === "unpaid") return 2;
+        return 3;
+      };
+      const diff = rank(a) - rank(b);
+      return diff !== 0 ? diff : a.reference.localeCompare(b.reference);
     });
 }
 
@@ -92,24 +111,54 @@ function GroupCard({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const reconciled = group.record !== undefined;
+  const status = statusOf(group.record);
+  const reconciled = status === "received";
   const mismatch =
     reconciled &&
     group.expectedKnown &&
     group.record!.amountReceived !== group.expected;
 
+  const save = (next: Status) => {
+    setBusy(true);
+    setError(null);
+    void record({
+      reference: group.reference,
+      status: next,
+      amountReceived: next === "received" ? Number(amount) : 0,
+      note: note.trim() || undefined,
+    })
+      .catch((caught) =>
+        setError(
+          caught instanceof ConvexError
+            ? String(caught.data)
+            : "Could not save that.",
+        ),
+      )
+      .finally(() => setBusy(false));
+  };
+
   return (
     <li
       className={cn(
         "flex flex-col gap-4 rounded-2xl border bg-white p-5",
-        reconciled ? "border-line" : "border-cg-gold/50",
+        status === "received"
+          ? "border-line"
+          : status === "problem"
+            ? "border-red-300"
+            : status === "unpaid"
+              ? "border-line bg-surface"
+              : "border-cg-gold/50",
       )}
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="font-mono text-[15px] font-semibold text-ink">
-            {group.reference}
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-mono text-[15px] font-semibold text-ink">
+              {group.reference}
+            </p>
+            {status === "unpaid" && <Pill tone="muted">Not paid yet</Pill>}
+            {status === "problem" && <Pill tone="gold">Needs sorting</Pill>}
+          </div>
           <p className="mt-1 text-[13.5px] text-muted">
             {group.people} {group.people === 1 ? "person" : "people"} ·{" "}
             {group.rows.length} registration
@@ -188,21 +237,7 @@ function GroupCard({
         className="flex flex-wrap items-end gap-3 border-t border-line pt-4"
         onSubmit={(e) => {
           e.preventDefault();
-          setBusy(true);
-          setError(null);
-          void record({
-            reference: group.reference,
-            amountReceived: Number(amount),
-            note: note.trim() || undefined,
-          })
-            .catch((caught) =>
-              setError(
-                caught instanceof ConvexError
-                  ? String(caught.data)
-                  : "Could not save that.",
-              ),
-            )
-            .finally(() => setBusy(false));
+          save("received");
         }}
       >
         <label className="flex flex-col gap-1.5">
@@ -238,19 +273,42 @@ function GroupCard({
         >
           {reconciled ? "Update" : "Mark received"}
         </Button>
-        {reconciled && (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() => save("unpaid")}
+        >
+          Not paid yet
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() => save("problem")}
+        >
+          Something&rsquo;s wrong
+        </Button>
+        {status !== undefined && (
           <Button
             type="button"
             size="sm"
             variant="quiet"
             onClick={() => void clear({ reference: group.reference })}
           >
-            Undo
+            Clear
           </Button>
         )}
       </form>
 
       {error !== null && <Callout tone="error">{error}</Callout>}
+
+      {status !== undefined && status !== "received" && (
+        <p className="text-[13px] text-muted">
+          {STATUS_LABEL[status]} — marked by {group.record!.verifiedByEmail}
+          {group.record!.note ? ` · ${group.record!.note}` : ""}
+        </p>
+      )}
 
       {reconciled && (
         <p className="text-[13px] text-muted">
@@ -281,12 +339,18 @@ export function PaymentsSection({
   const groups = useMemo(() => buildGroups(rows, payments), [rows, payments]);
 
   const received = groups.reduce(
-    (sum, g) => sum + (g.record?.amountReceived ?? 0),
+    (sum, g) =>
+      statusOf(g.record) === "received" ? sum + g.record!.amountReceived : sum,
     0,
   );
+  const unpaid = groups.filter((g) => statusOf(g.record) === "unpaid");
+  const problems = groups.filter((g) => statusOf(g.record) === "problem");
   const expectedKnown = groups
     .filter((g) => g.expectedKnown)
     .reduce((sum, g) => sum + g.expected, 0);
+  // Unchecked means nobody has said anything about it yet. A deposit marked
+  // "not paid yet" or "needs sorting" has been looked at, and belongs in its
+  // own pile rather than back in the queue.
   const outstanding = groups.filter((g) => g.record === undefined);
   const shown = onlyOutstanding ? outstanding : groups;
 
@@ -307,7 +371,11 @@ export function PaymentsSection({
           label="Still to check"
           tone="warn"
           value={String(outstanding.length)}
-          note="references not yet reconciled"
+          note={
+            unpaid.length + problems.length > 0
+              ? `plus ${unpaid.length} not paid yet, ${problems.length} needing sorting`
+              : "references nobody has looked at yet"
+          }
         />
       </div>
 

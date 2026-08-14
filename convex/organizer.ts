@@ -2,6 +2,8 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { ConvexError, v } from "convex/values";
 import { api, internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
+import { cleanParticipant } from "./registrations";
+import { participantInputValidator } from "./schema";
 import {
   action,
   internalMutation,
@@ -176,6 +178,57 @@ export const resendAllFailed = mutation({
     }
 
     return failed.length;
+  },
+});
+
+/**
+ * Corrects what someone typed. People mistype payment references — and since
+ * a reference is what groups a deposit together, fixing one is also how two
+ * payment cards become one.
+ */
+export const updateRegistration = mutation({
+  args: {
+    registrationId: v.id("registrations"),
+    groupName: v.optional(v.string()),
+    paymentReference: v.optional(v.string()),
+    datePaid: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await requireOrganizer(ctx);
+
+    const registration = await ctx.db.get(args.registrationId);
+    if (registration === null) throw new ConvexError("Registration not found.");
+
+    const trimmed = (value: string | undefined) => {
+      if (value === undefined) return undefined;
+      const next = value.trim();
+      return next.length > 0 ? next : undefined;
+    };
+
+    await ctx.db.patch(args.registrationId, {
+      groupName: trimmed(args.groupName),
+      paymentReference: trimmed(args.paymentReference),
+      datePaid: trimmed(args.datePaid),
+    });
+  },
+});
+
+/** Corrects one participant's details, held to the same rules as the form. */
+export const updateParticipant = mutation({
+  args: {
+    participantId: v.id("participants"),
+    participant: participantInputValidator,
+  },
+  handler: async (ctx, args) => {
+    await requireOrganizer(ctx);
+
+    const existing = await ctx.db.get(args.participantId);
+    if (existing === null) throw new ConvexError("Participant not found.");
+
+    // Same validation the registration form runs, so an organizer edit cannot
+    // put something in that a registrant could not have.
+    const clean = cleanParticipant(args.participant, 0);
+    await ctx.db.patch(args.participantId, clean);
   },
 });
 

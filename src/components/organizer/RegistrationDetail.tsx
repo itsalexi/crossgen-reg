@@ -15,6 +15,7 @@ import {
 } from "@convex/shared";
 import { Button, ConfirmDialog, Eyebrow, Spinner } from "@/components/ui";
 import { buildParticipantCsv, downloadCsv } from "@/lib/csv";
+import { EditRegistration } from "./EditRegistration";
 import { amountText, EmailTag, longDate, ReceiptTag, SourceTag } from "./parts";
 
 function isImage(name: string | undefined): boolean {
@@ -36,6 +37,7 @@ export function RegistrationDetail({
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
 
   if (detail === undefined) {
     return (
@@ -86,6 +88,13 @@ export function RegistrationDetail({
           </span>
         </div>
         <div className="flex flex-none flex-wrap items-center gap-2.5">
+          <Button
+            size="sm"
+            variant={editing ? "primary" : "outline"}
+            onClick={() => setEditing((v) => !v)}
+          >
+            {editing ? "Done editing" : "Edit details"}
+          </Button>
           <Button
             size="sm"
             variant="outline"
@@ -175,6 +184,13 @@ export function RegistrationDetail({
         </p>
       )}
 
+      {editing ? (
+        <EditRegistration
+          registration={registration}
+          participants={participants}
+          onDone={() => setEditing(false)}
+        />
+      ) : (
       <div className="grid gap-6 xl:grid-cols-[1fr_280px]">
         <div className="overflow-hidden rounded-2xl border border-line bg-white">
           <div className="overflow-x-auto">
@@ -296,6 +312,7 @@ export function RegistrationDetail({
           )}
         </div>
       </div>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50/40 px-5 py-4">
         <div>

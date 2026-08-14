@@ -60,7 +60,7 @@ function requireMobile(value: string): string {
   return trimmed;
 }
 
-function cleanParticipant(input: ParticipantInput, index: number) {
+export function cleanParticipant(input: ParticipantInput, index: number) {
   const who = `Participant ${index + 1}`;
 
   if (!Number.isInteger(input.age)) fail(`${who}: age must be a whole number.`);

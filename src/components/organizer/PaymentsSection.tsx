@@ -7,6 +7,7 @@ import { api } from "@convex/_generated/api";
 import type { Doc } from "@convex/_generated/dataModel";
 import { formatDatePaid, formatPeso } from "@convex/shared";
 import { Button, Callout, Eyebrow, cn } from "@/components/ui";
+import type { Id } from "@convex/_generated/dataModel";
 import type { Row } from "@/lib/organizer";
 import { StatTile } from "./parts";
 
@@ -24,7 +25,12 @@ type Group = {
   expected: number;
   expectedKnown: boolean;
   datePaid?: string;
-  receipts: { label: string; url?: string; internal: boolean }[];
+  receipts: {
+    label: string;
+    url?: string;
+    internal: boolean;
+    registrationId: Id<"registrations">;
+  }[];
   record?: Payment;
 };
 
@@ -55,6 +61,7 @@ function buildGroups(rows: Row[], payments: Payment[]): Group[] {
           label: r.registration.registrationNumber,
           url: r.registration.paymentProofExternalUrl,
           internal: r.registration.paymentProofStorageId !== undefined,
+          registrationId: r.registration._id,
         })),
         record: recordFor.get(reference),
       };
@@ -68,7 +75,13 @@ function buildGroups(rows: Row[], payments: Payment[]): Group[] {
     });
 }
 
-function GroupCard({ group }: { group: Group }) {
+function GroupCard({
+  group,
+  onOpen,
+}: {
+  group: Group;
+  onOpen: (registrationId: Id<"registrations">) => void;
+}) {
   const record = useMutation(api.organizer.recordPayment);
   const clear = useMutation(api.organizer.clearPayment);
 
@@ -115,12 +128,20 @@ function GroupCard({ group }: { group: Group }) {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px]">
+      {/* Straight into the registration, which is where a wrong reference or a
+          misspelled name actually gets fixed. */}
+      <div className="flex flex-wrap gap-x-3 gap-y-1.5 text-[13px]">
         {group.rows.flatMap((row) =>
           row.participants.map((p) => (
-            <span key={p._id} className="text-muted">
+            <button
+              key={p._id}
+              type="button"
+              onClick={() => onOpen(row.registration._id)}
+              title={`Open ${row.registration.registrationNumber}`}
+              className="rounded-md px-1.5 py-0.5 text-muted underline decoration-line underline-offset-2 transition-colors hover:bg-cg-purple-tint hover:text-cg-purple hover:decoration-cg-purple-soft"
+            >
               {p.fullName}
-            </span>
+            </button>
           )),
         )}
       </div>
@@ -128,18 +149,35 @@ function GroupCard({ group }: { group: Group }) {
       <div className="flex flex-wrap items-center gap-3 text-[13px]">
         {group.receipts.map((receipt) =>
           receipt.url !== undefined ? (
-            <a
-              key={receipt.label}
-              href={receipt.url}
-              target="_blank"
-              rel="noreferrer"
-              className="font-medium text-cg-purple hover:underline"
-            >
-              {receipt.label} receipt ↗
-            </a>
+            <span key={receipt.label} className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => onOpen(receipt.registrationId)}
+                className="font-medium text-cg-purple hover:underline"
+              >
+                {receipt.label}
+              </button>
+              <a
+                href={receipt.url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-muted hover:text-cg-purple hover:underline"
+              >
+                receipt ↗
+              </a>
+            </span>
           ) : (
-            <span key={receipt.label} className="text-muted">
-              {receipt.label} {receipt.internal ? "receipt uploaded" : "no receipt"}
+            <span key={receipt.label} className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => onOpen(receipt.registrationId)}
+                className="font-medium text-cg-purple hover:underline"
+              >
+                {receipt.label}
+              </button>
+              <span className="text-muted">
+                {receipt.internal ? "receipt uploaded" : "no receipt"}
+              </span>
             </span>
           ),
         )}
@@ -233,9 +271,11 @@ function GroupCard({ group }: { group: Group }) {
 export function PaymentsSection({
   rows,
   payments,
+  onOpen,
 }: {
   rows: Row[];
   payments: Payment[];
+  onOpen: (registrationId: Id<"registrations">) => void;
 }) {
   const [onlyOutstanding, setOnlyOutstanding] = useState(false);
   const groups = useMemo(() => buildGroups(rows, payments), [rows, payments]);
@@ -295,7 +335,7 @@ export function PaymentsSection({
       ) : (
         <ul className="flex flex-col gap-3">
           {shown.map((group) => (
-            <GroupCard key={group.reference} group={group} />
+            <GroupCard key={group.reference} group={group} onOpen={onOpen} />
           ))}
         </ul>
       )}

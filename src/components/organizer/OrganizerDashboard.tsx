@@ -394,7 +394,11 @@ export function OrganizerDashboard() {
               ) : section === "admins" ? (
                 <AdminsSection />
               ) : section === "payments" ? (
-                <PaymentsSection rows={rows} payments={data.payments} />
+                <PaymentsSection
+                  rows={rows}
+                  payments={data.payments}
+                  onOpen={setOpen}
+                />
               ) : section === "overview" ? (
                 <div className="flex flex-col gap-6">
                   <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

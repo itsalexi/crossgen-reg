@@ -148,14 +148,28 @@ export const BREAKOUT_SESSIONS = [
     value: 1,
     title: "Making Family Discipleship Work at Home and In Our Church",
   },
-  { value: 2, title: "Family Flourishing: Well-Being & Mental Health" },
+  {
+    value: 2,
+    title: "Family Flourishing: Nurturing Mental Health in the Home",
+  },
   { value: 3, title: "Solo Parenting and Discipleship" },
   { value: 4, title: "Faith and Family Connection in the Digital Age" },
   {
     value: 5,
-    title: "Fearfully & Wonderfully Made: Navigating Sex, Gender, and Identity",
+    title:
+      "I Love You, Anak: Dealing with Identity and Gender Confusion in the Family",
   },
 ] as const;
+
+/**
+ * Wording the sessions used to carry. The Google Form still asks with the old
+ * titles, so the importer has to recognise them — otherwise every response
+ * choosing 2 or 5 would quietly land on session 1.
+ */
+export const LEGACY_BREAKOUT_TITLES: Record<string, number> = {
+  "family flourishing: well-being & mental health": 2,
+  "fearfully & wonderfully made: navigating sex, gender, and identity": 5,
+};
 
 export function breakoutTitle(value: number): string {
   return (

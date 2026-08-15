@@ -16,7 +16,11 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { internalAction } from "./_generated/server";
-import { BREAKOUT_SESSIONS, type HeardFrom } from "./shared";
+import {
+  BREAKOUT_SESSIONS,
+  LEGACY_BREAKOUT_TITLES,
+  type HeardFrom,
+} from "./shared";
 
 const SHEET_CSV =
   "https://docs.google.com/spreadsheets/d/1xxvA1csO6CBbl7-p14Qr6zkCO4r7x75Q_nfjQIOVgyY/export?format=csv";
@@ -68,6 +72,12 @@ function parseCsv(text: string): string[][] {
 
 function breakoutFrom(title: string): 1 | 2 | 3 | 4 | 5 {
   const needle = title.toLowerCase().trim();
+
+  // The form still asks with the previous wording, so those are checked first
+  // and exactly — a prefix match against the new titles would miss them.
+  const legacy = LEGACY_BREAKOUT_TITLES[needle];
+  if (legacy !== undefined) return legacy as 1 | 2 | 3 | 4 | 5;
+
   const found = BREAKOUT_SESSIONS.find(
     (s) =>
       s.title.toLowerCase() === needle ||

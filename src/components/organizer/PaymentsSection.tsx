@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
 import { useMemo, useState } from "react";
 import { api } from "@convex/_generated/api";
@@ -42,6 +42,8 @@ type Group = {
     label: string;
     url?: string;
     internal: boolean;
+    storageId?: Id<"_storage">;
+    fileName?: string;
     registrationId: Id<"registrations">;
   }[];
   record?: Payment;
@@ -74,6 +76,8 @@ function buildGroups(rows: Row[], payments: Payment[]): Group[] {
           label: r.registration.registrationNumber,
           url: r.registration.paymentProofExternalUrl,
           internal: r.registration.paymentProofStorageId !== undefined,
+          storageId: r.registration.paymentProofStorageId,
+          fileName: r.registration.paymentProofFileName,
           registrationId: r.registration._id,
         })),
         record: recordFor.get(reference),
@@ -94,12 +98,20 @@ function buildGroups(rows: Row[], payments: Payment[]): Group[] {
     });
 }
 
+function isImage(name: string | undefined): boolean {
+  return /\.(jpe?g|png|webp|gif)$/i.test(name ?? "");
+}
+
 function GroupCard({
   group,
   onOpen,
+  fileUrls,
+  onZoom,
 }: {
   group: Group;
   onOpen: (registrationId: Id<"registrations">) => void;
+  fileUrls: Record<string, string | null>;
+  onZoom: (src: string, label: string) => void;
 }) {
   const record = useMutation(api.organizer.recordPayment);
   const clear = useMutation(api.organizer.clearPayment);
@@ -195,41 +207,67 @@ function GroupCard({
         )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 text-[13px]">
-        {group.receipts.map((receipt) =>
-          receipt.url !== undefined ? (
-            <span key={receipt.label} className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => onOpen(receipt.registrationId)}
-                className="font-medium text-cg-purple hover:underline"
-              >
-                {receipt.label}
-              </button>
-              <a
-                href={receipt.url}
-                target="_blank"
-                rel="noreferrer"
-                className="text-muted hover:text-cg-purple hover:underline"
-              >
-                receipt ↗
-              </a>
-            </span>
-          ) : (
-            <span key={receipt.label} className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => onOpen(receipt.registrationId)}
-                className="font-medium text-cg-purple hover:underline"
-              >
-                {receipt.label}
-              </button>
-              <span className="text-muted">
-                {receipt.internal ? "receipt uploaded" : "no receipt"}
-              </span>
-            </span>
-          ),
-        )}
+      {/* Uploaded receipts are shown here so a deposit can be checked without
+          leaving the page. Drive-hosted ones from the old form cannot be: those
+          files need a Google sign-in, so they stay as links. */}
+      <div className="flex flex-wrap items-start gap-3">
+        {group.receipts.map((receipt) => {
+          const src =
+            receipt.storageId !== undefined
+              ? (fileUrls[receipt.storageId] ?? undefined)
+              : undefined;
+          const previewable = src !== undefined && isImage(receipt.fileName);
+
+          return (
+            <div key={receipt.label} className="flex flex-col gap-1">
+              {previewable ? (
+                <button
+                  type="button"
+                  onClick={() => onZoom(src, receipt.label)}
+                  title="Click to enlarge"
+                  className="block overflow-hidden rounded-xl border border-line bg-surface transition-colors hover:border-cg-purple-soft"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={src}
+                    alt={`Receipt for ${receipt.label}`}
+                    className="h-28 w-40 object-cover"
+                    loading="lazy"
+                  />
+                </button>
+              ) : (
+                <div className="flex h-28 w-40 items-center justify-center rounded-xl border border-line bg-surface px-3 text-center">
+                  <span className="text-[12px] leading-snug text-muted">
+                    {receipt.url !== undefined
+                      ? "Kept in Google Drive"
+                      : src !== undefined
+                        ? "PDF receipt"
+                        : "No receipt"}
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center gap-2 text-[12.5px]">
+                <button
+                  type="button"
+                  onClick={() => onOpen(receipt.registrationId)}
+                  className="font-medium text-cg-purple hover:underline"
+                >
+                  {receipt.label}
+                </button>
+                {(receipt.url ?? src) !== undefined && (
+                  <a
+                    href={receipt.url ?? src}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-muted hover:text-cg-purple hover:underline"
+                  >
+                    open ↗
+                  </a>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       <form
@@ -336,7 +374,22 @@ export function PaymentsSection({
   onOpen: (registrationId: Id<"registrations">) => void;
 }) {
   const [onlyOutstanding, setOnlyOutstanding] = useState(false);
+  const [zoom, setZoom] = useState<{ src: string; label: string } | null>(null);
   const groups = useMemo(() => buildGroups(rows, payments), [rows, payments]);
+
+  // Signed URLs are resolved once for every uploaded receipt on the page.
+  const storageIds = useMemo(
+    () =>
+      rows
+        .map((r) => r.registration.paymentProofStorageId)
+        .filter((id): id is Id<"_storage"> => id !== undefined),
+    [rows],
+  );
+  const fileUrls =
+    useQuery(
+      api.organizer.paymentProofUrls,
+      storageIds.length > 0 ? { storageIds } : "skip",
+    ) ?? {};
 
   const received = groups.reduce(
     (sum, g) =>
@@ -394,6 +447,37 @@ export function PaymentsSection({
         </Button>
       </div>
 
+      {zoom !== null && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Receipt for ${zoom.label}`}
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-ink/80 p-6"
+          onClick={() => setZoom(null)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={zoom.src}
+            alt={`Receipt for ${zoom.label}`}
+            className="max-h-[85vh] max-w-full rounded-xl bg-white object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <div className="flex items-center gap-4 text-[14px] text-white">
+            <span className="font-semibold">{zoom.label}</span>
+            <a
+              href={zoom.src}
+              target="_blank"
+              rel="noreferrer"
+              className="underline underline-offset-2"
+              onClick={(e) => e.stopPropagation()}
+            >
+              Open full size
+            </a>
+            <span className="text-white/60">Click anywhere to close</span>
+          </div>
+        </div>
+      )}
+
       {shown.length === 0 ? (
         <p className="rounded-2xl border border-line bg-white py-16 text-center text-[15px] text-muted">
           {onlyOutstanding
@@ -403,7 +487,13 @@ export function PaymentsSection({
       ) : (
         <ul className="flex flex-col gap-3">
           {shown.map((group) => (
-            <GroupCard key={group.reference} group={group} onOpen={onOpen} />
+            <GroupCard
+              key={group.reference}
+              group={group}
+              onOpen={onOpen}
+              fileUrls={fileUrls}
+              onZoom={(src, label) => setZoom({ src, label })}
+            />
           ))}
         </ul>
       )}

@@ -353,6 +353,7 @@ export const importRows = internalMutation({
   handler: async (ctx, args) => {
     let created = 0;
     let skipped = 0;
+    let blocked = 0;
 
     for (const row of args.rows) {
       const existing = await ctx.db
@@ -363,6 +364,17 @@ export const importRows = internalMutation({
         .unique();
       if (existing !== null) {
         skipped += 1;
+        continue;
+      }
+
+      // Deleted on purpose once already — usually a duplicate of someone who
+      // re-registered on the website. Do not bring it back.
+      const suppressed = await ctx.db
+        .query("suppressedImports")
+        .withIndex("by_key", (q) => q.eq("idempotencyKey", row.idempotencyKey))
+        .unique();
+      if (suppressed !== null) {
+        blocked += 1;
         continue;
       }
 
@@ -402,7 +414,7 @@ export const importRows = internalMutation({
       created += 1;
     }
 
-    return { created, skipped };
+    return { created, skipped, blocked };
   },
 });
 

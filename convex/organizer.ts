@@ -257,6 +257,16 @@ export const deleteRegistration = mutation({
       )
       .collect();
 
+    // Remember imported deletions, or the next sync re-creates them.
+    if (registration.source === "google-form") {
+      await ctx.db.insert("suppressedImports", {
+        idempotencyKey: registration.idempotencyKey,
+        registrationNumber: registration.registrationNumber,
+        reason: "Removed by an organizer from the dashboard.",
+        byEmail: (await requireOrganizer(ctx)).email,
+      });
+    }
+
     for (const participant of participants) {
       await ctx.db.delete(participant._id);
     }

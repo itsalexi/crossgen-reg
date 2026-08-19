@@ -164,6 +164,21 @@ export default defineSchema({
     verifiedAt: v.number(),
   }).index("by_reference", ["reference"]),
 
+  /**
+   * Google Form responses that must never come back.
+   *
+   * The importer skips anything it has already seen by idempotency key — but
+   * deleting a registration also deletes that key, so the next sync treated
+   * the row as new and re-created it. A deletion is a decision; this is where
+   * it is remembered.
+   */
+  suppressedImports: defineTable({
+    idempotencyKey: v.string(),
+    registrationNumber: v.string(),
+    reason: v.string(),
+    byEmail: v.string(),
+  }).index("by_key", ["idempotencyKey"]),
+
   // Remembers the last push to the organizers' Google Sheet.
   syncState: defineTable({
     key: v.string(),

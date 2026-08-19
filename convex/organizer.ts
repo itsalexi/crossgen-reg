@@ -302,10 +302,10 @@ export const recordPayment = mutation({
     const reference = args.reference.trim();
     if (reference.length === 0) throw new ConvexError("Missing reference.");
     const status = args.status ?? "received";
-    if (
-      status === "received" &&
-      (!Number.isFinite(args.amountReceived) || args.amountReceived <= 0)
-    ) {
+    if (!Number.isFinite(args.amountReceived) || args.amountReceived < 0) {
+      throw new ConvexError("Enter the amount that arrived, in pesos.");
+    }
+    if (status === "received" && args.amountReceived <= 0) {
       throw new ConvexError("Enter the amount that arrived, in pesos.");
     }
 
@@ -318,7 +318,9 @@ export const recordPayment = mutation({
     const next = {
       reference,
       status,
-      amountReceived: status === "received" ? args.amountReceived : 0,
+      // A part-payment is still money in the bank. Only "not paid yet" means
+      // nothing arrived; "needs sorting" keeps whatever did.
+      amountReceived: status === "unpaid" ? 0 : args.amountReceived,
       note: note.length > 0 ? note : undefined,
       verifiedByEmail: me.email,
       verifiedAt: Date.now(),

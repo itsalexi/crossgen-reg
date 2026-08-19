@@ -312,6 +312,7 @@ export function computeStats(rows: Row[], payments: Payment[] = []): Stats {
   for (const reference of referencesHere) {
     const amount = index.received.get(reference);
     if (amount !== undefined) {
+      // Includes part-payments on flagged deposits — the money did arrive.
       received += amount;
       referencesChecked += 1;
     }

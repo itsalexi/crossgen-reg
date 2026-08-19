@@ -136,7 +136,9 @@ function GroupCard({
     void record({
       reference: group.reference,
       status: next,
-      amountReceived: next === "received" ? Number(amount) : 0,
+      // Keep the figure on a flagged deposit: "needs sorting" is usually a
+      // part-payment, and zeroing it loses the only record of what arrived.
+      amountReceived: next === "unpaid" ? 0 : Number(amount || 0),
       note: note.trim() || undefined,
     })
       .catch((caught) =>
@@ -324,8 +326,9 @@ function GroupCard({
           size="sm"
           variant="outline"
           onClick={() => save("problem")}
+          title="Keeps whatever amount is in the box — use it for part-payments"
         >
-          Something&rsquo;s wrong
+          Short or wrong
         </Button>
         {status !== undefined && (
           <Button
@@ -343,7 +346,11 @@ function GroupCard({
 
       {status !== undefined && status !== "received" && (
         <p className="text-[13px] text-muted">
-          {STATUS_LABEL[status]} — marked by {group.record!.verifiedByEmail}
+          {STATUS_LABEL[status]}
+          {group.record!.amountReceived > 0
+            ? ` — ${formatPeso(group.record!.amountReceived)} received so far`
+            : ""}{" "}
+          — marked by {group.record!.verifiedByEmail}
           {group.record!.note ? ` · ${group.record!.note}` : ""}
         </p>
       )}
@@ -391,9 +398,10 @@ export function PaymentsSection({
       storageIds.length > 0 ? { storageIds } : "skip",
     ) ?? {};
 
+  // Part-payments count towards what has actually arrived.
   const received = groups.reduce(
     (sum, g) =>
-      statusOf(g.record) === "received" ? sum + g.record!.amountReceived : sum,
+      statusOf(g.record) === "unpaid" ? sum : sum + (g.record?.amountReceived ?? 0),
     0,
   );
   const unpaid = groups.filter((g) => statusOf(g.record) === "unpaid");

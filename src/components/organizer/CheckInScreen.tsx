@@ -1,0 +1,1411 @@
+"use client";
+
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import jsQR from "jsqr";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { api } from "@convex/_generated/api";
+import type { Id } from "@convex/_generated/dataModel";
+import type { RosterEntry } from "@convex/checkin";
+import { cn } from "@/components/ui";
+import { CheckInDesk } from "@/components/organizer/CheckInDesk";
+import {
+  clearQueued,
+  enqueue,
+  loadQueue,
+  loadRoster,
+  resolveScan,
+  saveRoster,
+  searchRoster,
+  type CachedRoster,
+  type QueuedCheckIn,
+} from "@/lib/checkinStore";
+
+/**
+ * The door.
+ *
+ * Built for a volunteer holding a phone one-handed in a bright hall with a
+ * queue in front of them: one question per screen, plain words, nothing under
+ * 16px, every button big enough to hit without looking. Deliberately says
+ * nothing about syncing, caches or queues — the phone handles that silently
+ * and the only promise made is "nothing is lost".
+ *
+ * Reads from the device's own copy of the roster, never the live query, so it
+ * behaves identically with or without a connection.
+ */
+
+const HEADER = "#291a5c";
+const PURPLE = "#3e2a85";
+const GOLD = "#f5b800";
+const BORDER = "#c9c2dd";
+const HAIRLINE = "#ddd8e8";
+const BODY = "#4a4460";
+
+function at(ts: number): string {
+  return new Date(ts).toLocaleTimeString("en-PH", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function buzz(pattern: number | number[]): void {
+  try {
+    navigator.vibrate?.(pattern);
+  } catch {
+    // The screen carries it.
+  }
+}
+
+type View =
+  | { kind: "find" }
+  | { kind: "scan" }
+  | { kind: "person"; id: string }
+  | { kind: "groupCount"; label: string }
+  | { kind: "groupPick"; label: string; expected: number }
+  | { kind: "groupDone"; label: string; names: RosterEntry[] };
+
+type ScanState =
+  { kind: "waiting" } | { kind: "nocamera" } | { kind: "unreadable" };
+
+/**
+ * A read code, and how far along it is in arriving on screen.
+ *
+ * The camera does not hand over to another screen. It freezes, the box closes
+ * on the code, and the same confirmation the manual flow uses rises over the
+ * held frame — so the volunteer keeps their place, and a read that was wrong
+ * can be dismissed straight back into the queue.
+ */
+type Hit = { id: string; stage: "locking" | "open" | "closing" };
+
+export function CheckInScreen() {
+  const { isAuthenticated } = useConvexAuth();
+  const live = useQuery(api.checkin.roster, isAuthenticated ? {} : "skip");
+  const send = useMutation(api.checkin.checkIn);
+  const undo = useMutation(api.checkin.undoCheckIn);
+
+  const [cache, setCache] = useState<CachedRoster | null>(null);
+  const [queue, setQueue] = useState<QueuedCheckIn[]>([]);
+  const [view, setView] = useState<View>({ kind: "find" });
+  const [query, setQuery] = useState("");
+  const [online, setOnline] = useState(true);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [scan, setScan] = useState<ScanState>({ kind: "waiting" });
+  const [starting, setStarting] = useState(false);
+  const [hit, setHit] = useState<Hit | null>(null);
+  const stageTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [torch, setTorch] = useState<{ on: boolean; available: boolean }>({
+    on: false,
+    available: false,
+  });
+  const trackRef = useRef<MediaStreamTrack | null>(null);
+
+  const searchRef = useRef<HTMLInputElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const lastScan = useRef<{ value: string; at: number }>({ value: "", at: 0 });
+  /**
+   * Stops the camera reading while a result is on screen.
+   *
+   * Without this the same code sits in frame and is read again a few seconds
+   * later — by which time the person is checked in, so the screen flips itself
+   * to "already here" with nobody having done anything.
+   */
+  const paused = useRef(false);
+
+  useEffect(() => {
+    setCache(loadRoster());
+    setQueue(loadQueue());
+    const sync = () => setOnline(navigator.onLine);
+    sync();
+    window.addEventListener("online", sync);
+    window.addEventListener("offline", sync);
+    return () => {
+      window.removeEventListener("online", sync);
+      window.removeEventListener("offline", sync);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (live === undefined) return;
+    saveRoster(live);
+    setCache(live);
+  }, [live]);
+
+  const flush = useCallback(async () => {
+    const waiting = loadQueue();
+    if (waiting.length === 0 || !navigator.onLine) return;
+    try {
+      await send({
+        entries: waiting.map((entry) => ({
+          participantId: entry.participantId as Id<"participants">,
+          at: entry.at,
+          queued: true,
+        })),
+      });
+      setQueue(clearQueued(waiting));
+    } catch {
+      // Stays queued for the next attempt.
+    }
+  }, [send]);
+
+  useEffect(() => {
+    void flush();
+    const timer = setInterval(() => void flush(), 15000);
+    const again = () => void flush();
+    window.addEventListener("online", again);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("online", again);
+    };
+  }, [flush]);
+
+  const people = useMemo(() => cache?.people ?? [], [cache]);
+  const queued = useMemo(
+    () => new Set(queue.map((entry) => entry.participantId)),
+    [queue],
+  );
+  const isIn = useCallback(
+    (entry: RosterEntry) => entry.checkedInAt !== null || queued.has(entry.id),
+    [queued],
+  );
+  const arrived = useMemo(() => people.filter(isIn).length, [people, isIn]);
+
+  const markIn = useCallback(
+    (entries: RosterEntry[]) => {
+      const fresh = entries.filter((entry) => !isIn(entry));
+      if (fresh.length === 0) return;
+      let next = queue;
+      for (const entry of fresh) next = enqueue(entry.id);
+      setQueue(next);
+      buzz(fresh.length > 1 ? [18, 60, 18] : 18);
+      void flush();
+    },
+    [flush, isIn, queue],
+  );
+
+  const undoOne = useCallback(
+    (entry: RosterEntry) => {
+      setQueue(clearQueued([{ participantId: entry.id, at: 0 }]));
+      if (navigator.onLine) {
+        void undo({ participantId: entry.id as Id<"participants"> });
+      }
+    },
+    [undo],
+  );
+
+  const results = useMemo(() => searchRoster(people, query), [people, query]);
+
+  const groups = useMemo(() => {
+    const byName = new Map<string, RosterEntry[]>();
+    for (const entry of people) {
+      const key = entry.group.trim();
+      if (key.length === 0) continue;
+      byName.set(key, [...(byName.get(key) ?? []), entry]);
+    }
+    return [...byName.entries()]
+      .map(([label, members]) => ({
+        label,
+        members,
+        inside: members.filter(isIn).length,
+      }))
+      .filter((group) => group.members.length >= 4)
+      .sort(
+        (a, b) =>
+          a.members.length - a.inside - (b.members.length - b.inside) ||
+          b.members.length - a.members.length,
+      )
+      .reverse();
+  }, [people, isIn]);
+
+  const groupFor = useCallback(
+    (label: string) => groups.find((group) => group.label === label) ?? null,
+    [groups],
+  );
+
+  const person = useMemo(
+    () =>
+      view.kind === "person"
+        ? (people.find((entry) => entry.id === view.id) ?? null)
+        : null,
+    [view, people],
+  );
+
+  const hitPerson = useMemo(
+    () =>
+      hit === null
+        ? null
+        : (people.find((entry) => entry.id === hit.id) ?? null),
+    [hit, people],
+  );
+
+  // ------------------------------------------------------------- scanning
+
+  const stopCamera = useCallback(() => {
+    const stream = videoRef.current?.srcObject as MediaStream | null;
+    stream?.getTracks().forEach((track) => track.stop());
+    if (videoRef.current !== null) videoRef.current.srcObject = null;
+    trackRef.current = null;
+    setTorch({ on: false, available: false });
+  }, []);
+
+  useEffect(() => {
+    if (view.kind !== "scan") {
+      stopCamera();
+      return;
+    }
+    let alive = true;
+    paused.current = false;
+    lastScan.current = { value: "", at: 0 };
+    setScan({ kind: "waiting" });
+    setHit(null);
+
+    const handle = (value: string) => {
+      // The camera reads the same code many times a second.
+      const repeat =
+        value === lastScan.current.value &&
+        Date.now() - lastScan.current.at < 4000;
+      if (repeat) return;
+      lastScan.current = { value, at: Date.now() };
+
+      const matches = resolveScan(people, value);
+      if (matches.length === 1) {
+        const entry = matches[0];
+        // Read, but not acted on: a code drifting through the frame must not
+        // mark anybody present. The frame is held so it is obvious which phone
+        // was read, and the card follows a beat later instead of replacing
+        // everything the instant the code lands.
+        paused.current = true;
+        buzz(12);
+        videoRef.current?.pause();
+        setHit({ id: entry.id, stage: "locking" });
+        if (stageTimer.current !== null) clearTimeout(stageTimer.current);
+        stageTimer.current = setTimeout(
+          () => setHit({ id: entry.id, stage: "open" }),
+          240,
+        );
+      } else if (matches.length > 1) {
+        setQuery(matches[0].registrationNumber);
+        setView({ kind: "find" });
+      } else {
+        paused.current = true;
+        buzz([10, 40, 10, 40, 10]);
+        setScan({ kind: "unreadable" });
+      }
+    };
+
+    const run = async () => {
+      let stream: MediaStream;
+      setStarting(true);
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" },
+        });
+      } catch {
+        setStarting(false);
+        // Permission refused, or no camera. Not the same as a bad code, and
+        // telling a volunteer to "ask for their surname" is right either way.
+        setScan({ kind: "nocamera" });
+        return;
+      }
+      if (!alive) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      const track = stream.getVideoTracks()[0] ?? null;
+      trackRef.current = track;
+      const capabilities = track?.getCapabilities?.() as
+        { torch?: boolean } | undefined;
+      setTorch({ on: false, available: capabilities?.torch === true });
+      setStarting(false);
+      if (videoRef.current !== null) {
+        videoRef.current.srcObject = stream;
+        // iOS will not start a stream without this, and silently shows black.
+        videoRef.current.setAttribute("playsinline", "true");
+        try {
+          await videoRef.current.play();
+        } catch {
+          // Autoplay refused; the frames below simply never arrive.
+        }
+      }
+
+      // Chrome and Edge on Android decode in the browser. Everything on iOS is
+      // WebKit underneath — Chrome for iPhone included — and WebKit has no
+      // BarcodeDetector, so those fall back to decoding frames ourselves.
+      const Detector = (
+        window as unknown as { BarcodeDetector?: new (o: unknown) => unknown }
+      ).BarcodeDetector;
+
+      // Both paths read the same centred square rather than the whole frame.
+      // That is what makes the box on screen mean something: a second code in
+      // the queue behind cannot be read by accident, and on a phone doing the
+      // decoding in JavaScript it is roughly four times less work per frame.
+      const canvas = document.createElement("canvas");
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      if (context === null) {
+        setScan({ kind: "nocamera" });
+        return;
+      }
+      const SIDE = 420;
+      canvas.width = SIDE;
+      canvas.height = SIDE;
+
+      const drawBox = (): boolean => {
+        const video = videoRef.current;
+        if (video === null || video.readyState < video.HAVE_CURRENT_DATA) {
+          return false;
+        }
+        const side = Math.min(video.videoWidth, video.videoHeight) * 0.72;
+        if (!Number.isFinite(side) || side <= 0) return false;
+        context.drawImage(
+          video,
+          (video.videoWidth - side) / 2,
+          (video.videoHeight - side) / 2,
+          side,
+          side,
+          0,
+          0,
+          SIDE,
+          SIDE,
+        );
+        return true;
+      };
+
+      if (Detector !== undefined) {
+        const detector = new Detector({ formats: ["qr_code"] }) as {
+          detect: (s: CanvasImageSource) => Promise<{ rawValue: string }[]>;
+        };
+        const tick = async () => {
+          if (!alive || videoRef.current?.srcObject == null) return;
+          if (!paused.current && drawBox()) {
+            try {
+              const found = await detector.detect(canvas);
+              if (found[0]?.rawValue !== undefined) handle(found[0].rawValue);
+            } catch {
+              // A blurred frame is normal.
+            }
+          }
+          if (alive) requestAnimationFrame(() => void tick());
+        };
+        void tick();
+        return;
+      }
+
+      const tick = () => {
+        if (!alive || videoRef.current === null) return;
+        if (!paused.current && drawBox()) {
+          const image = context.getImageData(0, 0, SIDE, SIDE);
+          const found = jsQR(image.data, SIDE, SIDE, {
+            inversionAttempts: "dontInvert",
+          });
+          if (found !== null && found.data.length > 0) handle(found.data);
+        }
+        if (alive) setTimeout(tick, 100);
+      };
+      tick();
+    };
+
+    void run();
+    return () => {
+      alive = false;
+      if (stageTimer.current !== null) clearTimeout(stageTimer.current);
+      stopCamera();
+    };
+  }, [view.kind, people, isIn, markIn, stopCamera]);
+
+  // ------------------------------------------------------------------ ui
+
+  const back = () => {
+    setPicked(new Set());
+    setView({ kind: "find" });
+  };
+
+  /**
+   * Puts the card away and starts the camera reading again.
+   *
+   * Deliberately the same exit for every way out of the card — done, undone, or
+   * the wrong person entirely. The queue does not stop moving while somebody
+   * decides which button meant "carry on".
+   */
+  const closeHit = useCallback(() => {
+    if (stageTimer.current !== null) clearTimeout(stageTimer.current);
+    setHit((current) =>
+      current === null ? null : { ...current, stage: "closing" },
+    );
+    stageTimer.current = setTimeout(() => {
+      setHit(null);
+      paused.current = false;
+      lastScan.current = { value: "", at: 0 };
+      void videoRef.current?.play().catch(() => {});
+    }, 200);
+  }, []);
+
+  /**
+   * The phone's lamp. A church hall at 8am is darker than anyone expects and a
+   * phone screen held under a shadow is the usual reason a code will not read.
+   */
+  const toggleTorch = useCallback(() => {
+    const track = trackRef.current;
+    if (track === null) return;
+    const next = !torch.on;
+    void track
+      .applyConstraints({
+        advanced: [{ torch: next } as unknown as MediaTrackConstraintSet],
+      })
+      .then(() => setTorch((current) => ({ ...current, on: next })))
+      .catch(() => setTorch((current) => ({ ...current, available: false })));
+  }, [torch.on]);
+
+  /** Clears the result and starts looking again. */
+  const nextPerson = () => {
+    paused.current = false;
+    lastScan.current = { value: "", at: 0 };
+    setScan({ kind: "waiting" });
+  };
+  const onHome = view.kind === "find" || view.kind === "scan";
+
+  if (cache === null) {
+    return (
+      <div className="flex min-h-dvh flex-col bg-white">
+        <Bar arrived={0} />
+        <div className="flex flex-1 flex-col gap-6 px-5 pt-8 pb-6">
+          <p className="font-display text-[32px] leading-[1.15] font-bold tracking-[-0.025em] text-balance text-ink">
+            Getting today&rsquo;s list
+          </p>
+          <p
+            className="text-[19px] leading-relaxed text-pretty"
+            style={{ color: BODY }}
+          >
+            This phone does not have the names yet. Stay on this screen until
+            they appear — it takes a few seconds.
+          </p>
+          <p className="text-[17px] leading-relaxed text-[#6e6885]">
+            Do it now, before the queue starts. Once loaded, this phone keeps
+            working even with no internet.
+          </p>
+          <div
+            className="mt-auto border-t pt-5"
+            style={{ borderColor: HAIRLINE }}
+          >
+            <p className="text-[18px] font-semibold text-ink">
+              Nothing appearing?
+            </p>
+            <p
+              className="mt-2 text-[17px] leading-relaxed"
+              style={{ color: BODY }}
+            >
+              Stand closer to the front desk, or ask for a phone that is already
+              set up.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const FindPane = (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex-none bg-white px-3.5 pt-3 pb-3">
+        <input
+          ref={searchRef}
+          autoFocus
+          type="search"
+          enterKeyHint="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Surname, or their group"
+          className="h-[68px] w-full rounded-xl px-4 text-[19px] text-ink"
+          style={{ border: `2px solid ${BORDER}`, background: "#fff" }}
+        />
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto px-3.5 pt-1 pb-3">
+        {query.trim().length === 0 ? (
+          <>
+            <p
+              className="px-1 py-2.5 text-[16px] leading-none font-semibold"
+              style={{ color: BODY }}
+            >
+              Groups on their way
+            </p>
+            <ul className="flex flex-col gap-2.5">
+              {groups.map((group) => (
+                <li key={group.label}>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setView({ kind: "groupCount", label: group.label })
+                    }
+                    className="flex min-h-[72px] w-full items-center justify-between gap-3.5 rounded-2xl bg-white px-[18px] py-4 text-left"
+                    style={{ border: `2px solid ${HAIRLINE}` }}
+                  >
+                    <span className="text-[19px] leading-[1.25] font-semibold text-ink">
+                      {group.label}
+                    </span>
+                    <span
+                      className="flex-none text-[17px] leading-[1.2] font-medium"
+                      style={{ color: BODY }}
+                    >
+                      {group.inside} of {group.members.length}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : results.length === 0 ? (
+          <div className="px-1 pt-6">
+            <p className="font-display text-[27px] leading-[1.15] font-bold text-ink">
+              Nobody by that name
+            </p>
+            <p
+              className="mt-2 text-[18px] leading-[1.45]"
+              style={{ color: BODY }}
+            >
+              Ask them to spell the surname, or type the church or group they
+              came with.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setQuery("");
+                searchRef.current?.focus();
+              }}
+              className="mt-5 h-[68px] w-full rounded-xl text-[21px] font-semibold text-white"
+              style={{ background: PURPLE }}
+            >
+              Try again
+            </button>
+            <p className="mt-5 text-[17px] leading-[1.45] text-[#6e6885]">
+              Still nothing? Walk them to the registration table. They can be
+              added there.
+            </p>
+          </div>
+        ) : (
+          <ul className="flex flex-col gap-2.5">
+            {results.map((entry) => {
+              const inside = isIn(entry);
+              return (
+                <li key={entry.id}>
+                  <button
+                    type="button"
+                    onClick={() => setView({ kind: "person", id: entry.id })}
+                    className="flex min-h-[80px] w-full items-center justify-between gap-3.5 rounded-2xl bg-white px-[18px] py-4 text-left"
+                    style={{ border: `2px solid ${HAIRLINE}` }}
+                  >
+                    <span className="min-w-0">
+                      <span className="block text-[19px] leading-[1.25] font-semibold text-ink">
+                        {entry.name}
+                      </span>
+                      <span
+                        className="block text-[16px] leading-[1.35]"
+                        style={{ color: BODY }}
+                      >
+                        {entry.group.length > 0
+                          ? entry.group
+                          : entry.church.length > 0
+                            ? entry.church
+                            : entry.registrationNumber}
+                      </span>
+                    </span>
+                    <span
+                      className="flex-none rounded-xl px-4 py-3 text-[17px] font-semibold"
+                      style={
+                        inside
+                          ? { background: "#e8f4f8", color: "#1d5f78" }
+                          : { background: PURPLE, color: "#fff" }
+                      }
+                    >
+                      {inside ? "Already here" : "Open"}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      {/* The registration desk is a different job from the door. Somebody sits
+          there with a keyboard for ninety minutes, so it gets its own layout:
+          search, list and person side by side, in CheckInDesk. The camera is
+          the one screen both share, and it stays full width on either. */}
+      {view.kind !== "scan" && (
+        <CheckInDesk
+          people={people}
+          groups={groups}
+          arrived={arrived}
+          isIn={isIn}
+          onCheckIn={markIn}
+          onUndo={undoOne}
+          query={query}
+          setQuery={setQuery}
+          results={results}
+          online={online}
+          onScan={() => setView({ kind: "scan" })}
+        />
+      )}
+
+    <div
+      className={cn(
+        "mx-auto flex h-dvh w-full max-w-[680px] flex-col lg:max-w-none",
+        view.kind !== "scan" && "lg:hidden",
+      )}
+      style={{ background: "#efedf4" }}
+    >
+      <Bar arrived={arrived} onBack={onHome ? undefined : back} />
+
+      {!online && (
+        <div className="flex-none px-[18px] py-4" style={{ background: GOLD }}>
+          <p className="text-[19px] leading-[1.35] font-semibold text-ink">
+            No internet here. Keep going — nothing is lost.
+          </p>
+        </div>
+      )}
+
+      {/* A laptop at the registration desk has room for both jobs at once:
+          the list stays put on the left while a person, a group or the camera
+          fills the right. On a phone only one is on screen at a time. */}
+      <div className="flex min-h-0 flex-1 lg:grid lg:grid-cols-[minmax(340px,400px)_1fr]">
+        <aside
+          className={cn(
+            "min-h-0 flex-col lg:flex lg:border-r lg:border-line",
+            view.kind === "find" ? "flex flex-1" : "hidden",
+          )}
+        >
+          {FindPane}
+        </aside>
+
+        <section
+          className={cn(
+            "min-h-0 flex-col lg:flex",
+            view.kind === "find" ? "hidden lg:flex" : "flex flex-1",
+          )}
+        >
+          {view.kind === "person" && person !== null && (
+            <PersonView
+              person={person}
+              people={people}
+              isIn={isIn}
+              onCheckIn={(entry) => markIn([entry])}
+              onOpen={(id) => setView({ kind: "person", id })}
+              onUndo={(entry) => {
+                undoOne(entry);
+                back();
+              }}
+            />
+          )}
+
+          {view.kind === "groupCount" &&
+            (() => {
+              const group = groupFor(view.label);
+              if (group === null) return null;
+              const waiting = group.members.filter(
+                (entry) => !isIn(entry),
+              ).length;
+              return (
+                <GroupCount
+                  label={group.label}
+                  total={group.members.length}
+                  waiting={waiting}
+                  onNext={(expected) => {
+                    setPicked(new Set());
+                    setView({
+                      kind: "groupPick",
+                      label: group.label,
+                      expected,
+                    });
+                  }}
+                />
+              );
+            })()}
+
+          {view.kind === "groupPick" &&
+            (() => {
+              const group = groupFor(view.label);
+              if (group === null) return null;
+              const waiting = group.members.filter((entry) => !isIn(entry));
+              const short = view.expected - picked.size;
+              return (
+                <>
+                  <div
+                    className="flex-none px-[18px] pt-4 pb-3.5"
+                    style={{ background: HEADER }}
+                  >
+                    <p className="font-display text-[23px] leading-[1.2] font-bold text-white">
+                      {short > 0
+                        ? `Tap the ${view.expected} who are here`
+                        : `All ${view.expected} tapped`}
+                    </p>
+                  </div>
+
+                  <div className="min-h-0 flex-1 overflow-y-auto px-3.5 pt-3 pb-2">
+                    <ul className="flex flex-col gap-2.5">
+                      {waiting.map((entry) => {
+                        const on = picked.has(entry.id);
+                        return (
+                          <li key={entry.id}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPicked((current) => {
+                                  const next = new Set(current);
+                                  if (next.has(entry.id)) next.delete(entry.id);
+                                  else next.add(entry.id);
+                                  return next;
+                                });
+                                buzz(8);
+                              }}
+                              className="flex min-h-[72px] w-full items-center gap-3.5 rounded-2xl p-4 text-left"
+                              style={
+                                on
+                                  ? { background: PURPLE }
+                                  : {
+                                      background: "#fff",
+                                      border: `2px solid ${HAIRLINE}`,
+                                    }
+                              }
+                            >
+                              <span
+                                className="flex size-8 flex-none items-center justify-center rounded-lg text-[19px] leading-none font-bold"
+                                style={
+                                  on
+                                    ? { background: GOLD, color: "#191528" }
+                                    : {
+                                        border: `2px solid ${BORDER}`,
+                                        color: "transparent",
+                                      }
+                                }
+                              >
+                                ✓
+                              </span>
+                              <span
+                                className="text-[19px] leading-[1.25] font-semibold"
+                                style={{ color: on ? "#fff" : "#191528" }}
+                              >
+                                {entry.name}
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+
+                  <div
+                    className="flex-none border-t bg-white px-3.5 py-3"
+                    style={{ borderColor: HAIRLINE }}
+                  >
+                    {short > 0 ? (
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-[17px]" style={{ color: BODY }}>
+                          Tap {short} more
+                        </p>
+                        {/* The leader said twelve and eleven are standing there.
+                        One tap fixes the number instead of starting over. */}
+                        <button
+                          type="button"
+                          disabled={picked.size === 0}
+                          onClick={() =>
+                            setView({
+                              kind: "groupPick",
+                              label: view.label,
+                              expected: picked.size,
+                            })
+                          }
+                          className="text-[17px] font-semibold underline disabled:opacity-40"
+                          style={{ color: PURPLE }}
+                        >
+                          Only {picked.size} came
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const chosen = waiting.filter((entry) =>
+                            picked.has(entry.id),
+                          );
+                          markIn(chosen);
+                          setPicked(new Set());
+                          setView({
+                            kind: "groupDone",
+                            label: view.label,
+                            names: chosen,
+                          });
+                        }}
+                        className="h-[68px] w-full rounded-xl text-[21px] font-semibold text-white"
+                        style={{ background: PURPLE }}
+                      >
+                        Let these {picked.size} in
+                      </button>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
+
+          {view.kind === "groupDone" && (
+            <div className="min-h-0 flex-1 overflow-y-auto bg-white px-[18px] pt-8 pb-8">
+              <p className="font-display text-[30px] leading-[1.15] font-bold text-ink">
+                {view.names.length} are in
+              </p>
+              <p
+                className="mt-2 text-[18px] leading-[1.4]"
+                style={{ color: BODY }}
+              >
+                {view.label}. Send them in — anyone else can arrive later on
+                their own.
+              </p>
+              <ul className="mt-5 flex flex-col gap-2">
+                {view.names.map((entry) => (
+                  <li key={entry.id} className="text-[17px] text-ink">
+                    {entry.name}
+                  </li>
+                ))}
+              </ul>
+              <button
+                type="button"
+                onClick={back}
+                className="mt-8 h-[68px] w-full rounded-xl text-[21px] font-semibold text-white"
+                style={{ background: PURPLE }}
+              >
+                Next person
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  for (const entry of view.names) undoOne(entry);
+                  back();
+                }}
+                className="mt-5 text-[17px] font-semibold text-[#6e6885] underline"
+              >
+                Undo all {view.names.length}
+              </button>
+            </div>
+          )}
+
+          {view.kind === "scan" && (
+            <div className="flex min-h-0 flex-1 flex-col bg-white">
+              <div className="relative min-h-0 flex-1 overflow-hidden bg-ink">
+                <video
+                  ref={videoRef}
+                  muted
+                  playsInline
+                  className="size-full object-cover"
+                />
+
+                {/* The box is not decoration: only what lands inside it is
+                    read, so aiming at the right phone in a crowded queue is
+                    something the volunteer controls. On a read it closes in and
+                    turns gold — the one moment of feedback that says the phone
+                    got it, before anything else moves. */}
+                {scan.kind === "waiting" && !starting && (
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                    <div
+                      className="relative aspect-square w-[72%] max-w-[340px] transition-transform duration-200 ease-out"
+                      style={{
+                        transform:
+                          hit !== null ? "scale(0.88)" : "scale(1)",
+                      }}
+                    >
+                      {[
+                        "top-0 left-0 rounded-tl-2xl border-t-4 border-l-4",
+                        "top-0 right-0 rounded-tr-2xl border-t-4 border-r-4",
+                        "bottom-0 left-0 rounded-bl-2xl border-b-4 border-l-4",
+                        "right-0 bottom-0 rounded-br-2xl border-r-4 border-b-4",
+                      ].map((corner) => (
+                        <span
+                          key={corner}
+                          className={cn(
+                            "absolute size-10 transition-colors duration-200",
+                            corner,
+                          )}
+                          style={{
+                            borderColor:
+                              hit !== null ? GOLD : "rgba(255,255,255,.95)",
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {starting && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <p className="text-[19px] font-semibold text-white">
+                      Opening the camera…
+                    </p>
+                  </div>
+                )}
+
+                {/* The caption is the handover. It stops asking for a code and
+                    names the person a moment before their card arrives, so the
+                    card is a continuation rather than a jump cut. */}
+                {scan.kind === "waiting" && !starting && (
+                  <p
+                    className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-[18px] pt-10 pb-5 text-[19px] leading-[1.35] font-semibold transition-colors duration-200"
+                    style={{ color: hit !== null ? GOLD : "#fff" }}
+                  >
+                    {hitPerson?.name ?? "Hold their code inside the box"}
+                  </p>
+                )}
+
+                {torch.available && !starting && (
+                  <button
+                    type="button"
+                    onClick={toggleTorch}
+                    className="absolute top-4 right-4 rounded-full px-4 py-3 text-[15px] font-semibold"
+                    style={
+                      torch.on
+                        ? { background: GOLD, color: "#191528" }
+                        : { background: "rgba(0,0,0,.55)", color: "#fff" }
+                    }
+                  >
+                    {torch.on ? "Light on" : "Light"}
+                  </button>
+                )}
+
+                {/* The confirmation itself: the same card the manual flow
+                    shows, riding up over a held frame instead of replacing the
+                    screen. Tapping the frame above it is a way out for a code
+                    read off the wrong phone. */}
+                {hit !== null && hitPerson !== null && (
+                  <>
+                    <button
+                      type="button"
+                      aria-label="Not them — keep scanning"
+                      onClick={closeHit}
+                      className="absolute inset-0 bg-black/45 transition-opacity duration-200"
+                      style={{ opacity: hit.stage === "open" ? 1 : 0 }}
+                    />
+                    <div
+                      className="absolute inset-x-0 bottom-0 flex max-h-[86%] flex-col overflow-hidden rounded-t-3xl bg-white transition-transform duration-300 ease-out"
+                      style={{
+                        transform:
+                          hit.stage === "open"
+                            ? "translateY(0)"
+                            : "translateY(100%)",
+                      }}
+                    >
+                      <div className="flex-none pt-2.5 pb-1">
+                        <span
+                          className="mx-auto block h-1.5 w-11 rounded-full"
+                          style={{ background: BORDER }}
+                        />
+                      </div>
+                      <PersonView
+                        person={hitPerson}
+                        people={people}
+                        isIn={isIn}
+                        onCheckIn={(entry) => markIn([entry])}
+                        onOpen={(id) => {
+                          closeHit();
+                          setView({ kind: "person", id });
+                        }}
+                        onUndo={(entry) => {
+                          undoOne(entry);
+                          closeHit();
+                        }}
+                        fromScan
+                        onNext={closeHit}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {scan.kind === "nocamera" && (
+                <div className="flex-none px-[18px] py-5">
+                  <p className="font-display text-[27px] leading-[1.15] font-bold text-ink">
+                    The camera won&rsquo;t open
+                  </p>
+                  <p
+                    className="mt-2 text-[18px] leading-[1.4]"
+                    style={{ color: BODY }}
+                  >
+                    Allow camera access for this site, or just use names — that
+                    always works.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setView({ kind: "find" })}
+                    className="mt-4 h-[68px] w-full rounded-xl text-[21px] font-semibold text-white"
+                    style={{ background: PURPLE }}
+                  >
+                    Find them by name
+                  </button>
+                </div>
+              )}
+
+              {scan.kind === "unreadable" && (
+                <div className="flex-none px-[18px] py-5">
+                  <p className="font-display text-[27px] leading-[1.15] font-bold text-ink">
+                    We can&rsquo;t read that code
+                  </p>
+                  <p
+                    className="mt-2 text-[18px] leading-[1.4]"
+                    style={{ color: BODY }}
+                  >
+                    Ask for their surname instead. That always works.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={nextPerson}
+                    className="mt-4 h-[68px] w-full rounded-xl text-[21px] font-semibold text-white"
+                    style={{ background: PURPLE }}
+                  >
+                    Try the code again
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setView({ kind: "find" })}
+                    className="mt-4 text-[17px] font-semibold text-[#6e6885] underline"
+                  >
+                    Type their surname instead
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+      </div>
+
+      <div
+        className={cn(
+          "flex-none grid-cols-2 gap-2.5 border-t bg-white px-3 pt-2.5 pb-4 lg:mx-0 lg:grid lg:max-w-[400px]",
+          onHome ? "grid" : "hidden",
+        )}
+        style={{ borderColor: HAIRLINE }}
+      >
+        <button
+          type="button"
+          onClick={() => setView({ kind: "find" })}
+          className="h-16 rounded-xl text-[19px] font-semibold"
+          style={
+            view.kind === "find"
+              ? { background: PURPLE, color: "#fff" }
+              : {
+                  background: "#fff",
+                  border: `2px solid ${BORDER}`,
+                  color: PURPLE,
+                }
+          }
+        >
+          Find a name
+        </button>
+        <button
+          type="button"
+          onClick={() => setView({ kind: "scan" })}
+          className="h-16 rounded-xl text-[19px] font-semibold"
+          style={
+            view.kind === "scan"
+              ? { background: PURPLE, color: "#fff" }
+              : {
+                  background: "#fff",
+                  border: `2px solid ${BORDER}`,
+                  color: PURPLE,
+                }
+          }
+        >
+          Scan code
+        </button>
+      </div>
+    </div>
+    </>
+  );
+}
+
+function Bar({ arrived, onBack }: { arrived: number; onBack?: () => void }) {
+  return (
+    <div
+      className="flex h-[60px] flex-none items-center justify-between gap-3 px-[18px]"
+      style={{ background: HEADER }}
+    >
+      {onBack !== undefined ? (
+        <button
+          type="button"
+          onClick={onBack}
+          className="border-0 bg-transparent p-0 text-[17px] font-semibold text-white"
+        >
+          Back
+        </button>
+      ) : (
+        <span className="font-display text-[17px] leading-none font-bold tracking-[-0.045em] text-white">
+          crossgen
+        </span>
+      )}
+      <span className="text-[16px] leading-none font-semibold text-white">
+        {arrived} arrived
+      </span>
+    </div>
+  );
+}
+
+function PersonView({
+  person,
+  people,
+  isIn,
+  onCheckIn,
+  onOpen,
+  onUndo,
+  fromScan = false,
+  onNext,
+}: {
+  person: RosterEntry;
+  people: RosterEntry[];
+  isIn: (entry: RosterEntry) => boolean;
+  onCheckIn: (entry: RosterEntry) => void;
+  onOpen: (id: string) => void;
+  onUndo: (entry: RosterEntry) => void;
+  /** Reached from the camera, so the way out is back to the camera. */
+  fromScan?: boolean;
+  onNext?: () => void;
+}) {
+  const [shown, setShown] = useState(false);
+  const inside = isIn(person);
+  const family = people.filter(
+    (entry) =>
+      entry.registrationNumber === person.registrationNumber &&
+      entry.id !== person.id,
+  );
+
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto bg-white px-[18px] pt-[22px] pb-8">
+      {inside && (
+        <span
+          className="inline-block rounded-lg px-3 py-2 text-[16px] leading-none font-semibold"
+          style={{ background: "#e8f4f8", color: "#1d5f78" }}
+        >
+          {fromScan ? "Already here since " : "Here since "}
+          {person.checkedInAt !== null ? at(person.checkedInAt) : "just now"}
+        </span>
+      )}
+
+      <p className="mt-3 font-display text-[30px] leading-[1.15] font-bold text-ink">
+        {person.name}
+      </p>
+      <p className="mt-1.5 text-[17px] leading-[1.35]" style={{ color: BODY }}>
+        {person.age !== null ? `${person.age} years old · ` : ""}
+        {person.church.length > 0 ? person.church : person.registrationNumber}
+      </p>
+
+      {/* The one line that gets read out loud, so it is the biggest thing
+          under their name. */}
+      <p
+        className="mt-7 text-[16px] leading-none font-semibold"
+        style={{ color: PURPLE }}
+      >
+        Tell them to go to
+      </p>
+      <p className="mt-2 font-display text-[23px] leading-[1.3] font-semibold text-ink">
+        {person.session}
+      </p>
+
+      {!person.cleared && (
+        <div
+          className="mt-6 rounded-xl px-4 py-3.5"
+          style={{ background: "#fff6dd", border: "2px solid #f0d68a" }}
+        >
+          <p
+            className="text-[17px] leading-[1.3] font-semibold"
+            style={{ color: "#7a5c00" }}
+          >
+            Payment not finished
+          </p>
+          <p
+            className="mt-1 text-[16px] leading-[1.45]"
+            style={{ color: "#6b5200" }}
+          >
+            Let them in. Nothing to collect here.
+          </p>
+        </div>
+      )}
+
+      {!inside && (
+        <button
+          type="button"
+          onClick={() => onCheckIn(person)}
+          className="mt-7 h-[68px] w-full rounded-xl text-[21px] font-semibold text-white"
+          style={{ background: PURPLE }}
+        >
+          Check in
+        </button>
+      )}
+
+      {family.length > 0 && (
+        <div className="mt-7 border-t pt-5" style={{ borderColor: HAIRLINE }}>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[17px] leading-[1.3] font-medium text-ink">
+              {family.length} more with them
+            </span>
+            <button
+              type="button"
+              onClick={() => setShown((value) => !value)}
+              className="text-[17px] font-semibold underline"
+              style={{ color: PURPLE }}
+            >
+              {shown ? "Hide" : "Show"}
+            </button>
+          </div>
+
+          {shown && (
+            <ul className="mt-4 flex flex-col gap-3">
+              {family.map((entry) => (
+                <li
+                  key={entry.id}
+                  className="flex items-center justify-between gap-3"
+                >
+                  <button
+                    type="button"
+                    onClick={() => onOpen(entry.id)}
+                    className="min-w-0 flex-1 text-left text-[18px] text-ink underline"
+                  >
+                    {entry.name}
+                  </button>
+                  {isIn(entry) ? (
+                    <span className="flex-none text-[16px] text-[#6e6885]">
+                      Here
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => onCheckIn(entry)}
+                      className="flex-none rounded-xl px-4 py-3 text-[17px] font-semibold text-white"
+                      style={{ background: PURPLE }}
+                    >
+                      Check in
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {fromScan && onNext !== undefined && (
+        <button
+          type="button"
+          onClick={onNext}
+          className={
+            inside
+              ? "mt-7 h-[68px] w-full rounded-xl text-[21px] font-semibold text-white"
+              : "mt-4 h-[68px] w-full rounded-xl text-[21px] font-semibold"
+          }
+          style={
+            inside
+              ? { background: PURPLE }
+              : {
+                  background: "#fff",
+                  border: `2px solid ${BORDER}`,
+                  color: PURPLE,
+                }
+          }
+        >
+          Next person
+        </button>
+      )}
+
+      {/* Pulled up at the desk when somebody has lost their email. */}
+      <a
+        href={`/pass/${person.id}`}
+        target="_blank"
+        rel="noreferrer"
+        className="mt-7 block text-[17px] font-semibold underline"
+        style={{ color: PURPLE }}
+      >
+        Open their code
+      </a>
+
+      {inside && (
+        <button
+          type="button"
+          onClick={() => onUndo(person)}
+          className="mt-6 text-[17px] font-semibold text-[#6e6885] underline"
+        >
+          Undo — they are not here
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** "How many came?" — asked of the group's leader, before any names. */
+function GroupCount({
+  label,
+  total,
+  waiting,
+  onNext,
+}: {
+  label: string;
+  total: number;
+  waiting: number;
+  onNext: (expected: number) => void;
+}) {
+  const [count, setCount] = useState(waiting);
+  const clamp = (value: number) => Math.max(1, Math.min(waiting, value));
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col bg-white px-[18px] pt-[26px] pb-6">
+      <p className="font-display text-[27px] leading-[1.15] font-bold text-ink">
+        {label}
+      </p>
+      <p className="mt-1.5 text-[18px] leading-[1.35]" style={{ color: BODY }}>
+        {total} on the list
+        {waiting !== total ? `, ${total - waiting} already here` : ""}
+      </p>
+
+      <p className="mt-8 font-display text-[27px] leading-[1.25] font-bold text-ink">
+        How many came?
+      </p>
+
+      <div className="mt-5 flex items-center justify-between gap-4">
+        <button
+          type="button"
+          onClick={() => setCount((value) => clamp(value - 1))}
+          className="h-[88px] flex-1 rounded-2xl text-[40px] leading-none font-semibold"
+          style={{
+            background: "#fff",
+            border: `2px solid ${BORDER}`,
+            color: PURPLE,
+          }}
+        >
+          −
+        </button>
+        <span
+          className="font-display text-[76px] leading-none font-bold"
+          style={{ color: PURPLE }}
+        >
+          {count}
+        </span>
+        <button
+          type="button"
+          onClick={() => setCount((value) => clamp(value + 1))}
+          className="h-[88px] flex-1 rounded-2xl text-[40px] leading-none font-semibold"
+          style={{
+            background: "#fff",
+            border: `2px solid ${BORDER}`,
+            color: PURPLE,
+          }}
+        >
+          +
+        </button>
+      </div>
+
+      <p className="mt-5 text-[18px] leading-[1.5]" style={{ color: BODY }}>
+        Ask the person leading the group. Do not count heads.
+      </p>
+
+      <button
+        type="button"
+        onClick={() => onNext(count)}
+        className="mt-auto h-[68px] w-full rounded-xl text-[21px] font-semibold text-white"
+        style={{ background: PURPLE }}
+      >
+        Next
+      </button>
+    </div>
+  );
+}

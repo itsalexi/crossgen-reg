@@ -27,6 +27,7 @@ import {
   MAX_PARTICIPANTS,
   ordinal,
   REGISTRATION_TYPES,
+  REGULAR_RATE,
   spellCount,
   titleCaseCount,
   type RegistrationType,
@@ -35,6 +36,7 @@ import { AccountBar, BottomBar, TopBar } from "@/components/brand";
 import {
   Button,
   Callout,
+  Checkbox,
   ChoiceCard,
   Eyebrow,
   Spinner,
@@ -265,6 +267,9 @@ export function RegisterFlow() {
   const [registrationType, setRegistrationType] =
     useState<RegistrationType>("regular");
   const [groupName, setGroupName] = useState("");
+  // A church that wants the group rate but whose people register one at a
+  // time, because the lead does not have everybody's details.
+  const [joiningGroup, setJoiningGroup] = useState(false);
   const [participants, setParticipants] = useState<ParticipantDraft[]>([
     emptyParticipant(),
   ]);
@@ -296,7 +301,10 @@ export function RegisterFlow() {
   const stepIndex = steps.indexOf(step);
   const exempt = isExempt(registrationType);
   const count = participants.length;
-  const total = calculateTotal(registrationType, count);
+  // Only offered below the threshold; at five or more the rate already applies.
+  const canJoinGroup = !exempt && count < GROUP_THRESHOLD;
+  const claimingGroupRate = canJoinGroup && joiningGroup;
+  const total = calculateTotal(registrationType, count, claimingGroupRate);
   const topRef = useRef<HTMLDivElement>(null);
   const prefilled = useRef(false);
 
@@ -404,6 +412,10 @@ export function RegisterFlow() {
   }
 
   function leaveTypeStep() {
+    if (claimingGroupRate && groupName.trim().length === 0) {
+      setGroupNameError("Tell us the group name so we can count you with them.");
+      return;
+    }
     if (count > 1 && groupName.trim().length === 0) {
       setGroupNameError("Give the group a name so organizers can find you.");
       return;
@@ -475,6 +487,7 @@ export function RegisterFlow() {
       const result = await submitRegistration({
         idempotencyKey,
         groupName: groupName.trim().length > 0 ? groupName.trim() : undefined,
+        joiningGroup: claimingGroupRate ? true : undefined,
         registrationType,
         ...consents,
         heardFrom: heardFrom as HeardFrom,
@@ -610,12 +623,20 @@ export function RegisterFlow() {
                     </div>
                   </div>
 
-                  {count > 1 && (
+                  {(count > 1 || claimingGroupRate) && (
                     <TextInput
-                      label="What should we call your group?"
+                      label={
+                        claimingGroupRate && count === 1
+                          ? "Which group are you with?"
+                          : "What should we call your group?"
+                      }
                       value={groupName}
                       error={groupNameError}
-                      placeholder="Canamo Family"
+                      placeholder={
+                        claimingGroupRate && count === 1
+                          ? "The exact name your leader gave you"
+                          : "Canamo Family"
+                      }
                       onChange={(e) => {
                         setGroupName(e.target.value);
                         setGroupNameError(undefined);
@@ -623,6 +644,32 @@ export function RegisterFlow() {
                     />
                   )}
                 </div>
+
+                {/* Paolo's case: a church takes the group rate but registers
+                    one at a time, because the lead has nobody's details. The
+                    shared name is what ties them back together. */}
+                {canJoinGroup && (
+                  <div className="mt-4 flex flex-col gap-3 rounded-xl border border-line bg-surface p-4">
+                    <Checkbox
+                      checked={joiningGroup}
+                      onChange={(next) => {
+                        setJoiningGroup(next);
+                        setGroupNameError(undefined);
+                      }}
+                      label={`I'm part of a group of ${GROUP_THRESHOLD} or more registering separately`}
+                    />
+                    {claimingGroupRate && (
+                      <p className="text-[13.5px] leading-relaxed text-muted">
+                        You&rsquo;ll pay {formatPeso(GROUP_RATE)} instead of{" "}
+                        {formatPeso(REGULAR_RATE)}. Everyone in your group has
+                        to type the same group name, so use exactly what your
+                        leader gave you. If fewer than {GROUP_THRESHOLD} of you
+                        end up registering, we&rsquo;ll message your leader
+                        about the difference.
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {!exempt && count >= GROUP_THRESHOLD && (
                   <div className="mt-4">
@@ -634,7 +681,7 @@ export function RegisterFlow() {
                   </div>
                 )}
 
-                {!exempt && count === GROUP_THRESHOLD - 1 && (
+                {!exempt && !claimingGroupRate && count === GROUP_THRESHOLD - 1 && (
                   <div className="mt-4">
                     <Callout tone="gold" title="One more and the price drops">
                       Add a fifth person and everyone pays{" "}
@@ -719,7 +766,7 @@ export function RegisterFlow() {
                   <div className="flex items-baseline justify-between gap-3 border-t border-line pt-3.5">
                     <span className="text-[13.5px] text-muted">
                       {count > 1 ? `${titleCaseCount(count)} of you` : "Just you"}
-                      {count >= GROUP_THRESHOLD ? ", group rate" : ""}
+                      {count >= GROUP_THRESHOLD || claimingGroupRate ? ", group rate" : ""}
                     </span>
                     <span className="font-display text-[16px] font-bold text-ink">
                       {formatPeso(total)}

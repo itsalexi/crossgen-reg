@@ -5,6 +5,7 @@ import {
   GROUP_RATE,
   GROUP_THRESHOLD,
   PAYMENT_ACCOUNT,
+  registrationClosed,
   REGULAR_RATE,
 } from "@convex/shared";
 
@@ -14,6 +15,10 @@ import {
  */
 function eventJsonLd() {
   const base = siteUrl();
+  // A search result offering tickets nobody can buy is worse than no offer.
+  const availability = registrationClosed()
+    ? "https://schema.org/SoldOut"
+    : "https://schema.org/InStock";
 
   return {
     "@context": "https://schema.org",
@@ -50,7 +55,7 @@ function eventJsonLd() {
         name: "Regular registration",
         price: REGULAR_RATE,
         priceCurrency: "PHP",
-        availability: "https://schema.org/InStock",
+        availability,
         url: `${base}/register`,
       },
       {
@@ -58,12 +63,14 @@ function eventJsonLd() {
         name: `Group registration (${GROUP_THRESHOLD} or more)`,
         price: GROUP_RATE,
         priceCurrency: "PHP",
-        availability: "https://schema.org/InStock",
+        availability,
         url: `${base}/register`,
       },
     ],
   };
 }
+
+export const dynamic = "force-dynamic";
 
 export default function HomePage() {
   return (
@@ -73,7 +80,7 @@ export default function HomePage() {
         // Values are our own constants, not user input.
         dangerouslySetInnerHTML={{ __html: JSON.stringify(eventJsonLd()) }}
       />
-      <LandingScreen />
+      <LandingScreen closed={registrationClosed()} />
     </>
   );
 }

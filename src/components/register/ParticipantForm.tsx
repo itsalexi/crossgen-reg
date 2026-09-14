@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect } from "react";
 import {
-  BREAKOUT_SESSIONS,
+  breakoutTitle,
+  openBreakoutSessions,
   EVENT,
   GENDERS,
   MARITAL_STATUSES,
@@ -35,6 +37,20 @@ export function ParticipantForm({
   /** Focused when the step opens, so keyboard users start in the right place. */
   autoFocusFirst?: boolean;
 }) {
+  const sessions = openBreakoutSessions();
+  const onlyOneSession = sessions.length === 1;
+
+  // With a single workshop left there is nothing to choose, so it is filled in
+  // rather than asked for. Done on arrival so the value is set before anyone
+  // can reach the Continue button.
+  useEffect(() => {
+    if (!onlyOneSession) return;
+    const only = String(sessions[0].value);
+    if (participant.breakoutSession !== only) {
+      onChange({ breakoutSession: only });
+    }
+  }, [onlyOneSession, sessions, participant.breakoutSession, onChange]);
+
   return (
     <div className="flex flex-col gap-6 sm:gap-7">
       <div className="grid gap-5 sm:grid-cols-2">
@@ -155,10 +171,14 @@ export function ParticipantForm({
       <fieldset className="flex flex-col gap-3 border-t border-line pt-6">
         <legend className="flex flex-col gap-1 pb-1">
           <span className="font-display text-[18px] leading-tight font-semibold tracking-[-0.015em] text-ink">
-            Which session will {who} join?
+            {onlyOneSession
+              ? `${who} will join the plenary workshop`
+              : `Which session will ${who} join?`}
           </span>
           <span className="text-[14px] leading-normal text-muted">
-            Pick one. You can change it any time before you&rsquo;re done.
+            {onlyOneSession
+              ? "Puno na po ang ibang workshops, kaya lahat ng bagong registrants ay sasama sa plenary."
+              : "Pick one. You can change it any time before you're done."}
           </span>
         </legend>
         {errors.breakoutSession && (
@@ -166,18 +186,28 @@ export function ParticipantForm({
             {errors.breakoutSession}
           </p>
         )}
-        <div className="flex flex-col gap-2">
-          {BREAKOUT_SESSIONS.map((session) => (
-            <ChoiceCard
-              key={session.value}
-              name={`${idPrefix}-breakout`}
-              align="center"
-              selected={participant.breakoutSession === String(session.value)}
-              onSelect={() => onChange({ breakoutSession: String(session.value) })}
-              title={session.title}
-            />
-          ))}
-        </div>
+        {onlyOneSession ? (
+          // One workshop left, so this is news rather than a decision. Shown
+          // as a statement; the value is set for them on arrival.
+          <p className="rounded-xl border border-line bg-surface px-4 py-3.5 text-[15px] font-medium text-ink">
+            {breakoutTitle(sessions[0].value)}
+          </p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {sessions.map((session) => (
+              <ChoiceCard
+                key={session.value}
+                name={`${idPrefix}-breakout`}
+                align="center"
+                selected={participant.breakoutSession === String(session.value)}
+                onSelect={() =>
+                  onChange({ breakoutSession: String(session.value) })
+                }
+                title={session.title}
+              />
+            ))}
+          </div>
+        )}
       </fieldset>
     </div>
   );

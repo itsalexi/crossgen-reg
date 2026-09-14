@@ -15,6 +15,25 @@ import {
 import { BottomBar, PcecMark, TopBar } from "./brand";
 import { Eyebrow, Spinner } from "./ui";
 
+/** Replaces the call to action once the form stops taking people. */
+function ClosedNotice() {
+  return (
+    <div className="flex flex-col gap-2 rounded-xl border border-line bg-surface px-5 py-4">
+      <Eyebrow>Registration is closed</Eyebrow>
+      <p className="text-[15px] leading-relaxed text-ink">
+        Maraming salamat sa lahat ng nag-register. See you on{" "}
+        {EVENT.dayOfWeek}, {EVENT.date} at {EVENT.venue}.
+      </p>
+      <a
+        href="/register"
+        className="text-[14px] font-semibold text-cg-purple hover:underline"
+      >
+        Details for those already registered
+      </a>
+    </div>
+  );
+}
+
 function RegisterButton() {
   const { signIn } = useAuthActions();
   const { isLoading } = useConvexAuth();
@@ -62,7 +81,7 @@ function RegisterButton() {
   );
 }
 
-export function LandingScreen() {
+export function LandingScreen({ closed }: { closed: boolean }) {
   return (
     <div className="flex min-h-dvh flex-col">
       <TopBar
@@ -103,6 +122,8 @@ export function LandingScreen() {
               </p>
             </div>
 
+            {/* The rates stop being useful once nobody can act on them. */}
+            {!closed && (
             <dl className="flex gap-8 border-y border-line py-5">
               <div className="flex flex-col gap-1">
                 {/* "Solo or family" read as though families paid this rate
@@ -119,8 +140,9 @@ export function LandingScreen() {
                 </dd>
               </div>
             </dl>
+            )}
 
-            <RegisterButton />
+            {closed ? <ClosedNotice /> : <RegisterButton />}
           </div>
         </div>
       </main>

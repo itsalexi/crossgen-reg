@@ -105,6 +105,17 @@ export function CheckInScreen() {
    * straight back.
    */
   const coolUntil = useRef(0);
+  /**
+   * The roster, reachable from inside the camera loop without being a
+   * dependency of it.
+   *
+   * Checking somebody in changes the queue, which changed the roster's
+   * identity, which tore the camera down and built it again mid-queue: a
+   * visible flash, and every guard against re-reading the code still in frame
+   * reset along with it, so the card that was just dismissed came straight
+   * back. The camera now starts once and stops when the screen is left.
+   */
+  const peopleRef = useRef<RosterEntry[]>([]);
   const [torch, setTorch] = useState<{ on: boolean; available: boolean }>({
     on: false,
     available: false,
@@ -153,7 +164,6 @@ export function CheckInScreen() {
           queued: true,
         })),
       });
-      setQueue(clearQueued(waiting));
     } catch {
       // Stays queued for the next attempt.
     }
@@ -171,6 +181,30 @@ export function CheckInScreen() {
   }, [flush]);
 
   const people = useMemo(() => cache?.people ?? [], [cache]);
+  useEffect(() => {
+    peopleRef.current = people;
+  }, [people]);
+
+  /**
+   * Drops a queued check-in only once the roster comes back showing that
+   * person inside.
+   *
+   * Clearing it the moment the write returned left a gap: for as long as the
+   * roster took to catch up, the device believed nobody had checked them in,
+   * and a card on screen flipped back to "not checked in yet" and then
+   * forward again. Re-sending one that is already recorded costs nothing —
+   * the mutation keeps the earliest arrival and adds nothing.
+   */
+  useEffect(() => {
+    const confirmed = queue.filter((entry) =>
+      people.some(
+        (person) =>
+          person.id === entry.participantId && person.checkedInAt !== null,
+      ),
+    );
+    if (confirmed.length > 0) setQueue(clearQueued(confirmed));
+  }, [people, queue]);
+
   const queued = useMemo(
     () => new Set(queue.map((entry) => entry.participantId)),
     [queue],
@@ -282,7 +316,7 @@ export function CheckInScreen() {
       if (repeat) return;
       lastScan.current = { value, at: Date.now() };
 
-      const matches = resolveScan(people, value);
+      const matches = resolveScan(peopleRef.current, value);
       if (matches.length === 1) {
         const entry = matches[0];
         // Read, but not acted on: a code drifting through the frame must not
@@ -426,7 +460,7 @@ export function CheckInScreen() {
       if (readyTimer.current !== null) clearTimeout(readyTimer.current);
       stopCamera();
     };
-  }, [view.kind, people, isIn, markIn, stopCamera]);
+  }, [view.kind, stopCamera]);
 
   // ------------------------------------------------------------------ ui
 

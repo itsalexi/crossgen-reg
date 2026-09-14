@@ -31,5 +31,7 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  // scripts/ is run straight by node, which wants the .ts extension on imports
+  // that this config forbids. It is checked by running it, not by tsc.
+  "exclude": ["node_modules", "scripts"]
 }

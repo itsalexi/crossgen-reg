@@ -3,8 +3,8 @@
 The **Sync now** button on the organizer dashboard does two things, in order:
 
 1. **Pulls** any new responses from the original Google Form into the database.
-2. **Pushes** every participant out to a Google Sheet, one row per person,
-   website and Google Form registrations together.
+2. **Pushes** the whole event out to a Google Sheet as six tabs, website and
+   Google Form registrations together.
 
 The old form stays live because its QR codes are already printed and in
 circulation, so this is the route its answers take to reach the dashboard.
@@ -26,8 +26,8 @@ token cannot reach anything else in the Google account.
 
 ## Setting it up — about five minutes, once
 
-**1. Make the sheet.** A new Google Sheet, or a fresh tab in an existing one.
-Name the tab `Participants`.
+**1. Make the sheet.** A new Google Sheet. The tabs are created for you on the
+first sync, so there is nothing to name.
 
 **2. Generate a token.** Any long random string. For example:
 
@@ -39,36 +39,74 @@ openssl rand -hex 32
 whatever is there, paste this, and replace `PASTE_YOUR_TOKEN_HERE` with the
 token from step 2:
 
+Replace `PASTE_YOUR_TOKEN_HERE` with the token from step 2, and `PASTE_SHEET_ID`
+with the long id out of the sheet's own URL, the part between `/d/` and `/edit`.
+
 ```javascript
 const SECRET = 'PASTE_YOUR_TOKEN_HERE';
-const TAB = 'Participants';
+const SHEET_ID = 'PASTE_SHEET_ID';
 
 function doPost(e) {
-  const out = (payload) =>
-    ContentService.createTextOutput(JSON.stringify(payload)).setMimeType(
-      ContentService.MimeType.JSON,
-    );
+  const out = function (payload) {
+    return ContentService.createTextOutput(JSON.stringify(payload))
+      .setMimeType(ContentService.MimeType.JSON);
+  };
 
   try {
     const body = JSON.parse(e.postData.contents);
     if (body.secret !== SECRET) return out({ error: 'bad token' });
 
-    const sheet =
-      SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TAB) ||
-      SpreadsheetApp.getActiveSpreadsheet().insertSheet(TAB);
+    const book = SpreadsheetApp.openById(SHEET_ID);
 
-    sheet.clear();
-    const rows = [body.headers].concat(body.rows);
-    sheet.getRange(1, 1, rows.length, body.headers.length).setValues(rows);
-    sheet.getRange(1, 1, 1, body.headers.length).setFontWeight('bold');
-    sheet.setFrozenRows(1);
+    // Older deployments sent a single tab. Both shapes are accepted so the
+    // sheet keeps working whichever side is updated first.
+    const tabs = body.sheets || [
+      { name: 'Participants', headers: body.headers, rows: body.rows },
+    ];
 
-    return out({ ok: true, rows: body.rows.length });
+    tabs.forEach(function (tab, position) {
+      const width = tab.headers.length;
+      let sheet = book.getSheetByName(tab.name);
+      if (!sheet) sheet = book.insertSheet(tab.name);
+      sheet.clear();
+
+      // Every row padded to the header width, or setValues rejects the lot.
+      const values = [tab.headers].concat(
+        tab.rows.map(function (row) {
+          const padded = row.slice(0, width);
+          while (padded.length < width) padded.push('');
+          return padded;
+        })
+      );
+
+      sheet.getRange(1, 1, values.length, width).setValues(values);
+      sheet.getRange(1, 1, 1, width).setFontWeight('bold');
+      sheet.setFrozenRows(1);
+
+      // Anything the backend marked with (₱) is money.
+      tab.headers.forEach(function (header, column) {
+        if (String(header).indexOf('(₱)') !== -1 && values.length > 1) {
+          sheet
+            .getRange(2, column + 1, values.length - 1, 1)
+            .setNumberFormat('"₱"#,##0');
+        }
+      });
+
+      sheet.autoResizeColumns(1, width);
+      book.setActiveSheet(sheet);
+      book.moveActiveSheet(position + 1);
+    });
+
+    // Any other tab — Notes, or anything the team made — is left untouched.
+    return out({ ok: true, tabs: tabs.length });
   } catch (error) {
     return out({ error: String(error) });
   }
 }
 ```
+
+`openById` rather than `getActiveSpreadsheet`, so the script works whether it
+was created from inside the sheet or on its own.
 
 **4. Deploy it.** **Deploy → New deployment → Web app**. Set *Execute as* to
 **Me**, and *Who has access* to **Anyone**. Approve the permission prompt.
@@ -90,14 +128,39 @@ many rows it wrote, and the dashboard remembers who synced last and when.
 
 ## What lands in the sheet
 
-One row per participant, oldest registration first, with the registration
-number, source (Website or Google Form), group, all twelve participant
-fields, payment details, receipt, referral, photo consent, and the date
-registered.
+Six tabs, in this order. Each one answers a question without needing to be
+sorted or filtered first.
 
-Each sync **replaces** the tab's contents rather than appending, so the sheet
-is always a straight mirror. Anything typed into that tab by hand is
-overwritten — keep notes on a different tab.
+| Tab | One row per | What it's for |
+|---|---|---|
+| **Summary** | figure | Headcount, money in against money expected, session split, ages, churches, cities |
+| **Check-in** | person, A to Z by surname | The door on the day. Only people who are paid up or exempt |
+| **Participants** | person | The full roster, everyone, with all the detail and payment state |
+| **Sessions** | person, grouped by breakout | Room sizes and rosters, each block under its own headcount |
+| **Groups** | group | Size, rate, expected, received, and the gap. Worst first |
+| **Payments** | payment reference | Reconciliation. Unchecked deposits and shortfalls float to the top |
+
+**Check-in is decided on the money, not on the flag.** Someone is on it when
+the deposit covering them is at least what they owe, or when they are a
+speaker, volunteer or sponsor. A deposit marked "needs sorting" because other
+people are missing from it does not keep the person in front of you off the
+list.
+
+Two columns are worth understanding on the Participants tab. **Deposit Total**
+is written once per payment reference, against the first person who cites it,
+because printing ₱1,400 against each of four people made the column add up to
+four times what the bank holds. **Share Per Person** is that deposit divided by
+the people it covered, and it is on every row. Both columns add up to something
+true.
+
+### Keeping your own notes
+
+Each sync **replaces** the contents of those six tabs. Anything typed into them
+by hand is overwritten.
+
+Make a tab called `Notes`, or anything else not in the list above, and sync
+will never touch it. That is the only safe place for hand-written columns and
+formulas.
 
 ## When it fails
 
@@ -109,5 +172,12 @@ The dashboard shows the reason under the Sync button. Common ones:
 - **A sign-in page comes back instead of JSON** — the deployment's *Who has
   access* is not set to **Anyone**.
 
-Changing the script requires **Deploy → Manage deployments → Edit → New
-version**, otherwise the old code keeps serving.
+## Changing the script later
+
+**Deploy → Manage deployments → Edit (the pencil) → Version: New version →
+Deploy.** Saving the file alone does nothing: the old code keeps serving until
+a new version is deployed.
+
+That route keeps the same deployment, so **the `/exec` URL does not change** and
+there is nothing to update in Convex. Only **Deploy → New deployment** mints a
+new URL, and then `SHEET_SYNC_URL` has to be set again.

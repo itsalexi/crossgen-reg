@@ -199,13 +199,15 @@ function personMatches(
   }
   if (
     filters.church.length > 0 &&
-    participant.churchOrganization.toLowerCase() !== filters.church.toLowerCase()
+    (participant.churchOrganization ?? "").toLowerCase() !==
+      filters.church.toLowerCase()
   ) {
     return false;
   }
   if (
     filters.city.length > 0 &&
-    participant.cityMunicipality.toLowerCase() !== filters.city.toLowerCase()
+    (participant.cityMunicipality ?? "").toLowerCase() !==
+      filters.city.toLowerCase()
   ) {
     return false;
   }
@@ -319,7 +321,11 @@ export function computeStats(rows: Row[], payments: Payment[] = []): Stats {
   }
 
   const people = rows.flatMap((row) => row.participants);
-  const ages = people.map((p) => p.age).filter((age) => Number.isFinite(age));
+  // Blank on organizer-entered people, who often arrive as a name and nothing
+  // else. Left out rather than counted as zero.
+  const ages = people
+    .map((p) => p.age)
+    .filter((age): age is number => age !== undefined && age > 0);
 
   const byTypeMap = new Map<RegistrationType, number>();
   for (const row of rows) {
@@ -365,13 +371,13 @@ export function computeStats(rows: Row[], payments: Payment[] = []): Stats {
     byType: [...byTypeMap.entries()]
       .map(([type, count]) => ({ type, count }))
       .sort((a, b) => b.count - a.count),
-    byChurch: tally(people.map((p) => p.churchOrganization)),
-    byCity: tally(people.map((p) => p.cityMunicipality)),
+    byChurch: tally(people.map((p) => p.churchOrganization ?? "")),
+    byCity: tally(people.map((p) => p.cityMunicipality ?? "")),
     averageAge:
       ages.length > 0
         ? Math.round(ages.reduce((a, b) => a + b, 0) / ages.length)
         : null,
-    minors: people.filter((p) => p.age < 18).length,
+    minors: people.filter((p) => p.age !== undefined && p.age < 18).length,
     // Counted per registration — one answer is given for the whole group.
     byHeardFrom: tally(
       rows

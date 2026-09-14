@@ -192,6 +192,18 @@ export function RegistrationDetail({
         />
       ) : (
       <div className="grid gap-6 xl:grid-cols-[1fr_280px]">
+        <div className="flex flex-col gap-3">
+        <div className="flex justify-end">
+          <a
+            href={`/passes/${registration.registrationNumber}`}
+            target="_blank"
+            rel="noreferrer"
+            className="text-[13px] font-semibold text-cg-purple hover:underline"
+          >
+            All {participants.length} check-in code
+            {participants.length === 1 ? "" : "s"} on this registration ↗
+          </a>
+        </div>
         <div className="overflow-hidden rounded-2xl border border-line bg-white">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[620px] text-left">
@@ -235,6 +247,15 @@ export function RegistrationDetail({
                       <div className="text-[12.5px]">
                         Serves: {p.ministryInvolvement}
                       </div>
+                      {/* For "I never got my code" — open it and show them. */}
+                      <a
+                        href={`/pass/${p._id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-1 inline-block text-[12.5px] font-semibold text-cg-purple hover:underline"
+                      >
+                        Open their code ↗
+                      </a>
                     </td>
                   </tr>
                 ))}
@@ -247,6 +268,7 @@ export function RegistrationDetail({
               {participants[0].cityMunicipality}.
             </p>
           )}
+        </div>
         </div>
 
         <div className="flex flex-col gap-3">

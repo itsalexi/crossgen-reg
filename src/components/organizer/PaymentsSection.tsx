@@ -8,6 +8,7 @@ import type { Doc } from "@convex/_generated/dataModel";
 import { formatDatePaid, formatPeso } from "@convex/shared";
 import { Button, Callout, Eyebrow, Pill, cn } from "@/components/ui";
 import type { Id } from "@convex/_generated/dataModel";
+import { expectedRates } from "@/lib/groups";
 import type { Row } from "@/lib/organizer";
 import { StatTile } from "./parts";
 
@@ -36,7 +37,6 @@ type Group = {
   rows: Row[];
   people: number;
   expected: number;
-  expectedKnown: boolean;
   datePaid?: string;
   receipts: {
     label: string;
@@ -49,7 +49,11 @@ type Group = {
   record?: Payment;
 };
 
-function buildGroups(rows: Row[], payments: Payment[]): Group[] {
+function buildGroups(
+  rows: Row[],
+  allRows: Row[],
+  payments: Payment[],
+): Group[] {
   const byReference = new Map<string, Row[]>();
   for (const row of rows) {
     if (row.registration.paymentType !== "paid") continue;
@@ -59,18 +63,18 @@ function buildGroups(rows: Row[], payments: Payment[]): Group[] {
   }
 
   const recordFor = new Map(payments.map((p) => [p.reference, p]));
+  // What a deposit should have been, priced off the group each registration
+  // came with. The imported rows carry no amount of their own, so before this
+  // every reference touching one was simply reported as unknown.
+  const { totalFor } = expectedRates(allRows);
 
   return [...byReference.entries()]
     .map(([reference, group]) => {
-      const known = group.filter((r) => r.registration.amountUnknown !== true);
       return {
         reference,
         rows: group,
         people: group.reduce((sum, r) => sum + r.participants.length, 0),
-        expected: known.reduce((sum, r) => sum + r.registration.totalAmount, 0),
-        // False when any row in the group came from the Google Form, which
-        // recorded that a payment happened but not how much.
-        expectedKnown: known.length === group.length,
+        expected: totalFor(group),
         datePaid: group[0].registration.datePaid,
         receipts: group.map((r) => ({
           label: r.registration.registrationNumber,
@@ -126,9 +130,7 @@ function GroupCard({
   const status = statusOf(group.record);
   const reconciled = status === "received";
   const mismatch =
-    reconciled &&
-    group.expectedKnown &&
-    group.record!.amountReceived !== group.expected;
+    reconciled && group.record!.amountReceived !== group.expected;
 
   const save = (next: Status) => {
     setBusy(true);
@@ -183,11 +185,11 @@ function GroupCard({
         <div className="text-right">
           <Eyebrow>Expected</Eyebrow>
           <p className="font-display text-[18px] font-bold text-ink">
-            {group.expectedKnown ? formatPeso(group.expected) : "—"}
+            {formatPeso(group.expected)}
           </p>
-          {!group.expectedKnown && (
-            <p className="text-[12px] text-muted">not recorded</p>
-          )}
+          <p className="text-[12px] text-muted">
+            {group.people} × ₱{Math.round(group.expected / group.people)}
+          </p>
         </div>
       </div>
 
@@ -291,7 +293,7 @@ function GroupCard({
             step="1"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            placeholder={group.expectedKnown ? String(group.expected) : "0"}
+            placeholder={String(group.expected)}
             className="no-spinner h-10 w-36 rounded-[10px] border border-line bg-white px-3 text-[14px] text-ink"
           />
         </label>
@@ -373,16 +375,21 @@ function GroupCard({
 
 export function PaymentsSection({
   rows,
+  allRows,
   payments,
   onOpen,
 }: {
   rows: Row[];
+  allRows: Row[];
   payments: Payment[];
   onOpen: (registrationId: Id<"registrations">) => void;
 }) {
   const [onlyOutstanding, setOnlyOutstanding] = useState(false);
   const [zoom, setZoom] = useState<{ src: string; label: string } | null>(null);
-  const groups = useMemo(() => buildGroups(rows, payments), [rows, payments]);
+  const groups = useMemo(
+    () => buildGroups(rows, allRows, payments),
+    [rows, allRows, payments],
+  );
 
   // Signed URLs are resolved once for every uploaded receipt on the page.
   const storageIds = useMemo(
@@ -406,9 +413,7 @@ export function PaymentsSection({
   );
   const unpaid = groups.filter((g) => statusOf(g.record) === "unpaid");
   const problems = groups.filter((g) => statusOf(g.record) === "problem");
-  const expectedKnown = groups
-    .filter((g) => g.expectedKnown)
-    .reduce((sum, g) => sum + g.expected, 0);
+  const expected = groups.reduce((sum, g) => sum + g.expected, 0);
   // Unchecked means nobody has said anything about it yet. A deposit marked
   // "not paid yet" or "needs sorting" has been looked at, and belongs in its
   // own pile rather than back in the queue.
@@ -424,9 +429,9 @@ export function PaymentsSection({
           note={`${groups.length - outstanding.length} of ${groups.length} references checked`}
         />
         <StatTile
-          label="Expected, where known"
-          value={formatPeso(expectedKnown)}
-          note="excludes imported rows with no amount"
+          label="Expected in total"
+          value={formatPeso(expected)}
+          note="₱350 each in a group of five or more, ₱450 on your own"
         />
         <StatTile
           label="Still to check"

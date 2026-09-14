@@ -21,6 +21,9 @@ import {
   isExempt,
   MAX_PARTICIPANTS,
   MAX_UPLOAD_BYTES,
+  breakoutOpen,
+  breakoutTitle,
+  registrationClosed,
   type RegistrationType,
 } from "./shared";
 
@@ -103,7 +106,7 @@ export function cleanParticipant(input: ParticipantInput, index: number) {
  * serializable transactions, so a concurrent submit either sees this write or
  * retries — no two registrations can claim the same number.
  */
-async function allocateRegistrationNumber(
+export async function allocateRegistrationNumber(
   ctx: MutationCtx,
   series: "web" | "import" = "web",
 ): Promise<string> {
@@ -141,6 +144,7 @@ export const generateUploadUrl = mutation({
 export const submitArgs = {
   idempotencyKey: v.string(),
   groupName: v.optional(v.string()),
+  joiningGroup: v.optional(v.boolean()),
   registrationType: registrationTypeValidator,
   consentAccurate: v.boolean(),
   consentDataUse: v.boolean(),
@@ -202,6 +206,13 @@ export async function createRegistration(
     fail("Group name is required when registering more than one participant.");
   }
 
+  // Claiming the group rate while registering separately only means anything
+  // if we know which group, so the name stops being optional.
+  const joiningGroup = args.joiningGroup === true;
+  if (joiningGroup && groupName.length === 0) {
+    fail("Tell us the group name so we can count you with them.");
+  }
+
   // All three agreements are required, and the server is where that is
   // enforced — an unchecked box must not become a stored `false`.
   if (!args.consentAccurate || !args.consentDataUse || !args.consentPhotos) {
@@ -218,7 +229,7 @@ export async function createRegistration(
 
   // Amount is recomputed here and nowhere else. Whatever the client displayed
   // is irrelevant — it never reaches this mutation.
-  const totalAmount = calculateTotal(type, participantCount);
+  const totalAmount = calculateTotal(type, participantCount, joiningGroup);
 
   let paymentFields: {
     paymentReference?: string;
@@ -272,6 +283,7 @@ export async function createRegistration(
     registrationNumber,
     idempotencyKey: args.idempotencyKey,
     groupName: groupName.length > 0 ? groupName : undefined,
+    joiningGroup: joiningGroup ? true : undefined,
     registrantUserId: userId,
     registrantName: (user.name ?? participants[0].fullName).trim(),
     registrantEmail: (user.email ?? participants[0].email).toLowerCase(),
@@ -310,6 +322,27 @@ export async function createRegistration(
 export const submit = mutation({
   args: submitArgs,
   handler: async (ctx, args) => {
+    // The page stops offering the form when registration closes, but a form
+    // already open in somebody's tab does not. This is the check that counts.
+    // Deliberately only on this path: the Google Form importer and any
+    // organizer correction still go through `createRegistration`.
+    if (registrationClosed()) {
+      fail(
+        "Registration for the summit has closed. Message the CrossGen team on Facebook if you still need a place.",
+      );
+    }
+
+    // Workshops fill up while a form sits open. Checked here rather than in
+    // createRegistration so organizers can still move people into a full room
+    // afterwards, and so the Google Form importer is unaffected.
+    for (const participant of args.participants) {
+      if (!breakoutOpen(participant.breakoutSession)) {
+        fail(
+          `${breakoutTitle(participant.breakoutSession)} is now full. Please choose again — the page will show what is still open.`,
+        );
+      }
+    }
+
     const userId = await getAuthUserId(ctx);
     if (userId === null) fail("Sign in to submit a registration.");
     return await createRegistration(ctx, userId, args);

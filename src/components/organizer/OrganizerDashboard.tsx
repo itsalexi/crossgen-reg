@@ -8,6 +8,7 @@ import {
   useMutation,
   useQuery,
 } from "convex/react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
@@ -34,7 +35,10 @@ import {
   uniqueValues,
   type Filters,
 } from "@/lib/organizer";
+import { expectedRates } from "@/lib/groups";
+import { AddRegistration } from "./AddRegistration";
 import { AdminsSection } from "./AdminsSection";
+import { GroupsSection } from "./GroupsSection";
 import { PaymentsSection } from "./PaymentsSection";
 import { RegistrationDetail } from "./RegistrationDetail";
 import {
@@ -47,12 +51,14 @@ import {
   StatTile,
 } from "./parts";
 
-type Section = "overview" | "registrations" | "people" | "payments" | "admins";
+type Section =
+  "overview" | "registrations" | "people" | "groups" | "payments" | "admins";
 
 const SECTIONS: { key: Section; label: string }[] = [
   { key: "overview", label: "Overview" },
   { key: "registrations", label: "Registrations" },
   { key: "people", label: "Participants" },
+  { key: "groups", label: "Groups" },
   { key: "payments", label: "Payments" },
   { key: "admins", label: "Organizers" },
 ];
@@ -103,14 +109,106 @@ function OrganizerSignIn() {
   );
 }
 
+/**
+ * The whole view lives in the query string: which section, which registration
+ * is open, and every filter. Back goes back, reload lands where you were, and
+ * a link pasted to another organizer opens on what you were looking at.
+ */
+const FILTER_PARAM: Record<keyof Filters, string> = {
+  search: "q",
+  type: "type",
+  session: "session",
+  payment: "payment",
+  email: "email",
+  church: "church",
+  city: "city",
+  dateFrom: "from",
+  dateTo: "to",
+};
+
+function readFilters(params: URLSearchParams): Filters {
+  const value = (key: keyof Filters) => params.get(FILTER_PARAM[key]) ?? "";
+  const session = value("session");
+  return {
+    search: value("search"),
+    type: value("type") as Filters["type"],
+    session: session.length > 0 ? Number(session) : "",
+    payment: value("payment") as Filters["payment"],
+    email: value("email") as Filters["email"],
+    church: value("church"),
+    city: value("city"),
+    dateFrom: value("dateFrom"),
+    dateTo: value("dateTo"),
+  };
+}
+
+function buildQuery(
+  section: Section,
+  open: Id<"registrations"> | null,
+  filters: Filters,
+): string {
+  const params = new URLSearchParams();
+  // Overview is the default, so it stays out of the URL.
+  if (section !== "overview") params.set("tab", section);
+  if (open !== null) params.set("reg", open);
+  for (const key of Object.keys(FILTER_PARAM) as (keyof Filters)[]) {
+    const value = String(filters[key]);
+    if (value.length > 0) params.set(FILTER_PARAM[key], value);
+  }
+  const query = params.toString();
+  return query.length > 0 ? `?${query}` : "";
+}
+
 export function OrganizerDashboard() {
-  const [section, setSection] = useState<Section>("overview");
-  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
-  const [open, setOpen] = useState<Id<"registrations"> | null>(null);
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+
+  const sectionParam = params.get("tab") as Section | null;
+  const section: Section =
+    sectionParam !== null && SECTIONS.some((s) => s.key === sectionParam)
+      ? sectionParam
+      : "overview";
+  const open = params.get("reg") as Id<"registrations"> | null;
+  const filters = useMemo(
+    () => readFilters(new URLSearchParams(params.toString())),
+    [params],
+  );
+
+  const go = (
+    next: {
+      section?: Section;
+      open?: Id<"registrations"> | null;
+      filters?: Filters;
+    },
+    // Moving between sections and registrations is navigation and belongs in
+    // history. Typing in a filter box is not — it would bury the back button
+    // under one entry per keystroke.
+    mode: "push" | "replace" = "push",
+  ) => {
+    const url =
+      pathname +
+      buildQuery(
+        next.section ?? section,
+        next.open !== undefined ? next.open : open,
+        next.filters ?? filters,
+      );
+    if (mode === "push") router.push(url, { scroll: false });
+    else router.replace(url, { scroll: false });
+  };
+
+  const setSection = (key: Section) => go({ section: key, open: null });
+  const setOpen = (registrationId: Id<"registrations"> | null) =>
+    go({ open: registrationId });
+  const setFilters = (next: Filters) => go({ filters: next }, "replace");
+
   const [resending, setResending] = useState(false);
 
   const isOrganizer = useQuery(api.organizer.amIOrganizer);
-  const data = useQuery(api.organizer.snapshot, isOrganizer === true ? {} : "skip");
+  const data = useQuery(
+    api.organizer.snapshot,
+    isOrganizer === true ? {} : "skip",
+  );
   const resendAllFailed = useMutation(api.organizer.resendAllFailed);
 
   const allRows = useMemo(
@@ -119,9 +217,13 @@ export function OrganizerDashboard() {
   );
   const rows = useMemo(() => filterRows(allRows, filters), [allRows, filters]);
   const people = useMemo(
-    () => rows.flatMap((row) =>
-      row.participants.map((participant) => ({ participant, registration: row.registration })),
-    ),
+    () =>
+      rows.flatMap((row) =>
+        row.participants.map((participant) => ({
+          participant,
+          registration: row.registration,
+        })),
+      ),
     [rows],
   );
   const payments = useMemo(() => data?.payments ?? [], [data]);
@@ -134,18 +236,23 @@ export function OrganizerDashboard() {
     () => paymentIndex(allRows, payments),
     [allRows, payments],
   );
+  // Priced off the group someone came with, so the imported rows that carry no
+  // amount of their own are counted rather than quietly skipped.
+  const expected = useMemo(
+    () => expectedRates(allRows).totalFor(rows),
+    [allRows, rows],
+  );
   const churches = useMemo(
-    () => uniqueValues(allRows, (p) => p.churchOrganization),
+    () => uniqueValues(allRows, (p) => p.churchOrganization ?? ""),
     [allRows],
   );
   const cities = useMemo(
-    () => uniqueValues(allRows, (p) => p.cityMunicipality),
+    () => uniqueValues(allRows, (p) => p.cityMunicipality ?? ""),
     [allRows],
   );
 
   const active = filtersActive(filters);
-  const set = (patch: Partial<Filters>) =>
-    setFilters((current) => ({ ...current, ...patch }));
+  const set = (patch: Partial<Filters>) => setFilters({ ...filters, ...patch });
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -184,6 +291,18 @@ export function OrganizerDashboard() {
               Ask someone already on the team to add your email address, then
               reload this page.
             </p>
+            {/* Volunteers land here by accident: their account works, just not
+                for this page. Send them where it does. */}
+            <p className="mt-4 text-[15px] leading-relaxed text-muted">
+              Working the door?{" "}
+              <a
+                href="/organizer/checkin"
+                className="font-semibold text-cg-purple underline"
+              >
+                Open the check-in screen
+              </a>
+              .
+            </p>
           </main>
         ) : (
           <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-6 px-4 py-6 lg:flex-row lg:gap-8 lg:px-8">
@@ -194,10 +313,7 @@ export function OrganizerDashboard() {
                   <button
                     key={entry.key}
                     type="button"
-                    onClick={() => {
-                      setSection(entry.key);
-                      setOpen(null);
-                    }}
+                    onClick={() => setSection(entry.key)}
                     className={cn(
                       "flex-none rounded-lg px-3.5 py-2.5 text-left text-[14px] font-medium transition-colors lg:w-full",
                       section === entry.key
@@ -210,10 +326,19 @@ export function OrganizerDashboard() {
                 ))}
               </nav>
 
+              <a
+                href="/organizer/checkin"
+                className="rounded-xl border border-line bg-white px-4 py-3 text-center text-[14px] font-semibold text-cg-purple hover:border-cg-purple-soft"
+              >
+                Open the check-in door
+              </a>
+
               {section !== "admins" && (
                 <>
                   <div className="flex flex-col gap-1 rounded-xl border border-line bg-white px-4 py-3.5">
-                    <Eyebrow>{active ? "Matching now" : "All registrations"}</Eyebrow>
+                    <Eyebrow>
+                      {active ? "Matching now" : "All registrations"}
+                    </Eyebrow>
                     <p className="font-display text-[22px] leading-tight font-bold text-ink">
                       {stats.participants}
                       <span className="ml-1.5 text-[13px] font-medium text-muted">
@@ -223,7 +348,7 @@ export function OrganizerDashboard() {
                     <p className="text-[13px] text-muted">
                       {stats.registrations} registration
                       {stats.registrations === 1 ? "" : "s"} ·{" "}
-                      {formatPeso(stats.amount)}
+                      {formatPeso(expected)} expected
                     </p>
                   </div>
 
@@ -253,7 +378,9 @@ export function OrganizerDashboard() {
                       className={CONTROL}
                       aria-label="Registration type"
                       value={filters.type}
-                      onChange={(e) => set({ type: e.target.value as Filters["type"] })}
+                      onChange={(e) =>
+                        set({ type: e.target.value as Filters["type"] })
+                      }
                     >
                       <option value="">All types</option>
                       {REGISTRATION_TYPES.map((t) => (
@@ -268,7 +395,8 @@ export function OrganizerDashboard() {
                       value={filters.session}
                       onChange={(e) =>
                         set({
-                          session: e.target.value === "" ? "" : Number(e.target.value),
+                          session:
+                            e.target.value === "" ? "" : Number(e.target.value),
                         })
                       }
                     >
@@ -355,10 +483,19 @@ export function OrganizerDashboard() {
                       {allStats.receiptsMissing > 0 && (
                         <button
                           type="button"
-                          onClick={() => {
-                            set({ payment: "receipt-missing" });
-                            setSection("registrations");
-                          }}
+                          // One call, not two: each go() builds the whole URL
+                          // from this render's state, so a second would drop
+                          // what the first just set.
+                          onClick={() =>
+                            go({
+                              section: "registrations",
+                              open: null,
+                              filters: {
+                                ...filters,
+                                payment: "receipt-missing",
+                              },
+                            })
+                          }
                           className="text-left text-[14px] font-medium text-cg-gold-ink hover:underline"
                         >
                           {allStats.receiptsMissing} without a receipt
@@ -367,10 +504,13 @@ export function OrganizerDashboard() {
                       {allStats.emailsFailed > 0 && (
                         <button
                           type="button"
-                          onClick={() => {
-                            set({ email: "failed" });
-                            setSection("registrations");
-                          }}
+                          onClick={() =>
+                            go({
+                              section: "registrations",
+                              open: null,
+                              filters: { ...filters, email: "failed" },
+                            })
+                          }
                           className="text-left text-[14px] font-medium text-cg-gold-ink hover:underline"
                         >
                           {allStats.emailsFailed} email
@@ -390,12 +530,24 @@ export function OrganizerDashboard() {
                   <Spinner className="size-6 text-cg-purple" />
                 </div>
               ) : open !== null ? (
-                <RegistrationDetail registrationId={open} onBack={() => setOpen(null)} />
+                <RegistrationDetail
+                  registrationId={open}
+                  onBack={() => setOpen(null)}
+                />
               ) : section === "admins" ? (
                 <AdminsSection />
+              ) : section === "groups" ? (
+                <GroupsSection
+                  rows={rows}
+                  allRows={allRows}
+                  payments={data.payments}
+                  decisions={data.groupDecisions}
+                  onOpen={setOpen}
+                />
               ) : section === "payments" ? (
                 <PaymentsSection
                   rows={rows}
+                  allRows={allRows}
                   payments={data.payments}
                   onOpen={setOpen}
                 />
@@ -413,13 +565,9 @@ export function OrganizerDashboard() {
                       note={`${stats.referencesChecked} of ${stats.referencesTotal} payment references checked`}
                     />
                     <StatTile
-                      label="Expected, where known"
-                      value={formatPeso(stats.amount)}
-                      note={
-                        stats.amountUnknownCount > 0
-                          ? `${stats.amountUnknownCount} imported row${stats.amountUnknownCount === 1 ? "" : "s"} have no amount on file`
-                          : "every registration has an amount"
-                      }
+                      label="Expected in total"
+                      value={formatPeso(expected)}
+                      note="₱350 each in a group of five or more, ₱450 on your own"
                     />
                     <StatTile
                       label="Not paying"
@@ -455,15 +603,23 @@ export function OrganizerDashboard() {
                         </div>
                         <div>
                           <dt className="text-muted">Under 18</dt>
-                          <dd className="font-semibold text-ink">{stats.minors}</dd>
+                          <dd className="font-semibold text-ink">
+                            {stats.minors}
+                          </dd>
                         </div>
                       </dl>
                     </Panel>
                     <Panel title="Churches">
-                      <BarList items={stats.byChurch} total={stats.participants} />
+                      <BarList
+                        items={stats.byChurch}
+                        total={stats.participants}
+                      />
                     </Panel>
                     <Panel title="Cities">
-                      <BarList items={stats.byCity} total={stats.participants} />
+                      <BarList
+                        items={stats.byCity}
+                        total={stats.participants}
+                      />
                     </Panel>
                     <Panel title="Where they heard about it">
                       <BarList
@@ -484,7 +640,9 @@ export function OrganizerDashboard() {
                           loading={resending}
                           onClick={() => {
                             setResending(true);
-                            void resendAllFailed().finally(() => setResending(false));
+                            void resendAllFailed().finally(() =>
+                              setResending(false),
+                            );
                           }}
                         >
                           Retry all
@@ -494,7 +652,9 @@ export function OrganizerDashboard() {
                       <ul className="flex flex-col">
                         {rows
                           .filter(
-                            (r) => r.registration.confirmationEmailStatus === "failed",
+                            (r) =>
+                              r.registration.confirmationEmailStatus ===
+                              "failed",
                           )
                           .map(({ registration }) => (
                             <li
@@ -554,6 +714,8 @@ export function OrganizerDashboard() {
                     </Button>
                   </div>
 
+                  <AddRegistration onAdded={() => {}} />
+
                   {rows.length === 0 ? (
                     <p className="rounded-2xl border border-line bg-white py-16 text-center text-[15px] text-muted">
                       {active
@@ -568,13 +730,19 @@ export function OrganizerDashboard() {
                             <th className="px-4 py-3 font-semibold">Number</th>
                             <th className="px-4 py-3 font-semibold">Group</th>
                             <th className="px-4 py-3 font-semibold">People</th>
-                            <th className={`px-4 py-3 font-semibold ${WIDE_ONLY}`}>
+                            <th
+                              className={`px-4 py-3 font-semibold ${WIDE_ONLY}`}
+                            >
                               Registered by
                             </th>
                             <th className="px-4 py-3 font-semibold">Type</th>
                             <th className="px-4 py-3 font-semibold">Amount</th>
                             <th className="px-4 py-3 font-semibold">Receipt</th>
-                            <th className={`px-4 py-3 font-semibold ${WIDE_ONLY}`}>Email</th>
+                            <th
+                              className={`px-4 py-3 font-semibold ${WIDE_ONLY}`}
+                            >
+                              Email
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
@@ -593,7 +761,9 @@ export function OrganizerDashboard() {
                               <td className="max-w-[220px] px-4 py-3.5 font-medium text-ink">
                                 <div className="truncate">
                                   {registration.groupName ?? (
-                                    <span className="font-normal text-muted">—</span>
+                                    <span className="font-normal text-muted">
+                                      —
+                                    </span>
                                   )}
                                 </div>
                                 <SourceTag registration={registration} />
@@ -667,7 +837,8 @@ export function OrganizerDashboard() {
                 <div className="flex flex-col gap-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <h1 className="font-display text-[22px] font-semibold text-ink">
-                      {people.length} participant{people.length === 1 ? "" : "s"}
+                      {people.length} participant
+                      {people.length === 1 ? "" : "s"}
                       {active && (
                         <span className="ml-2 text-[14px] font-normal text-muted">
                           of {allStats.participants}
@@ -703,9 +874,17 @@ export function OrganizerDashboard() {
                             <th className="px-4 py-3 font-semibold">Name</th>
                             <th className="px-4 py-3 font-semibold">Age</th>
                             <th className="px-4 py-3 font-semibold">Church</th>
-                            <th className={`px-4 py-3 font-semibold ${WIDE_ONLY}`}>City</th>
+                            <th
+                              className={`px-4 py-3 font-semibold ${WIDE_ONLY}`}
+                            >
+                              City
+                            </th>
                             <th className="px-4 py-3 font-semibold">Session</th>
-                            <th className={`px-4 py-3 font-semibold ${WIDE_ONLY}`}>Contact</th>
+                            <th
+                              className={`px-4 py-3 font-semibold ${WIDE_ONLY}`}
+                            >
+                              Contact
+                            </th>
                             <th className="px-4 py-3 font-semibold">Group</th>
                           </tr>
                         </thead>
@@ -719,7 +898,8 @@ export function OrganizerDashboard() {
                               <td className="px-4 py-3.5 font-medium text-ink">
                                 {participant.fullName}
                                 <div className="text-[12.5px] font-normal text-muted">
-                                  {participant.gender} · {participant.maritalStatus}
+                                  {participant.gender} ·{" "}
+                                  {participant.maritalStatus}
                                 </div>
                               </td>
                               <td className="px-4 py-3.5 text-muted">
@@ -734,7 +914,12 @@ export function OrganizerDashboard() {
                                   {participant.cityMunicipality}
                                 </div>
                               </td>
-                              <td className={cn("px-4 py-3.5 text-muted", WIDE_ONLY)}>
+                              <td
+                                className={cn(
+                                  "px-4 py-3.5 text-muted",
+                                  WIDE_ONLY,
+                                )}
+                              >
                                 {participant.cityMunicipality}
                               </td>
                               <td className="max-w-[220px] px-4 py-3.5 text-muted">
@@ -747,7 +932,9 @@ export function OrganizerDashboard() {
                                 )}
                               >
                                 {participant.mobileNumber}
-                                <div className="text-[12.5px]">{participant.email}</div>
+                                <div className="text-[12.5px]">
+                                  {participant.email}
+                                </div>
                               </td>
                               <td className="px-4 py-3.5">
                                 <span className="font-semibold text-cg-purple">

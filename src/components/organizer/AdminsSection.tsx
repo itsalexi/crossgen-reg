@@ -16,6 +16,7 @@ export function AdminsSection() {
 
   const [email, setEmail] = useState("");
   const [note, setNote] = useState("");
+  const [role, setRole] = useState<"organizer" | "volunteer">("organizer");
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<Id<"organizers"> | null>(null);
@@ -29,9 +30,10 @@ export function AdminsSection() {
     setAdding(true);
     setError(null);
     try {
-      await addOrganizer({ email, note: note.trim() || undefined });
+      await addOrganizer({ email, note: note.trim() || undefined, role });
       setEmail("");
       setNote("");
+      setRole("organizer");
     } catch (caught) {
       setError(
         caught instanceof ConvexError
@@ -140,12 +142,19 @@ export function AdminsSection() {
                       {entry.email}
                     </span>
                     {entry.isOwner && <Pill tone="purple">Owner</Pill>}
+                    {entry.role === "volunteer" && (
+                      <Pill tone="teal">Door only</Pill>
+                    )}
                     {isMe && <Pill tone="muted">You</Pill>}
                   </div>
                   <p className="mt-0.5 text-[13px] text-muted">
                     {entry.isOwner
                       ? "Set in the deployment config — can't be removed here."
-                      : `Added by ${entry.addedByEmail}${
+                      : `${
+                          entry.role === "volunteer"
+                            ? "Check-in screen only · "
+                            : ""
+                        }Added by ${entry.addedByEmail}${
                           entry.addedAt ? ` on ${longDate(entry.addedAt)}` : ""
                         }`}
                     {entry.note ? ` · ${entry.note}` : ""}
@@ -210,11 +219,48 @@ export function AdminsSection() {
             />
           </div>
 
+          <fieldset className="flex flex-col gap-2">
+            <legend className="pb-1 text-[13px] font-medium text-ink">
+              What can they reach?
+            </legend>
+            <label className="flex items-start gap-2.5">
+              <input
+                type="radio"
+                name="role"
+                checked={role === "organizer"}
+                onChange={() => setRole("organizer")}
+                className="mt-1"
+              />
+              <span className="text-[14px] leading-snug">
+                <span className="font-medium text-ink">Organizer</span>
+                <span className="block text-muted">
+                  Everything: registrations, payments, groups, personal details.
+                </span>
+              </span>
+            </label>
+            <label className="flex items-start gap-2.5">
+              <input
+                type="radio"
+                name="role"
+                checked={role === "volunteer"}
+                onChange={() => setRole("volunteer")}
+                className="mt-1"
+              />
+              <span className="text-[14px] leading-snug">
+                <span className="font-medium text-ink">Door volunteer</span>
+                <span className="block text-muted">
+                  The check-in screen and nothing else. No payments, no contact
+                  details, no deleting.
+                </span>
+              </span>
+            </label>
+          </fieldset>
+
           {error !== null && <Callout tone="error">{error}</Callout>}
 
           <div className="flex items-center gap-3">
             <Button type="submit" loading={adding} disabled={email.trim().length === 0}>
-              Add organizer
+              {role === "volunteer" ? "Add volunteer" : "Add organizer"}
             </Button>
             <span className="text-[13px] text-muted">
               They sign in with Google using this exact address.

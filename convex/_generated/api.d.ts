@@ -9,7 +9,9 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as checkin from "../checkin.js";
 import type * as emails from "../emails.js";
+import type * as groupKey from "../groupKey.js";
 import type * as http from "../http.js";
 import type * as importGoogleForm from "../importGoogleForm.js";
 import type * as organizer from "../organizer.js";
@@ -26,7 +28,9 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  checkin: typeof checkin;
   emails: typeof emails;
+  groupKey: typeof groupKey;
   http: typeof http;
   importGoogleForm: typeof importGoogleForm;
   organizer: typeof organizer;

@@ -66,6 +66,15 @@ export default defineSchema({
     // and retry — a repeat call returns the original registration.
     idempotencyKey: v.string(),
     groupName: v.optional(v.string()),
+    // Set when someone registering on their own says they are part of a group
+    // of five or more that is registering separately, and so pays the group
+    // rate. A claim, not a fact: the Groups tab is where it gets checked.
+    joiningGroup: v.optional(v.boolean()),
+    // An organizer's decision about which group this belongs to, which beats
+    // whatever was typed. The group field was free text and the same group was
+    // written five ways, so the name can only ever be a guess. Empty string
+    // means "put this one on its own"; absent means "go by the name".
+    groupKey: v.optional(v.string()),
 
     // Absent on imported rows: nobody signed in to file them. The registrant
     // is identified by the name and email the old form captured.
@@ -84,7 +93,15 @@ export default defineSchema({
     amountUnknown: v.optional(v.boolean()),
 
     // Absent means "web" — every registration predates the import.
-    source: v.optional(v.union(v.literal("web"), v.literal("google-form"))),
+    source: v.optional(
+      v.union(
+        v.literal("web"),
+        v.literal("google-form"),
+        // Typed in by an organizer for people who could not use the form,
+        // usually a church sending a list of names and nothing else.
+        v.literal("organizer"),
+      ),
+    ),
     // The Google Form's own timestamp, so imported rows sort by when the
     // person actually registered rather than when we imported them.
     submittedAt: v.optional(v.number()),
@@ -119,27 +136,66 @@ export default defineSchema({
     .index("by_idempotencyKey", ["idempotencyKey"])
     .index("by_registrantUserId", ["registrantUserId"]),
 
+  /**
+   * Everything except the name and the workshop is optional here, while the
+   * public form still demands all of it. That gap is deliberate: a church can
+   * send twenty names and nothing else, and storing a real name with blanks
+   * beside it is more honest than storing an invented age and a fake email
+   * that will silently bounce.
+   */
   participants: defineTable({
     registrationId: v.id("registrations"),
     fullName: v.string(),
     preferredName: v.optional(v.string()),
-    age: v.number(),
-    gender: v.string(),
-    maritalStatus: v.string(),
-    churchOrganization: v.string(),
-    ministryInvolvement: v.string(),
-    occupation: v.string(),
-    mobileNumber: v.string(),
-    email: v.string(),
-    cityMunicipality: v.string(),
+    age: v.optional(v.number()),
+    gender: v.optional(v.string()),
+    maritalStatus: v.optional(v.string()),
+    churchOrganization: v.optional(v.string()),
+    ministryInvolvement: v.optional(v.string()),
+    occupation: v.optional(v.string()),
+    mobileNumber: v.optional(v.string()),
+    email: v.optional(v.string()),
+    cityMunicipality: v.optional(v.string()),
     breakoutSession: breakoutSessionValidator,
   }).index("by_registrationId", ["registrationId"]),
 
-  // Organizers added from inside the app. The ORGANIZER_EMAILS env var still
-  // works and acts as the owner list — those accounts can always get in, and
-  // cannot be removed through the UI.
+  /**
+   * Who actually walked in on the day.
+   *
+   * Separate from the registration so arriving is a fact recorded once, by
+   * whoever was on the door, without touching what the person registered for.
+   * Keyed by participant because families split up: four people on one
+   * registration can arrive across two hours and three doors.
+   *
+   * `at` is when they were marked in, which on a bad wifi day is not when the
+   * write reached us — the phone queues offline and sends later, so the time
+   * comes from the device that saw them.
+   */
+  checkIns: defineTable({
+    participantId: v.id("participants"),
+    at: v.number(),
+    byEmail: v.string(),
+    // Set when the row arrived from a queue that had been offline, so the
+    // door team can tell a late sync from a late arrival.
+    queued: v.optional(v.boolean()),
+  }).index("by_participantId", ["participantId"]),
+
+  /**
+   * People who can sign in, and how far they get.
+   *
+   * "organizer" sees everything: money, groups, personal details, deletion.
+   * "volunteer" sees only the door — the roster, and the ability to mark
+   * someone as arrived. Door volunteers are church members recruited for one
+   * morning, often on their own phones, and there is no reason that should
+   * come with access to what everybody paid.
+   *
+   * Absent means organizer, because every row predates the distinction. The
+   * ORGANIZER_EMAILS env var is the owner list: those accounts can always get
+   * in and cannot be removed through the UI.
+   */
   organizers: defineTable({
     email: v.string(),
+    role: v.optional(v.union(v.literal("organizer"), v.literal("volunteer"))),
     addedByEmail: v.string(),
     note: v.optional(v.string()),
   }).index("by_email", ["email"]),
@@ -178,6 +234,26 @@ export default defineSchema({
     reason: v.string(),
     byEmail: v.string(),
   }).index("by_key", ["idempotencyKey"]),
+
+  /**
+   * An organizer saying a flagged group is fine after all.
+   *
+   * Some of what the group view flags is not wrong data but a wrong claim:
+   * "DJ-GCFSM- 18" was typed by someone who guessed high, and there were only
+   * ever five. Nothing in the data can settle that — only a person who asked
+   * can, and this is where their answer lives so it stops being raised.
+   */
+  groupDecisions: defineTable({
+    groupKey: v.string(),
+    kind: v.union(
+      v.literal("short"),
+      v.literal("over"),
+      v.literal("missing"),
+      v.literal("unchecked"),
+    ),
+    note: v.optional(v.string()),
+    byEmail: v.string(),
+  }).index("by_groupKey", ["groupKey"]),
 
   // Remembers the last push to the organizers' Google Sheet.
   syncState: defineTable({

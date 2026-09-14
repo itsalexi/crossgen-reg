@@ -4,12 +4,43 @@
  * truth. Neither trusts the other's arithmetic — see convex/registrations.ts.
  */
 
+/**
+ * Whether the form is still taking people.
+ *
+ * A deadline rather than a switch, so closing does not depend on somebody
+ * being awake to flip it. Reopened on 10 Sep at the organizers' request, to
+ * close again at 3pm on 11 Sep Philippine time.
+ *
+ * Enforced in the submit mutation as well as the UI, because a form left open
+ * in a tab keeps working otherwise.
+ *
+ * To reopen: push `closesAt` out, or set it to null for no deadline.
+ * To close immediately: set `closedNow` to true.
+ */
+export const REGISTRATION: {
+  closesAt: number | null;
+  closedNow: boolean;
+  deadlineLabel: string;
+} = {
+  closesAt: Date.parse("2026-09-11T15:00:00+08:00"),
+  closedNow: false,
+  deadlineLabel: "3:00 PM on Friday, September 11",
+};
+
+/** True once the deadline has passed, or the moment someone closes it by hand. */
+export function registrationClosed(now: number = Date.now()): boolean {
+  if (REGISTRATION.closedNow) return true;
+  return REGISTRATION.closesAt !== null && now >= REGISTRATION.closesAt;
+}
+
 export const EVENT = {
   name: "CrossGen Family Summit 2026",
   tagline: "Pamilyang Sama-Sama, Henerasyong Nagkaka-isa",
   verse: '"Sa alinmang lahi, ang iyong ginawa ay papupurihan, ihahayag nila ang mga gawa Mong makapangyarihan." — Awit 145:4',
   date: "September 26, 2026",
   dayOfWeek: "Saturday",
+  startTime: "8:00 AM",
+  endTime: "5:00 PM",
   venue: "GCF South Metro",
   address: "Daang Hari Road, Almanza Dos, Las Piñas",
   minAge: 14,
@@ -86,13 +117,21 @@ export function ratePerPerson(participantCount: number): number {
 /**
  * The only place a peso total is ever computed. One type per registration, so
  * either everyone pays or nobody does.
+ *
+ * `joiningGroup` is for a church that wants the group rate but whose people
+ * register one at a time, because the lead person does not have everybody's
+ * details. They each name the same group and pay ₱350. Nothing here can verify
+ * the group will reach five — the Groups tab is where that gets checked, and
+ * a group that falls short shows up there as money owed.
  */
 export function calculateTotal(
   type: RegistrationType,
   participantCount: number,
+  joiningGroup = false,
 ): number {
   if (isExempt(type)) return 0;
-  return participantCount * ratePerPerson(participantCount);
+  const rate = joiningGroup ? GROUP_RATE : ratePerPerson(participantCount);
+  return participantCount * rate;
 }
 
 export function formatPeso(amount: number): string {
@@ -170,6 +209,25 @@ export const LEGACY_BREAKOUT_TITLES: Record<string, number> = {
   "family flourishing: well-being & mental health": 2,
   "fearfully & wonderfully made: navigating sex, gender, and identity": 5,
 };
+
+/**
+ * Which workshops are still taking people.
+ *
+ * Closed 10 Sep: every venue except the first is at capacity, so Making Family
+ * Discipleship becomes the plenary and takes everyone registering from now on.
+ * This only affects new registrations. Anyone already booked into sessions 2
+ * to 5 keeps their place, and organizers can still move people between any of
+ * the five from the dashboard.
+ */
+export const OPEN_BREAKOUT_SESSIONS: readonly number[] = [1];
+
+export function breakoutOpen(value: number): boolean {
+  return OPEN_BREAKOUT_SESSIONS.includes(value);
+}
+
+export function openBreakoutSessions() {
+  return BREAKOUT_SESSIONS.filter((s) => breakoutOpen(s.value));
+}
 
 export function breakoutTitle(value: number): string {
   return (

@@ -8,6 +8,7 @@ import type { Id } from "@convex/_generated/dataModel";
 import type { RosterEntry } from "@convex/checkin";
 import { cn } from "@/components/ui";
 import { CheckInDesk } from "@/components/organizer/CheckInDesk";
+import { ScanSheet } from "@/components/organizer/ScanSheet";
 import {
   clearQueued,
   enqueue,
@@ -91,7 +92,19 @@ export function CheckInScreen() {
   const [scan, setScan] = useState<ScanState>({ kind: "waiting" });
   const [starting, setStarting] = useState(false);
   const [hit, setHit] = useState<Hit | null>(null);
+  /** False for a moment after a card closes, while the last code clears. */
+  const [ready, setReady] = useState(true);
   const stageTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const readyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /**
+   * Nothing is read before this time.
+   *
+   * The person who was just dealt with is still standing there with their
+   * phone up. Without a pause after the card closes, their code is read again
+   * before the volunteer has looked up, and the card they just dismissed comes
+   * straight back.
+   */
+  const coolUntil = useRef(0);
   const [torch, setTorch] = useState<{ on: boolean; available: boolean }>({
     on: false,
     available: false,
@@ -256,12 +269,16 @@ export function CheckInScreen() {
     lastScan.current = { value: "", at: 0 };
     setScan({ kind: "waiting" });
     setHit(null);
+    setReady(true);
+    coolUntil.current = 0;
 
     const handle = (value: string) => {
-      // The camera reads the same code many times a second.
+      // The camera reads the same code many times a second, and the last
+      // person is still in front of the lens for a few seconds after that.
+      if (Date.now() < coolUntil.current) return;
       const repeat =
         value === lastScan.current.value &&
-        Date.now() - lastScan.current.at < 4000;
+        Date.now() - lastScan.current.at < 8000;
       if (repeat) return;
       lastScan.current = { value, at: Date.now() };
 
@@ -406,6 +423,7 @@ export function CheckInScreen() {
     return () => {
       alive = false;
       if (stageTimer.current !== null) clearTimeout(stageTimer.current);
+      if (readyTimer.current !== null) clearTimeout(readyTimer.current);
       stopCamera();
     };
   }, [view.kind, people, isIn, markIn, stopCamera]);
@@ -426,14 +444,19 @@ export function CheckInScreen() {
    */
   const closeHit = useCallback(() => {
     if (stageTimer.current !== null) clearTimeout(stageTimer.current);
+    if (readyTimer.current !== null) clearTimeout(readyTimer.current);
     setHit((current) =>
       current === null ? null : { ...current, stage: "closing" },
     );
+    setReady(false);
     stageTimer.current = setTimeout(() => {
       setHit(null);
       paused.current = false;
-      lastScan.current = { value: "", at: 0 };
+      // Deliberately not clearing lastScan: the code that was just handled is
+      // still in frame, and it is the one thing that must not be read again.
+      coolUntil.current = Date.now() + 1800;
       void videoRef.current?.play().catch(() => {});
+      readyTimer.current = setTimeout(() => setReady(true), 1800);
     }, 200);
   }, []);
 
@@ -904,10 +927,10 @@ export function CheckInScreen() {
                 {scan.kind === "waiting" && !starting && (
                   <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                     <div
-                      className="relative aspect-square w-[72%] max-w-[340px] transition-transform duration-200 ease-out"
+                      className="relative aspect-square w-[72%] max-w-[340px] transition-all duration-200 ease-out"
                       style={{
-                        transform:
-                          hit !== null ? "scale(0.88)" : "scale(1)",
+                        transform: hit !== null ? "scale(0.88)" : "scale(1)",
+                        opacity: ready ? 1 : 0.35,
                       }}
                     >
                       {[
@@ -948,7 +971,10 @@ export function CheckInScreen() {
                     className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-[18px] pt-10 pb-5 text-[19px] leading-[1.35] font-semibold transition-colors duration-200"
                     style={{ color: hit !== null ? GOLD : "#fff" }}
                   >
-                    {hitPerson?.name ?? "Hold their code inside the box"}
+                    {hitPerson?.name ??
+                      (ready
+                        ? "Hold their code inside the box"
+                        : "Next person, please")}
                   </p>
                 )}
 
@@ -995,21 +1021,17 @@ export function CheckInScreen() {
                           style={{ background: BORDER }}
                         />
                       </div>
-                      <PersonView
+                      <ScanSheet
                         person={hitPerson}
                         people={people}
                         isIn={isIn}
                         onCheckIn={(entry) => markIn([entry])}
-                        onOpen={(id) => {
-                          closeHit();
-                          setView({ kind: "person", id });
-                        }}
-                        onUndo={(entry) => {
-                          undoOne(entry);
-                          closeHit();
-                        }}
-                        fromScan
-                        onNext={closeHit}
+                        // Undo leaves the card open. Somebody who has just
+                        // undone a check-in is fixing something, and throwing
+                        // them back to the camera mid-fix is how it gets done
+                        // twice.
+                        onUndo={undoOne}
+                        onClose={closeHit}
                       />
                     </div>
                   </>
@@ -1150,8 +1172,6 @@ function PersonView({
   onCheckIn,
   onOpen,
   onUndo,
-  fromScan = false,
-  onNext,
 }: {
   person: RosterEntry;
   people: RosterEntry[];
@@ -1159,9 +1179,6 @@ function PersonView({
   onCheckIn: (entry: RosterEntry) => void;
   onOpen: (id: string) => void;
   onUndo: (entry: RosterEntry) => void;
-  /** Reached from the camera, so the way out is back to the camera. */
-  fromScan?: boolean;
-  onNext?: () => void;
 }) {
   const [shown, setShown] = useState(false);
   const inside = isIn(person);
@@ -1178,7 +1195,7 @@ function PersonView({
           className="inline-block rounded-lg px-3 py-2 text-[16px] leading-none font-semibold"
           style={{ background: "#e8f4f8", color: "#1d5f78" }}
         >
-          {fromScan ? "Already here since " : "Here since "}
+          Here since{" "}
           {person.checkedInAt !== null ? at(person.checkedInAt) : "just now"}
         </span>
       )}
@@ -1283,29 +1300,6 @@ function PersonView({
             </ul>
           )}
         </div>
-      )}
-
-      {fromScan && onNext !== undefined && (
-        <button
-          type="button"
-          onClick={onNext}
-          className={
-            inside
-              ? "mt-7 h-[68px] w-full rounded-xl text-[21px] font-semibold text-white"
-              : "mt-4 h-[68px] w-full rounded-xl text-[21px] font-semibold"
-          }
-          style={
-            inside
-              ? { background: PURPLE }
-              : {
-                  background: "#fff",
-                  border: `2px solid ${BORDER}`,
-                  color: PURPLE,
-                }
-          }
-        >
-          Next person
-        </button>
       )}
 
       {/* Pulled up at the desk when somebody has lost their email. */}

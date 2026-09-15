@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import type { RosterEntry } from "@convex/checkin";
+import { breakoutColour } from "@convex/shared";
 import { cn } from "@/components/ui";
 import { CheckInDesk } from "@/components/organizer/CheckInDesk";
 import { ScanSheet } from "@/components/organizer/ScanSheet";
@@ -1216,6 +1217,7 @@ function PersonView({
 }) {
   const [shown, setShown] = useState(false);
   const inside = isIn(person);
+  const colour = breakoutColour(person.sessionNumber);
   const family = people.filter(
     (entry) =>
       entry.registrationNumber === person.registrationNumber &&
@@ -1244,15 +1246,40 @@ function PersonView({
 
       {/* The one line that gets read out loud, so it is the biggest thing
           under their name. */}
-      <p
-        className="mt-7 text-[16px] leading-none font-semibold"
-        style={{ color: PURPLE }}
+      <div
+        className="mt-7 rounded-xl px-4 py-4"
+        style={{ background: colour?.tint ?? "#f2effb" }}
       >
-        Tell them to go to
-      </p>
-      <p className="mt-2 font-display text-[23px] leading-[1.3] font-semibold text-ink">
-        {person.session}
-      </p>
+        <p
+          className="text-[16px] leading-none font-semibold"
+          style={{ color: colour?.ink ?? PURPLE }}
+        >
+          Tell them to go to
+        </p>
+        {colour !== null && (
+          <p className="mt-2.5 flex items-center gap-2.5">
+            <span
+              className="size-7 flex-none rounded-full"
+              style={{
+                background: colour.hex,
+                border: `2px solid ${colour.ink}`,
+              }}
+            />
+            <span
+              className="font-display text-[26px] leading-none font-bold"
+              style={{ color: colour.ink }}
+            >
+              {colour.name} room
+            </span>
+          </p>
+        )}
+        <p
+          className="mt-2 text-[17px] leading-[1.3] font-semibold"
+          style={{ color: colour?.ink ?? "#191528" }}
+        >
+          {person.session}
+        </p>
+      </div>
 
       {!person.cleared && (
         <div

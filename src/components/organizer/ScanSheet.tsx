@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import type { RosterEntry } from "@convex/checkin";
+import { breakoutColour } from "@convex/shared";
 
 /**
  * What a scanned code turns into.
@@ -49,6 +50,7 @@ export function ScanSheet({
   onClose: () => void;
 }) {
   const inside = isIn(person);
+  const colour = breakoutColour(person.sessionNumber);
   const family = people.filter(
     (entry) =>
       entry.registrationNumber === person.registrationNumber &&
@@ -129,19 +131,41 @@ export function ScanSheet({
             .join(" · ")}
         </p>
 
-        {/* The line that gets said out loud, boxed so it is found without
-            reading anything else on the sheet. */}
+        {/* The line that gets said out loud. The room is signed by colour, so
+            the colour is the headline and the title sits under it — a volunteer
+            points at a sign rather than reciting a workshop name across a noisy
+            hall. The colour is always named, never shown on its own. */}
         <div
           className="mt-5 rounded-2xl px-4 py-4"
-          style={{ background: "#f2effb" }}
+          style={{ background: colour?.tint ?? "#f2effb" }}
         >
           <p
             className="text-[15px] leading-none font-semibold"
-            style={{ color: PURPLE }}
+            style={{ color: colour?.ink ?? PURPLE }}
           >
             Send them to
           </p>
-          <p className="mt-2 font-display text-[22px] leading-[1.25] font-semibold text-ink">
+          {colour !== null && (
+            <p className="mt-2.5 flex items-center gap-2.5">
+              <span
+                className="size-7 flex-none rounded-full"
+                style={{
+                  background: colour.hex,
+                  border: `2px solid ${colour.ink}`,
+                }}
+              />
+              <span
+                className="font-display text-[26px] leading-none font-bold"
+                style={{ color: colour.ink }}
+              >
+                {colour.name} room
+              </span>
+            </p>
+          )}
+          <p
+            className="mt-2 text-[17px] leading-[1.3] font-semibold"
+            style={{ color: colour?.ink ?? "#191528" }}
+          >
             {person.session}
           </p>
         </div>
@@ -181,6 +205,9 @@ export function ScanSheet({
             <ul className="mt-3 flex flex-col gap-2.5">
               {family.map((entry) => {
                 const here = isIn(entry);
+                // A family rarely goes to one room. Each of them needs their
+                // own colour, right where they are being ticked off.
+                const theirs = breakoutColour(entry.sessionNumber);
                 return (
                   <li
                     key={entry.id}
@@ -195,12 +222,24 @@ export function ScanSheet({
                         {entry.name}
                       </span>
                       <span
-                        className="block text-[15px] leading-[1.3]"
+                        className="flex items-center gap-1.5 text-[15px] leading-[1.3]"
                         style={{ color: here ? TEAL : BODY }}
                       >
-                        {here
-                          ? `In ${entry.checkedInAt !== null ? at(entry.checkedInAt) : "just now"}`
+                        {theirs !== null && (
+                          <span
+                            className="size-3 flex-none rounded-full"
+                            style={{
+                              background: theirs.hex,
+                              border: `1px solid ${theirs.ink}`,
+                            }}
+                          />
+                        )}
+                        {theirs !== null
+                          ? `${theirs.name} room`
                           : `Session ${entry.sessionNumber}`}
+                        {here
+                          ? ` · in ${entry.checkedInAt !== null ? at(entry.checkedInAt) : "just now"}`
+                          : ""}
                       </span>
                     </span>
                     {here ? (

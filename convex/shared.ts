@@ -236,6 +236,39 @@ export function breakoutTitle(value: number): string {
   );
 }
 
+/**
+ * The colour each breakout room is signed with on the day.
+ *
+ * Set by the organizers, and the thing the venue actually goes by: the rooms
+ * carry coloured signs, so a volunteer at the door points at a colour rather
+ * than reading out a title nobody can follow across a noisy hall.
+ *
+ * The name travels with the colour everywhere it is shown. A swatch on its own
+ * is no use to a volunteer who cannot tell green from red, or to anyone
+ * describing a room down a phone.
+ */
+export type BreakoutColour = {
+  /** What it is called out loud, and what the sign says. */
+  name: string;
+  hex: string;
+  /** Background behind the name, pale enough to carry dark text. */
+  tint: string;
+  /** Text on that background. */
+  ink: string;
+};
+
+const BREAKOUT_COLOURS: Record<number, BreakoutColour> = {
+  1: { name: "Yellow", hex: "#f5b800", tint: "#fff6dd", ink: "#7a5c00" },
+  2: { name: "Green", hex: "#1f8a4c", tint: "#e7f5ec", ink: "#14653a" },
+  3: { name: "Violet", hex: "#6b46c1", tint: "#f0ebfb", ink: "#4c2f95" },
+  4: { name: "Blue", hex: "#2b7fb8", tint: "#e6f2fa", ink: "#1a5c80" },
+  5: { name: "Red", hex: "#c42f2f", tint: "#fdeaea", ink: "#8f2020" },
+};
+
+export function breakoutColour(value: number): BreakoutColour | null {
+  return BREAKOUT_COLOURS[value] ?? null;
+}
+
 // -------------------------------------------------------- where they heard
 
 export type HeardFrom = "social-media" | "church-announcement" | "other";

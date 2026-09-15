@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { RosterEntry } from "@convex/checkin";
+import { breakoutColour } from "@convex/shared";
 import { cn } from "@/components/ui";
 
 /**
@@ -400,6 +401,7 @@ function PersonPanel({
   onOpen: (id: string) => void;
 }) {
   const inside = isIn(person);
+  const colour = breakoutColour(person.sessionNumber);
   const family = people.filter(
     (entry) =>
       entry.registrationNumber === person.registrationNumber &&
@@ -433,12 +435,39 @@ function PersonPanel({
         </p>
       </div>
 
-      {/* The line that gets said out loud. */}
-      <div>
-        <p className="text-[13px] font-semibold" style={{ color: PURPLE }}>
+      {/* The line that gets said out loud. The rooms are signed by colour, so
+          that is what leads — the title is for the one person who asks. */}
+      <div
+        className="rounded-xl px-3.5 py-3"
+        style={{ background: colour?.tint ?? "#f5f2fc" }}
+      >
+        <p
+          className="text-[13px] font-semibold"
+          style={{ color: colour?.ink ?? PURPLE }}
+        >
           Send them to
         </p>
-        <p className="mt-1 font-display text-[20px] leading-[1.3] font-semibold text-ink">
+        {colour !== null && (
+          <p className="mt-1.5 flex items-center gap-2">
+            <span
+              className="size-5 flex-none rounded-full"
+              style={{
+                background: colour.hex,
+                border: `2px solid ${colour.ink}`,
+              }}
+            />
+            <span
+              className="font-display text-[21px] leading-none font-bold"
+              style={{ color: colour.ink }}
+            >
+              {colour.name} room
+            </span>
+          </p>
+        )}
+        <p
+          className="mt-1.5 text-[14.5px] leading-[1.3] font-semibold"
+          style={{ color: colour?.ink ?? "#191528" }}
+        >
           {person.session}
         </p>
       </div>

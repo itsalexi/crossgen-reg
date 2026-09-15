@@ -247,9 +247,13 @@ export function breakoutTitle(value: number): string {
  * is no use to a volunteer who cannot tell green from red, or to anyone
  * describing a room down a phone.
  */
-export type BreakoutColour = {
-  /** What it is called out loud, and what the sign says. */
-  name: string;
+export type BreakoutRoom = {
+  /** Where they are actually going. What a volunteer points at and says. */
+  room: string;
+  /** The room's formal name, where the short one is an abbreviation. */
+  roomFull?: string;
+  /** The colour of the sign on its door. */
+  colour: string;
   hex: string;
   /** Background behind the name, pale enough to carry dark text. */
   tint: string;
@@ -257,16 +261,48 @@ export type BreakoutColour = {
   ink: string;
 };
 
-const BREAKOUT_COLOURS: Record<number, BreakoutColour> = {
-  1: { name: "Yellow", hex: "#f5b800", tint: "#fff6dd", ink: "#7a5c00" },
-  2: { name: "Green", hex: "#1f8a4c", tint: "#e7f5ec", ink: "#14653a" },
-  3: { name: "Violet", hex: "#6b46c1", tint: "#f0ebfb", ink: "#4c2f95" },
-  4: { name: "Blue", hex: "#2b7fb8", tint: "#e6f2fa", ink: "#1a5c80" },
-  5: { name: "Red", hex: "#c42f2f", tint: "#fdeaea", ink: "#8f2020" },
+const BREAKOUT_ROOMS: Record<number, BreakoutRoom> = {
+  1: {
+    room: "Worship Hall",
+    colour: "Yellow",
+    hex: "#f5b800",
+    tint: "#fff6dd",
+    ink: "#7a5c00",
+  },
+  2: {
+    room: "2nd Floor Lobby",
+    colour: "Green",
+    hex: "#1f8a4c",
+    tint: "#e7f5ec",
+    ink: "#14653a",
+  },
+  3: {
+    room: "CDC & Library",
+    roomFull: "Children's Discipleship Center and Library",
+    colour: "Violet",
+    hex: "#6b46c1",
+    tint: "#f0ebfb",
+    ink: "#4c2f95",
+  },
+  4: {
+    room: "YDT Room",
+    roomFull: "Youth Discipleship Training Room",
+    colour: "Blue",
+    hex: "#2b7fb8",
+    tint: "#e6f2fa",
+    ink: "#1a5c80",
+  },
+  5: {
+    room: "Choir Room",
+    colour: "Red",
+    hex: "#c42f2f",
+    tint: "#fdeaea",
+    ink: "#8f2020",
+  },
 };
 
-export function breakoutColour(value: number): BreakoutColour | null {
-  return BREAKOUT_COLOURS[value] ?? null;
+export function breakoutRoom(value: number): BreakoutRoom | null {
+  return BREAKOUT_ROOMS[value] ?? null;
 }
 
 // -------------------------------------------------------- where they heard

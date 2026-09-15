@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import type { RosterEntry } from "@convex/checkin";
-import { breakoutColour } from "@convex/shared";
+import { breakoutRoom } from "@convex/shared";
 
 /**
  * What a scanned code turns into.
@@ -50,7 +50,7 @@ export function ScanSheet({
   onClose: () => void;
 }) {
   const inside = isIn(person);
-  const colour = breakoutColour(person.sessionNumber);
+  const room = breakoutRoom(person.sessionNumber);
   const family = people.filter(
     (entry) =>
       entry.registrationNumber === person.registrationNumber &&
@@ -137,34 +137,43 @@ export function ScanSheet({
             hall. The colour is always named, never shown on its own. */}
         <div
           className="mt-5 rounded-2xl px-4 py-4"
-          style={{ background: colour?.tint ?? "#f2effb" }}
+          style={{ background: room?.tint ?? "#f2effb" }}
         >
           <p
             className="text-[15px] leading-none font-semibold"
-            style={{ color: colour?.ink ?? PURPLE }}
+            style={{ color: room?.ink ?? PURPLE }}
           >
             Send them to
           </p>
-          {colour !== null && (
-            <p className="mt-2.5 flex items-center gap-2.5">
-              <span
-                className="size-7 flex-none rounded-full"
-                style={{
-                  background: colour.hex,
-                  border: `2px solid ${colour.ink}`,
-                }}
-              />
-              <span
-                className="font-display text-[26px] leading-none font-bold"
-                style={{ color: colour.ink }}
+          {room !== null && (
+            <>
+              <p className="mt-2.5 flex items-center gap-2.5">
+                <span
+                  className="size-7 flex-none rounded-full"
+                  style={{
+                    background: room.hex,
+                    border: `2px solid ${room.ink}`,
+                  }}
+                />
+                <span
+                  className="font-display text-[26px] leading-[1.1] font-bold"
+                  style={{ color: room.ink }}
+                >
+                  {room.room}
+                </span>
+              </p>
+              <p
+                className="mt-1.5 text-[16px] leading-[1.3] font-semibold"
+                style={{ color: room.ink }}
               >
-                {colour.name} room
-              </span>
-            </p>
+                {room.colour} sign
+                {room.roomFull !== undefined ? ` · ${room.roomFull}` : ""}
+              </p>
+            </>
           )}
           <p
-            className="mt-2 text-[17px] leading-[1.3] font-semibold"
-            style={{ color: colour?.ink ?? "#191528" }}
+            className="mt-2.5 text-[16px] leading-[1.3]"
+            style={{ color: room?.ink ?? "#191528" }}
           >
             {person.session}
           </p>
@@ -207,7 +216,7 @@ export function ScanSheet({
                 const here = isIn(entry);
                 // A family rarely goes to one room. Each of them needs their
                 // own colour, right where they are being ticked off.
-                const theirs = breakoutColour(entry.sessionNumber);
+                const theirs = breakoutRoom(entry.sessionNumber);
                 return (
                   <li
                     key={entry.id}
@@ -235,7 +244,7 @@ export function ScanSheet({
                           />
                         )}
                         {theirs !== null
-                          ? `${theirs.name} room`
+                          ? theirs.room
                           : `Session ${entry.sessionNumber}`}
                         {here
                           ? ` · in ${entry.checkedInAt !== null ? at(entry.checkedInAt) : "just now"}`

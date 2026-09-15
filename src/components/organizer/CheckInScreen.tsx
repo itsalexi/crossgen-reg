@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import type { RosterEntry } from "@convex/checkin";
-import { breakoutColour } from "@convex/shared";
+import { breakoutRoom } from "@convex/shared";
 import { cn } from "@/components/ui";
 import { CheckInDesk } from "@/components/organizer/CheckInDesk";
 import { ScanSheet } from "@/components/organizer/ScanSheet";
@@ -1217,7 +1217,7 @@ function PersonView({
 }) {
   const [shown, setShown] = useState(false);
   const inside = isIn(person);
-  const colour = breakoutColour(person.sessionNumber);
+  const room = breakoutRoom(person.sessionNumber);
   const family = people.filter(
     (entry) =>
       entry.registrationNumber === person.registrationNumber &&
@@ -1248,34 +1248,43 @@ function PersonView({
           under their name. */}
       <div
         className="mt-7 rounded-xl px-4 py-4"
-        style={{ background: colour?.tint ?? "#f2effb" }}
+        style={{ background: room?.tint ?? "#f2effb" }}
       >
         <p
           className="text-[16px] leading-none font-semibold"
-          style={{ color: colour?.ink ?? PURPLE }}
+          style={{ color: room?.ink ?? PURPLE }}
         >
           Tell them to go to
         </p>
-        {colour !== null && (
-          <p className="mt-2.5 flex items-center gap-2.5">
-            <span
-              className="size-7 flex-none rounded-full"
-              style={{
-                background: colour.hex,
-                border: `2px solid ${colour.ink}`,
-              }}
-            />
-            <span
-              className="font-display text-[26px] leading-none font-bold"
-              style={{ color: colour.ink }}
+        {room !== null && (
+          <>
+            <p className="mt-2.5 flex items-center gap-2.5">
+              <span
+                className="size-7 flex-none rounded-full"
+                style={{
+                  background: room.hex,
+                  border: `2px solid ${room.ink}`,
+                }}
+              />
+              <span
+                className="font-display text-[26px] leading-[1.1] font-bold"
+                style={{ color: room.ink }}
+              >
+                {room.room}
+              </span>
+            </p>
+            <p
+              className="mt-1.5 text-[16px] leading-[1.3] font-semibold"
+              style={{ color: room.ink }}
             >
-              {colour.name} room
-            </span>
-          </p>
+              {room.colour} sign
+              {room.roomFull !== undefined ? ` · ${room.roomFull}` : ""}
+            </p>
+          </>
         )}
         <p
-          className="mt-2 text-[17px] leading-[1.3] font-semibold"
-          style={{ color: colour?.ink ?? "#191528" }}
+          className="mt-2.5 text-[16px] leading-[1.3]"
+          style={{ color: room?.ink ?? "#191528" }}
         >
           {person.session}
         </p>

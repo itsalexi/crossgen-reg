@@ -10,16 +10,21 @@ import { breakoutRoom } from "@convex/shared";
 import { cn } from "@/components/ui";
 import { CheckInDesk } from "@/components/organizer/CheckInDesk";
 import { ScanSheet } from "@/components/organizer/ScanSheet";
+import { SponsorSheet } from "@/components/organizer/SponsorSheet";
 import {
+  clearNames,
   clearQueued,
   enqueue,
+  loadNames,
   loadQueue,
+  queueName,
   loadRoster,
   resolveScan,
   saveRoster,
   searchRoster,
   type CachedRoster,
   type QueuedCheckIn,
+  type QueuedName,
 } from "@/lib/checkinStore";
 
 /**
@@ -61,6 +66,7 @@ type View =
   | { kind: "find" }
   | { kind: "scan" }
   | { kind: "person"; id: string }
+  | { kind: "sponsor"; number: string }
   | { kind: "groupCount"; label: string }
   | { kind: "groupPick"; label: string; expected: number }
   | { kind: "groupDone"; label: string; names: RosterEntry[] };
@@ -76,16 +82,20 @@ type ScanState =
  * held frame — so the volunteer keeps their place, and a read that was wrong
  * can be dismissed straight back into the queue.
  */
-type Hit = { id: string; stage: "locking" | "open" | "closing" };
+type Hit = {
+  stage: "locking" | "open" | "closing";
+} & ({ kind: "person"; id: string } | { kind: "sponsor"; number: string });
 
 export function CheckInScreen() {
   const { isAuthenticated } = useConvexAuth();
   const live = useQuery(api.checkin.roster, isAuthenticated ? {} : "skip");
   const send = useMutation(api.checkin.checkIn);
   const undo = useMutation(api.checkin.undoCheckIn);
+  const claim = useMutation(api.sponsors.claimSeat);
 
   const [cache, setCache] = useState<CachedRoster | null>(null);
   const [queue, setQueue] = useState<QueuedCheckIn[]>([]);
+  const [names, setNames] = useState<QueuedName[]>([]);
   const [view, setView] = useState<View>({ kind: "find" });
   const [query, setQuery] = useState("");
   const [online, setOnline] = useState(true);
@@ -138,6 +148,7 @@ export function CheckInScreen() {
   useEffect(() => {
     setCache(loadRoster());
     setQueue(loadQueue());
+    setNames(loadNames());
     const sync = () => setOnline(navigator.onLine);
     sync();
     window.addEventListener("online", sync);
@@ -170,18 +181,63 @@ export function CheckInScreen() {
     }
   }, [send]);
 
+  /**
+   * Sends the names typed into sponsor seats.
+   *
+   * One at a time and stopping at the first failure: they are independent
+   * writes, and there is no sense retrying the rest of the list against a
+   * network that just refused.
+   */
+  const flushNames = useCallback(async () => {
+    const waiting = loadNames();
+    if (waiting.length === 0 || !navigator.onLine) return;
+    for (const entry of waiting) {
+      try {
+        await claim({
+          participantId: entry.participantId as Id<"participants">,
+          name: entry.name,
+        });
+      } catch {
+        return;
+      }
+    }
+  }, [claim]);
+
   useEffect(() => {
     void flush();
-    const timer = setInterval(() => void flush(), 15000);
-    const again = () => void flush();
+    void flushNames();
+    const timer = setInterval(() => {
+      void flush();
+      void flushNames();
+    }, 15000);
+    const again = () => {
+      void flush();
+      void flushNames();
+    };
     window.addEventListener("online", again);
     return () => {
       clearInterval(timer);
       window.removeEventListener("online", again);
     };
-  }, [flush]);
+  }, [flush, flushNames]);
 
-  const people = useMemo(() => cache?.people ?? [], [cache]);
+  /**
+   * The roster, with any name typed into a sponsor seat already written in.
+   *
+   * The seat is claimed the moment the volunteer taps, not when the network
+   * agrees. Without the overlay a phone with no signal shows the name it just
+   * took as an empty seat again, which reads as having lost it.
+   */
+  const people = useMemo(() => {
+    const base = cache?.people ?? [];
+    if (names.length === 0) return base;
+    const typed = new Map(names.map((entry) => [entry.participantId, entry.name]));
+    return base.map((entry) => {
+      const name = typed.get(entry.id);
+      if (name === undefined || name === entry.name) return entry;
+      return { ...entry, name, search: `${name} ${entry.search}`.toLowerCase() };
+    });
+  }, [cache, names]);
   useEffect(() => {
     peopleRef.current = people;
   }, [people]);
@@ -206,6 +262,18 @@ export function CheckInScreen() {
     if (confirmed.length > 0) setQueue(clearQueued(confirmed));
   }, [people, queue]);
 
+  // Same bargain for the names: kept until the roster itself says so.
+  useEffect(() => {
+    const landed = names.filter((entry) =>
+      (cache?.people ?? []).some(
+        (person) =>
+          person.id === entry.participantId &&
+          person.name.trim() === entry.name.trim(),
+      ),
+    );
+    if (landed.length > 0) setNames(clearNames(landed));
+  }, [cache, names]);
+
   const queued = useMemo(
     () => new Set(queue.map((entry) => entry.participantId)),
     [queue],
@@ -229,6 +297,23 @@ export function CheckInScreen() {
     [flush, isIn, queue],
   );
 
+  /**
+   * Writes the name into the seat and marks it arrived.
+   *
+   * In that order on the device, and independently on the wire: the arrival is
+   * the fact the day turns on, the name is a detail that can follow when there
+   * is signal for it.
+   */
+  const claimSeat = useCallback(
+    (seat: RosterEntry, name: string) => {
+      const typed = name.trim();
+      if (typed.length > 0) setNames(queueName(seat.id, typed));
+      markIn([seat]);
+      void flushNames();
+    },
+    [flushNames, markIn],
+  );
+
   const undoOne = useCallback(
     (entry: RosterEntry) => {
       setQueue(clearQueued([{ participantId: entry.id, at: 0 }]));
@@ -237,6 +322,18 @@ export function CheckInScreen() {
       }
     },
     [undo],
+  );
+
+  /** Undo on a seat gives the seat back as well as the arrival. */
+  const releaseSeat = useCallback(
+    (seat: RosterEntry) => {
+      undoOne(seat);
+      if (seat.name.trim().length > 0) {
+        setNames(queueName(seat.id, ""));
+        void flushNames();
+      }
+    },
+    [flushNames, undoOne],
   );
 
   const results = useMemo(() => searchRoster(people, query), [people, query]);
@@ -278,11 +375,45 @@ export function CheckInScreen() {
 
   const hitPerson = useMemo(
     () =>
-      hit === null
+      hit === null || hit.kind !== "person"
         ? null
         : (people.find((entry) => entry.id === hit.id) ?? null),
     [hit, people],
   );
+
+  /** Seats belonging to one sponsor, in the order they were created. */
+  const seatsOf = useCallback(
+    (registrationNumber: string) =>
+      people.filter(
+        (entry) => entry.seat && entry.registrationNumber === registrationNumber,
+      ),
+    [people],
+  );
+
+  /**
+   * Sponsors with seats, for the door to reach without a camera. The manual
+   * way in: the code is a convenience, not the only route.
+   */
+  const pools = useMemo(() => {
+    const byNumber = new Map<string, RosterEntry[]>();
+    for (const entry of people) {
+      if (!entry.seat) continue;
+      byNumber.set(entry.registrationNumber, [
+        ...(byNumber.get(entry.registrationNumber) ?? []),
+        entry,
+      ]);
+    }
+    return [...byNumber.entries()]
+      .map(([number, seats]) => ({
+        number,
+        org: seats[0].group.length > 0 ? seats[0].group : seats[0].church,
+        seats,
+        used: seats.filter(
+          (seat) => isIn(seat) || seat.name.trim().length > 0,
+        ).length,
+      }))
+      .sort((a, b) => a.org.localeCompare(b.org));
+  }, [people, isIn]);
 
   // ------------------------------------------------------------- scanning
 
@@ -318,6 +449,23 @@ export function CheckInScreen() {
       lastScan.current = { value, at: Date.now() };
 
       const matches = resolveScan(peopleRef.current, value);
+
+      // A sponsor's code points at seats rather than at anybody: every match
+      // is a seat on the same registration, and the card asks for a name.
+      if (matches.length > 0 && matches.every((entry) => entry.seat)) {
+        const number = matches[0].registrationNumber;
+        paused.current = true;
+        buzz(12);
+        videoRef.current?.pause();
+        setHit({ kind: "sponsor", number, stage: "locking" });
+        if (stageTimer.current !== null) clearTimeout(stageTimer.current);
+        stageTimer.current = setTimeout(
+          () => setHit({ kind: "sponsor", number, stage: "open" }),
+          240,
+        );
+        return;
+      }
+
       if (matches.length === 1) {
         const entry = matches[0];
         // Read, but not acted on: a code drifting through the frame must not
@@ -327,10 +475,10 @@ export function CheckInScreen() {
         paused.current = true;
         buzz(12);
         videoRef.current?.pause();
-        setHit({ id: entry.id, stage: "locking" });
+        setHit({ kind: "person", id: entry.id, stage: "locking" });
         if (stageTimer.current !== null) clearTimeout(stageTimer.current);
         stageTimer.current = setTimeout(
-          () => setHit({ id: entry.id, stage: "open" }),
+          () => setHit({ kind: "person", id: entry.id, stage: "open" }),
           240,
         );
       } else if (matches.length > 1) {
@@ -577,6 +725,44 @@ export function CheckInScreen() {
       <div className="min-h-0 flex-1 overflow-y-auto px-3.5 pt-1 pb-3">
         {query.trim().length === 0 ? (
           <>
+            {pools.length > 0 && (
+              <>
+                {/* The camera is a shortcut, not the only door. A sponsor's
+                    seats are reachable here whether or not anybody brought
+                    the code, or the camera opens at all. */}
+                <p
+                  className="px-1 py-2.5 text-[16px] leading-none font-semibold"
+                  style={{ color: BODY }}
+                >
+                  Sponsor seats
+                </p>
+                <ul className="mb-4 flex flex-col gap-2.5">
+                  {pools.map((pool) => (
+                    <li key={pool.number}>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setView({ kind: "sponsor", number: pool.number })
+                        }
+                        className="flex min-h-[72px] w-full items-center justify-between gap-3.5 rounded-2xl bg-white px-[18px] py-4 text-left"
+                        style={{ border: `2px solid ${HAIRLINE}` }}
+                      >
+                        <span className="text-[19px] leading-[1.25] font-semibold text-ink">
+                          {pool.org}
+                        </span>
+                        <span
+                          className="flex-none text-[17px] leading-[1.2] font-medium"
+                          style={{ color: BODY }}
+                        >
+                          {pool.used} of {pool.seats.length}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+
             <p
               className="px-1 py-2.5 text-[16px] leading-none font-semibold"
               style={{ color: BODY }}
@@ -753,6 +939,19 @@ export function CheckInScreen() {
                 back();
               }}
             />
+          )}
+
+          {view.kind === "sponsor" && (
+            <div className="flex min-h-0 flex-1 flex-col bg-white">
+              <SponsorSheet
+                org={seatsOf(view.number)[0]?.group ?? "Sponsor seats"}
+                seats={seatsOf(view.number)}
+                isIn={isIn}
+                onClaim={claimSeat}
+                onUndo={releaseSeat}
+                onClose={back}
+              />
+            </div>
           )}
 
           {view.kind === "groupCount" &&
@@ -1007,9 +1206,11 @@ export function CheckInScreen() {
                     style={{ color: hit !== null ? GOLD : "#fff" }}
                   >
                     {hitPerson?.name ??
-                      (ready
-                        ? "Hold their code inside the box"
-                        : "Next person, please")}
+                      (hit?.kind === "sponsor"
+                        ? "Sponsor seats"
+                        : ready
+                          ? "Hold their code inside the box"
+                          : "Next person, please")}
                   </p>
                 )}
 
@@ -1032,7 +1233,7 @@ export function CheckInScreen() {
                     shows, riding up over a held frame instead of replacing the
                     screen. Tapping the frame above it is a way out for a code
                     read off the wrong phone. */}
-                {hit !== null && hitPerson !== null && (
+                {hit !== null && (hitPerson !== null || hit.kind === "sponsor") && (
                   <>
                     <button
                       type="button"
@@ -1056,6 +1257,18 @@ export function CheckInScreen() {
                           style={{ background: BORDER }}
                         />
                       </div>
+                      {hit.kind === "sponsor" ? (
+                        <SponsorSheet
+                          org={
+                            seatsOf(hit.number)[0]?.group ?? "Sponsor seats"
+                          }
+                          seats={seatsOf(hit.number)}
+                          isIn={isIn}
+                          onClaim={claimSeat}
+                          onUndo={releaseSeat}
+                          onClose={closeHit}
+                        />
+                      ) : hitPerson === null ? null : (
                       <ScanSheet
                         person={hitPerson}
                         people={people}
@@ -1068,6 +1281,7 @@ export function CheckInScreen() {
                         onUndo={undoOne}
                         onClose={closeHit}
                       />
+                      )}
                     </div>
                   </>
                 )}

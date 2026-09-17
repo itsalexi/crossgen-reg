@@ -39,6 +39,7 @@ import { expectedRates } from "@/lib/groups";
 import { AddRegistration } from "./AddRegistration";
 import { AdminsSection } from "./AdminsSection";
 import { GroupsSection } from "./GroupsSection";
+import { SponsorsSection } from "./SponsorsSection";
 import { PaymentsSection } from "./PaymentsSection";
 import { RegistrationDetail } from "./RegistrationDetail";
 import {
@@ -52,7 +53,13 @@ import {
 } from "./parts";
 
 type Section =
-  "overview" | "registrations" | "people" | "groups" | "payments" | "admins";
+  | "overview"
+  | "registrations"
+  | "people"
+  | "groups"
+  | "payments"
+  | "sponsors"
+  | "admins";
 
 const SECTIONS: { key: Section; label: string }[] = [
   { key: "overview", label: "Overview" },
@@ -60,6 +67,7 @@ const SECTIONS: { key: Section; label: string }[] = [
   { key: "people", label: "Participants" },
   { key: "groups", label: "Groups" },
   { key: "payments", label: "Payments" },
+  { key: "sponsors", label: "Sponsors" },
   { key: "admins", label: "Organizers" },
 ];
 
@@ -499,6 +507,8 @@ export function OrganizerDashboard() {
                 />
               ) : section === "admins" ? (
                 <AdminsSection />
+              ) : section === "sponsors" ? (
+                <SponsorsSection />
               ) : section === "groups" ? (
                 <GroupsSection
                   rows={rows}

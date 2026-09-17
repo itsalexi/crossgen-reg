@@ -157,6 +157,15 @@ export default defineSchema({
     email: v.optional(v.string()),
     cityMunicipality: v.optional(v.string()),
     breakoutSession: breakoutSessionValidator,
+    /**
+     * A seat a sponsor paid for before knowing who would sit in it.
+     *
+     * Stored as an ordinary participant with an empty name rather than as its
+     * own kind of thing, so a seat is already on the roster, already has a
+     * code, already counts, and is claimed at the door by typing a name into
+     * it. An empty `fullName` on one of these means nobody has claimed it yet.
+     */
+    seat: v.optional(v.boolean()),
   }).index("by_registrationId", ["registrationId"]),
 
   /**

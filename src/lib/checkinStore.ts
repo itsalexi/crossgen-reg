@@ -15,9 +15,11 @@ import type { RosterEntry } from "@convex/checkin";
 
 const ROSTER_KEY = "crossgen.checkin.roster.v1";
 const QUEUE_KEY = "crossgen.checkin.queue.v1";
+const NAMES_KEY = "crossgen.checkin.names.v1";
 
 export type CachedRoster = { at: number; people: RosterEntry[] };
 export type QueuedCheckIn = { participantId: string; at: number };
+export type QueuedName = { participantId: string; name: string; at: number };
 
 function read<T>(key: string): T | null {
   if (typeof window === "undefined") return null;
@@ -61,6 +63,38 @@ export function enqueue(participantId: string): QueuedCheckIn[] {
   if (queue.some((entry) => entry.participantId === participantId)) return queue;
   const next = [...queue, { participantId, at: Date.now() }];
   saveQueue(next);
+  return next;
+}
+
+/**
+ * Names typed into sponsor seats, waiting to be sent.
+ *
+ * A second queue rather than a field on the first: a seat is checked in the
+ * moment somebody stands there, and the name is a separate promise the device
+ * makes. Either can be waiting without the other, and losing the name must
+ * never cost us the arrival.
+ */
+export function loadNames(): QueuedName[] {
+  return read<QueuedName[]>(NAMES_KEY) ?? [];
+}
+
+/** Writes a name into a seat locally, replacing any earlier one. */
+export function queueName(participantId: string, name: string): QueuedName[] {
+  const next = [
+    ...loadNames().filter((entry) => entry.participantId !== participantId),
+    { participantId, name: name.trim(), at: Date.now() },
+  ];
+  write(NAMES_KEY, next);
+  return next;
+}
+
+/** Drops the names that made it to the server, keeping any typed since. */
+export function clearNames(sent: QueuedName[]): QueuedName[] {
+  const done = new Map(sent.map((entry) => [entry.participantId, entry.name]));
+  const next = loadNames().filter(
+    (entry) => done.get(entry.participantId) !== entry.name,
+  );
+  write(NAMES_KEY, next);
   return next;
 }
 

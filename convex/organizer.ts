@@ -46,7 +46,7 @@ export type Access = { email: string; isOwner: boolean };
  * The actual access boundary. Every organizer function calls this — the route
  * guard in the UI is only convenience.
  */
-async function requireOrganizer(ctx: AnyCtx): Promise<Access> {
+export async function requireOrganizer(ctx: AnyCtx): Promise<Access> {
   const email = await signedInEmail(ctx);
   if (email === null) throw new ConvexError("Sign in to view registrations.");
 

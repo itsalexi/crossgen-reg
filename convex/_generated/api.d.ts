@@ -18,6 +18,7 @@ import type * as organizer from "../organizer.js";
 import type * as registrations from "../registrations.js";
 import type * as shared from "../shared.js";
 import type * as sheetSync from "../sheetSync.js";
+import type * as sponsors from "../sponsors.js";
 import type * as users from "../users.js";
 
 import type {
@@ -37,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   registrations: typeof registrations;
   shared: typeof shared;
   sheetSync: typeof sheetSync;
+  sponsors: typeof sponsors;
   users: typeof users;
 }>;
 

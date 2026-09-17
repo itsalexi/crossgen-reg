@@ -29,7 +29,7 @@ import { breakoutTitle } from "./shared";
  * personal details all sit behind `requireOrganizer` in convex/organizer.ts,
  * which refuses them.
  */
-async function requireDoor(ctx: QueryCtx): Promise<string> {
+export async function requireDoor(ctx: QueryCtx): Promise<string> {
   const userId = await getAuthUserId(ctx);
   if (userId === null) throw new ConvexError("Sign in to work the door.");
   const user = await ctx.db.get(userId);
@@ -86,6 +86,11 @@ export type RosterEntry = {
   email: string;
   /** False when the deposit covering them has not been settled. */
   cleared: boolean;
+  /**
+   * A sponsor's seat. Unclaimed while the name is empty: somebody paid for it
+   * and the person sitting in it is named at the door.
+   */
+  seat: boolean;
   checkedInAt: number | null;
 };
 
@@ -134,7 +139,7 @@ export const roster = query({
         name: participant.fullName,
         // The registration number is searchable too: it is what the
         // confirmation email shows, so people read it out at the door.
-        search: `${participant.fullName} ${group} ${participant.churchOrganization ?? ""} ${registration?.registrationNumber ?? ""}`
+        search: `${participant.fullName} ${group} ${participant.churchOrganization ?? ""} ${registration?.registrationNumber ?? ""}${participant.seat === true ? " sponsor seat" : ""}`
           .toLowerCase()
           .replace(/\s+/g, " ")
           .trim(),
@@ -149,6 +154,7 @@ export const roster = query({
         mobile: participant.mobileNumber ?? "",
         email: participant.email ?? "",
         cleared,
+        seat: participant.seat === true,
         checkedInAt: arrived.get(participant._id) ?? null,
       };
     });

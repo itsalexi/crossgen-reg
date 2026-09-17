@@ -19,7 +19,13 @@ const NAMES_KEY = "crossgen.checkin.names.v1";
 
 export type CachedRoster = { at: number; people: RosterEntry[] };
 export type QueuedCheckIn = { participantId: string; at: number };
-export type QueuedName = { participantId: string; name: string; at: number };
+export type QueuedName = {
+  participantId: string;
+  name: string;
+  /** What the door said they were, for whoever sorts it out afterwards. */
+  note: string;
+  at: number;
+};
 
 function read<T>(key: string): T | null {
   if (typeof window === "undefined") return null;
@@ -79,10 +85,14 @@ export function loadNames(): QueuedName[] {
 }
 
 /** Writes a name into a seat locally, replacing any earlier one. */
-export function queueName(participantId: string, name: string): QueuedName[] {
+export function queueName(
+  participantId: string,
+  name: string,
+  note = "",
+): QueuedName[] {
   const next = [
     ...loadNames().filter((entry) => entry.participantId !== participantId),
-    { participantId, name: name.trim(), at: Date.now() },
+    { participantId, name: name.trim(), note: note.trim(), at: Date.now() },
   ];
   write(NAMES_KEY, next);
   return next;

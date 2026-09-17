@@ -196,6 +196,7 @@ export function CheckInScreen() {
         await claim({
           participantId: entry.participantId as Id<"participants">,
           name: entry.name,
+          note: entry.note,
         });
       } catch {
         return;
@@ -305,9 +306,12 @@ export function CheckInScreen() {
    * is signal for it.
    */
   const claimSeat = useCallback(
-    (seat: RosterEntry, name: string) => {
+    (seat: RosterEntry, name: string, note: string) => {
       const typed = name.trim();
-      if (typed.length > 0) setNames(queueName(seat.id, typed));
+      const said = note.trim();
+      if (typed.length > 0 || said.length > 0) {
+        setNames(queueName(seat.id, typed, said));
+      }
       markIn([seat]);
       void flushNames();
     },
@@ -407,6 +411,7 @@ export function CheckInScreen() {
       .map(([number, seats]) => ({
         number,
         org: seats[0].group.length > 0 ? seats[0].group : seats[0].church,
+        walkIn: seats[0].walkIn,
         seats,
         used: seats.filter(
           (seat) => isIn(seat) || seat.name.trim().length > 0,
@@ -414,6 +419,9 @@ export function CheckInScreen() {
       }))
       .sort((a, b) => a.org.localeCompare(b.org));
   }, [people, isIn]);
+
+  /** The spare seats, if the organizers set any aside. */
+  const walkInPool = useMemo(() => pools.find((pool) => pool.walkIn), [pools]);
 
   // ------------------------------------------------------------- scanning
 
@@ -734,7 +742,7 @@ export function CheckInScreen() {
                   className="px-1 py-2.5 text-[16px] leading-none font-semibold"
                   style={{ color: BODY }}
                 >
-                  Sponsor seats
+                  Seats kept spare
                 </p>
                 <ul className="mb-4 flex flex-col gap-2.5">
                   {pools.map((pool) => (
@@ -747,8 +755,18 @@ export function CheckInScreen() {
                         className="flex min-h-[72px] w-full items-center justify-between gap-3.5 rounded-2xl bg-white px-[18px] py-4 text-left"
                         style={{ border: `2px solid ${HAIRLINE}` }}
                       >
-                        <span className="text-[19px] leading-[1.25] font-semibold text-ink">
-                          {pool.org}
+                        <span className="min-w-0">
+                          <span className="block text-[19px] leading-[1.25] font-semibold text-ink">
+                            {pool.org}
+                          </span>
+                          {pool.walkIn && (
+                            <span
+                              className="block text-[16px] leading-[1.35]"
+                              style={{ color: BODY }}
+                            >
+                              For anyone not on the list
+                            </span>
+                          )}
                         </span>
                         <span
                           className="flex-none text-[17px] leading-[1.2] font-medium"
@@ -817,10 +835,37 @@ export function CheckInScreen() {
             >
               Try again
             </button>
-            <p className="mt-5 text-[17px] leading-[1.45] text-[#6e6885]">
-              Still nothing? Walk them to the registration table. They can be
-              added there.
-            </p>
+
+            {/* The moment somebody turns out not to be on the list is the
+                moment to be able to let them in anyway. */}
+            {walkInPool !== undefined ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuery("");
+                    setView({ kind: "sponsor", number: walkInPool.number });
+                  }}
+                  className="mt-4 h-[68px] w-full rounded-xl text-[21px] font-semibold"
+                  style={{
+                    background: "#fff",
+                    border: `2px solid ${BORDER}`,
+                    color: PURPLE,
+                  }}
+                >
+                  They are not on the list
+                </button>
+                <p className="mt-5 text-[17px] leading-[1.45] text-[#6e6885]">
+                  Takes their name and lets them in. Somebody sorts out which
+                  church and what they owe afterwards.
+                </p>
+              </>
+            ) : (
+              <p className="mt-5 text-[17px] leading-[1.45] text-[#6e6885]">
+                Still nothing? Walk them to the registration table. They can be
+                added there.
+              </p>
+            )}
           </div>
         ) : (
           <ul className="flex flex-col gap-2.5">
@@ -946,6 +991,7 @@ export function CheckInScreen() {
               <SponsorSheet
                 org={seatsOf(view.number)[0]?.group ?? "Sponsor seats"}
                 seats={seatsOf(view.number)}
+                walkIn={seatsOf(view.number)[0]?.walkIn === true}
                 isIn={isIn}
                 onClaim={claimSeat}
                 onUndo={releaseSeat}
@@ -1263,6 +1309,7 @@ export function CheckInScreen() {
                             seatsOf(hit.number)[0]?.group ?? "Sponsor seats"
                           }
                           seats={seatsOf(hit.number)}
+                          walkIn={seatsOf(hit.number)[0]?.walkIn === true}
                           isIn={isIn}
                           onClaim={claimSeat}
                           onUndo={releaseSeat}

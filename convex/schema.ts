@@ -166,6 +166,13 @@ export default defineSchema({
      * it. An empty `fullName` on one of these means nobody has claimed it yet.
      */
     seat: v.optional(v.boolean()),
+    /**
+     * What a seat was, in the words of whoever was on the door: "walk-in, paid
+     * cash", "speaker's driver", "sponsor guest". Free text on purpose — the
+     * point is to be able to sort it out on Monday, not to make a volunteer
+     * pick from a list while somebody waits.
+     */
+    seatNote: v.optional(v.string()),
   }).index("by_registrationId", ["registrationId"]),
 
   /**

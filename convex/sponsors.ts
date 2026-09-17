@@ -36,6 +36,13 @@ export const createPool = mutation({
   args: {
     org: v.string(),
     seats: v.number(),
+    /**
+     * "sponsor" is seats somebody paid for. "walkin" is the spare seats the
+     * door keeps for people who are not on the list at all — the same
+     * machinery, because the problem is the same one: a person in front of you
+     * with no record behind them.
+     */
+    kind: v.optional(v.union(v.literal("sponsor"), v.literal("walkin"))),
     note: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -50,6 +57,7 @@ export const createPool = mutation({
       throw new ConvexError(`That is more than ${MAX_SEATS} seats.`);
     }
 
+    const walkIn = args.kind === "walkin";
     const registrationNumber = await allocateRegistrationNumber(ctx);
     const registrationId = await ctx.db.insert("registrations", {
       registrationNumber,
@@ -57,12 +65,19 @@ export const createPool = mutation({
       groupName: org,
       registrantName: org,
       registrantEmail: "",
-      registrationType: "sponsor",
+      registrationType: walkIn ? "regular" : "sponsor",
       participantCount: args.seats,
       totalAmount: 0,
       source: "organizer",
-      paymentType: "exempt",
-      exemptionReason: "sponsor",
+      // A walk-in owes the fee until somebody says otherwise, and saying they
+      // are exempt would quietly write off money nobody agreed to write off.
+      // The amount is unknown because it depends on who they turn out to be.
+      ...(walkIn
+        ? { paymentType: "paid" as const, amountUnknown: true }
+        : {
+            paymentType: "exempt" as const,
+            exemptionReason: "sponsor" as const,
+          }),
       confirmationEmailStatus: "sent",
       ...(args.note === undefined ? {} : { heardFromRaw: args.note }),
     });
@@ -88,7 +103,11 @@ export const createPool = mutation({
  *   npx convex run sponsors:createPoolAs '{"org":"Acme","seats":10}' --prod
  */
 export const createPoolAs = internalMutation({
-  args: { org: v.string(), seats: v.number() },
+  args: {
+    org: v.string(),
+    seats: v.number(),
+    kind: v.optional(v.union(v.literal("sponsor"), v.literal("walkin"))),
+  },
   handler: async (ctx, args): Promise<{ registrationNumber: string }> => {
     const registrationNumber = await allocateRegistrationNumber(ctx);
     const registrationId = await ctx.db.insert("registrations", {
@@ -97,12 +116,16 @@ export const createPoolAs = internalMutation({
       groupName: args.org.trim(),
       registrantName: args.org.trim(),
       registrantEmail: "",
-      registrationType: "sponsor",
+      registrationType: args.kind === "walkin" ? "regular" : "sponsor",
       participantCount: args.seats,
       totalAmount: 0,
       source: "organizer",
-      paymentType: "exempt",
-      exemptionReason: "sponsor",
+      ...(args.kind === "walkin"
+        ? { paymentType: "paid" as const, amountUnknown: true }
+        : {
+            paymentType: "exempt" as const,
+            exemptionReason: "sponsor" as const,
+          }),
       confirmationEmailStatus: "sent",
     });
     for (let index = 0; index < args.seats; index++) {
@@ -171,7 +194,11 @@ export const addSeats = mutation({
  * fact that matters on the day, and a name typed into a queue can wait.
  */
 export const claimSeat = mutation({
-  args: { participantId: v.id("participants"), name: v.string() },
+  args: {
+    participantId: v.id("participants"),
+    name: v.string(),
+    note: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
     await requireDoor(ctx);
 
@@ -181,8 +208,53 @@ export const claimSeat = mutation({
       throw new ConvexError("That is somebody's registration, not a seat.");
     }
 
-    await ctx.db.patch(args.participantId, { fullName: args.name.trim() });
+    await ctx.db.patch(args.participantId, {
+      fullName: args.name.trim(),
+      ...(args.note === undefined ? {} : { seatNote: args.note.trim() }),
+    });
     return { ok: true };
+  },
+});
+
+/**
+ * Writing a name into a seat from the command line, for the one somebody
+ * mistyped at the door:
+ *
+ *   npx convex run sponsors:claimSeatAs '{"registrationNumber":"CG26-00091","index":3,"name":"Ptr Ray Tonsay"}' --prod
+ */
+export const claimSeatAs = internalMutation({
+  args: {
+    registrationNumber: v.string(),
+    /** Which seat, counting from 1 in the order they were created. */
+    index: v.number(),
+    name: v.string(),
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const registration = await ctx.db
+      .query("registrations")
+      .withIndex("by_registrationNumber", (q) =>
+        q.eq("registrationNumber", args.registrationNumber.trim()),
+      )
+      .unique();
+    if (registration === null) throw new ConvexError("No such sponsor.");
+
+    const seats = await ctx.db
+      .query("participants")
+      .withIndex("by_registrationId", (q) =>
+        q.eq("registrationId", registration._id),
+      )
+      .collect()
+      .then((rows) => rows.filter((row) => row.seat === true));
+
+    const seat = seats[args.index - 1];
+    if (seat === undefined) throw new ConvexError(`No seat ${args.index}.`);
+
+    await ctx.db.patch(seat._id, {
+      fullName: args.name.trim(),
+      ...(args.note === undefined ? {} : { seatNote: args.note.trim() }),
+    });
+    return { seat: args.index, name: args.name.trim() };
   },
 });
 
@@ -211,8 +283,21 @@ export const pools = query({
       out.push({
         registrationNumber: registration.registrationNumber,
         org: registration.groupName ?? registration.registrantName,
+        walkIn: registration.registrationType !== "sponsor",
         seats: seats.length,
         claimed: seats.filter((row) => row.fullName.trim().length > 0).length,
+        // Who came in on them, so the sponsor's list and the walk-in list are
+        // both answerable from one page rather than from the spreadsheet.
+        people: seats
+          .filter(
+            (row) =>
+              row.fullName.trim().length > 0 ||
+              (row.seatNote ?? "").trim().length > 0,
+          )
+          .map((row) => ({
+            name: row.fullName.trim(),
+            note: (row.seatNote ?? "").trim(),
+          })),
       });
     }
     out.sort((a, b) => a.org.localeCompare(b.org));

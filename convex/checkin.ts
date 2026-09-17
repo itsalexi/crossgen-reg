@@ -91,6 +91,11 @@ export type RosterEntry = {
    * and the person sitting in it is named at the door.
    */
   seat: boolean;
+  /**
+   * A spare seat kept for somebody with no record at all, rather than one a
+   * sponsor bought. The door asks a different question of each.
+   */
+  walkIn: boolean;
   checkedInAt: number | null;
 };
 
@@ -155,6 +160,9 @@ export const roster = query({
         email: participant.email ?? "",
         cleared,
         seat: participant.seat === true,
+        walkIn:
+          participant.seat === true &&
+          registration?.registrationType !== "sponsor",
         checkedInAt: arrived.get(participant._id) ?? null,
       };
     });

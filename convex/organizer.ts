@@ -7,6 +7,7 @@ import { calculateTotal, isExempt, MAX_PARTICIPANTS, type RegistrationType } fro
 import {
   allocateRegistrationNumber,
   cleanParticipant,
+  isEmptySeat,
 } from "./registrations";
 import {
   breakoutSessionValidator,
@@ -107,7 +108,12 @@ export const snapshot = query({
       .query("registrations")
       .order("desc")
       .collect();
-    const participants = await ctx.db.query("participants").collect();
+    // Unclaimed sponsor seats are left out: nobody is in them, and counting
+    // them would inflate every total on the dashboard.
+    const participants = await ctx.db
+      .query("participants")
+      .collect()
+      .then((rows) => rows.filter((row) => !isEmptySeat(row)));
     const payments = await ctx.db.query("payments").collect();
     const groupDecisions = await ctx.db.query("groupDecisions").collect();
 

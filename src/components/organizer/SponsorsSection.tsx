@@ -20,6 +20,7 @@ export function SponsorsSection() {
 
   const [org, setOrg] = useState("");
   const [seats, setSeats] = useState("10");
+  const [kind, setKind] = useState<"sponsor" | "walkin">("sponsor");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,7 +37,7 @@ export function SponsorsSection() {
     }
     setBusy(true);
     try {
-      await createPool({ org: org.trim(), seats: count });
+      await createPool({ org: org.trim(), seats: count, kind });
       setOrg("");
       setSeats("10");
     } catch (caught) {
@@ -48,7 +49,7 @@ export function SponsorsSection() {
 
   return (
     <div className="flex flex-col gap-5">
-      <Panel title="Add a sponsor">
+      <Panel title="Add seats">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <label className="flex-1 text-sm">
             <span className="block font-medium text-ink">Sponsor</span>
@@ -72,17 +73,44 @@ export function SponsorsSection() {
             Create seats
           </Button>
         </div>
+
+        <div className="mt-3 flex flex-col gap-2">
+          {(
+            [
+              ["sponsor", "A sponsor's seats", "One code for that organization. Whoever turns up on it gives their name at the door."],
+              ["walkin", "Spare seats for people not on the list", "No code. The door reaches these from the search screen when somebody cannot be found."],
+            ] as const
+          ).map(([value, label, hint]) => (
+            <label key={value} className="flex items-start gap-2.5 text-sm">
+              <input
+                type="radio"
+                checked={kind === value}
+                onChange={() => {
+                  setKind(value);
+                  if (value === "walkin" && org.trim().length === 0) {
+                    setOrg("Not on the list");
+                  }
+                }}
+                className="mt-1"
+              />
+              <span>
+                <span className="font-medium text-ink">{label}</span>
+                <span className="block text-muted">{hint}</span>
+              </span>
+            </label>
+          ))}
+        </div>
         {error !== null && (
           <p className="mt-3 text-sm text-red-700">{error}</p>
         )}
         <p className="mt-3 text-sm leading-relaxed text-muted">
-          Creates that many empty seats and one code for all of them. Everyone
-          lands in the plenary, and any of them can be moved afterwards like a
-          normal registration.
+          Creates that many empty seats. Everyone lands in the plenary, and any
+          of them can be moved afterwards like a normal registration. Seats
+          nobody claims are left out of every count.
         </p>
       </Panel>
 
-      <Panel title="Sponsors">
+      <Panel title="Sponsors and spare seats">
         {pools === undefined ? (
           <p className="text-sm text-muted">Loading.</p>
         ) : pools.length === 0 ? (
@@ -102,9 +130,22 @@ export function SponsorsSection() {
                     {pool.org}
                   </p>
                   <p className="text-sm text-muted">
+                    {pool.walkIn ? "Not on the list · " : ""}
                     {pool.claimed} named · {pool.seats} seats ·{" "}
                     {pool.registrationNumber}
                   </p>
+                  {pool.people.length > 0 && (
+                    <ul className="mt-1.5 flex flex-col gap-0.5">
+                      {pool.people.map((person, index) => (
+                        <li key={index} className="text-sm text-ink">
+                          {person.name.length > 0 ? person.name : "No name given"}
+                          {person.note.length > 0 && (
+                            <span className="text-muted"> — {person.note}</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
                 <div className="flex items-center gap-3">
                   <button
@@ -123,6 +164,7 @@ export function SponsorsSection() {
                   >
                     Add seats
                   </button>
+                  {!pool.walkIn && (
                   <a
                     href={`/sponsor/${pool.registrationNumber}`}
                     target="_blank"
@@ -131,6 +173,7 @@ export function SponsorsSection() {
                   >
                     Open ticket
                   </a>
+                  )}
                 </div>
               </li>
             ))}

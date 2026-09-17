@@ -36,16 +36,24 @@ export function SponsorSheet({
   onClaim,
   onUndo,
   onClose,
+  walkIn = false,
 }: {
   org: string;
   seats: RosterEntry[];
   isIn: (entry: RosterEntry) => boolean;
   /** Writes the name into the seat and marks it arrived, in that order. */
-  onClaim: (seat: RosterEntry, name: string) => void;
+  onClaim: (seat: RosterEntry, name: string, note: string) => void;
   onUndo: (seat: RosterEntry) => void;
   onClose: () => void;
+  /**
+   * Spare seats for people with no record at all, rather than a sponsor's.
+   * Same machinery; the difference is that somebody has to sort them out
+   * afterwards, so the door is asked for a word about who they were.
+   */
+  walkIn?: boolean;
 }) {
   const [name, setName] = useState("");
+  const [note, setNote] = useState("");
   const field = useRef<HTMLInputElement | null>(null);
 
   const used = seats.filter(
@@ -58,8 +66,9 @@ export function SponsorSheet({
 
   const claim = () => {
     if (next === null) return;
-    onClaim(next, name);
+    onClaim(next, name, note);
     setName("");
+    setNote("");
     field.current?.focus();
   };
 
@@ -70,7 +79,7 @@ export function SponsorSheet({
           className="text-[15px] leading-none font-semibold"
           style={{ color: PURPLE }}
         >
-          Sponsor seats
+          {walkIn ? "Not on the list" : "Sponsor seats"}
         </p>
         <p className="mt-2 font-display text-[29px] leading-[1.12] font-bold text-ink">
           {org}
@@ -95,8 +104,9 @@ export function SponsorSheet({
               className="mt-1 text-[16px] leading-[1.45]"
               style={{ color: "#6b5200" }}
             >
-              Let them in anyway and tell the registration table — a seat can be
-              added there in a few seconds.
+              {walkIn
+                ? "Let them in and take their name on paper. An organizer can add more seats in a few seconds."
+                : "Let them in anyway and tell the registration table — a seat can be added there in a few seconds."}
             </p>
           </div>
         ) : (
@@ -113,16 +123,42 @@ export function SponsorSheet({
               autoFocus
               autoCapitalize="words"
               autoComplete="off"
-              enterKeyHint="done"
+              enterKeyHint={walkIn ? "next" : "done"}
               value={name}
               onChange={(event) => setName(event.target.value)}
               onKeyDown={(event) => {
-                if (event.key === "Enter") claim();
+                if (event.key === "Enter" && !walkIn) claim();
               }}
               placeholder="As they say it"
               className="mt-2.5 h-[68px] w-full rounded-xl px-4 text-[19px] text-ink"
               style={{ border: `2px solid ${BORDER}` }}
             />
+
+            {/* One line for whoever picks this up on Monday: which church,
+                whether they paid at the table, whose guest they are. */}
+            {walkIn && (
+              <>
+                <label
+                  htmlFor="seat-note"
+                  className="mt-4 block text-[17px] leading-none font-semibold text-ink"
+                >
+                  What are they? <span style={{ color: BODY }}>Optional</span>
+                </label>
+                <input
+                  id="seat-note"
+                  autoComplete="off"
+                  enterKeyHint="done"
+                  value={note}
+                  onChange={(event) => setNote(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") claim();
+                  }}
+                  placeholder="Church, or paid at the table"
+                  className="mt-2.5 h-[68px] w-full rounded-xl px-4 text-[19px] text-ink"
+                  style={{ border: `2px solid ${BORDER}` }}
+                />
+              </>
+            )}
           </div>
         )}
 

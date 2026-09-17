@@ -519,6 +519,14 @@ export const getForEmail = internalQuery({
 });
 
 /** Everything, for the Google Sheet push. Internal — no auth context in actions. */
+/** A seat bought by a sponsor that nobody has claimed yet. */
+export function isEmptySeat(participant: {
+  seat?: boolean;
+  fullName: string;
+}): boolean {
+  return participant.seat === true && participant.fullName.trim().length === 0;
+}
+
 export const everything = internalQuery({
   args: {},
   handler: async (
@@ -529,7 +537,13 @@ export const everything = internalQuery({
     payments: Doc<"payments">[];
   }> => ({
     registrations: await ctx.db.query("registrations").collect(),
-    participants: await ctx.db.query("participants").collect(),
+    // An unclaimed seat is a promise, not a person. Counting one would put
+    // somebody in the headcount who does not exist yet, and print a blank row
+    // in the middle of an alphabetical list.
+    participants: await ctx.db
+      .query("participants")
+      .collect()
+      .then((rows) => rows.filter((row) => !isEmptySeat(row))),
     payments: await ctx.db.query("payments").collect(),
   }),
 });

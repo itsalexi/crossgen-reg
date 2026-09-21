@@ -680,6 +680,62 @@ export const addRegistrationAs = internalMutation({
 });
 
 /**
+ * Corrects the group a registration was filed under.
+ *
+ * Distinct from assigning a groupKey, which overrides a typed name the
+ * organizers cannot change. This fixes the name itself, for the rows an
+ * organizer typed in — where an abbreviation heard over the phone turns out to
+ * be a group that already exists under its full name.
+ *
+ *   npx convex run organizer:setGroupNameAs '{"registrationNumber":"CG26-00143","groupName":"CMGO Fellowship"}' --prod
+ */
+export const setGroupNameAs = internalMutation({
+  args: { registrationNumber: v.string(), groupName: v.string() },
+  handler: async (ctx, args) => {
+    const registration = await ctx.db
+      .query("registrations")
+      .withIndex("by_registrationNumber", (q) =>
+        q.eq("registrationNumber", args.registrationNumber.trim()),
+      )
+      .unique();
+    if (registration === null) throw new ConvexError("No such registration.");
+
+    const groupName = args.groupName.trim();
+    if (groupName.length === 0) throw new ConvexError("Name the group.");
+
+    await ctx.db.patch(registration._id, {
+      groupName,
+      // Any earlier override is dropped: the name is now the right one, and
+      // two records spelling it the same way group themselves.
+      groupKey: undefined,
+    });
+
+    // Participants carry the church for the door's search, and an organizer
+    // row usually got the same abbreviation written into it.
+    const people = await ctx.db
+      .query("participants")
+      .withIndex("by_registrationId", (q) =>
+        q.eq("registrationId", registration._id),
+      )
+      .collect();
+    let churches = 0;
+    for (const person of people) {
+      if ((person.churchOrganization ?? "").trim() === (registration.groupName ?? "").trim()) {
+        await ctx.db.patch(person._id, { churchOrganization: groupName });
+        churches += 1;
+      }
+    }
+
+    return {
+      registrationNumber: registration.registrationNumber,
+      was: registration.groupName ?? "",
+      now: groupName,
+      churchesUpdated: churches,
+    };
+  },
+});
+
+/**
  * Points a registration at whoever should actually be receiving its post.
  *
  * A church that sent twenty names and no addresses was filed by an organizer,

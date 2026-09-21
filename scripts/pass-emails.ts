@@ -102,19 +102,66 @@ const rows: Row[] = [...byAddress.entries()]
             : ` — ${person.room.room} (${person.room.colour.toLowerCase()} sign)`),
       )
       .join("<br>");
-    // The same thing with the code drawn in, for a layout that shows the QR
-    // rather than linking to it. Both fields ship: an email client with
-    // images turned off still has the links.
-    const qrHtml = people
+    // Codes are drawn into the email only where they can be drawn big enough
+    // to scan off a screen. Past a handful, shrinking them to fit is the worst
+    // of both: a long email full of squares nobody can read.
+    //
+    // A coordinator gets the useful thing instead — a line per person with
+    // their room and their own link to forward, and a page holding every code
+    // at full size for printing or for showing at the door.
+    const SHOW_CODES_UP_TO = 4;
+    const drawn = people.length <= SHOW_CODES_UP_TO;
+
+    const card = (person: Person): string =>
+      `<div style="padding:0 0 22px">` +
+      `<div style="font-size:16px;font-weight:bold;color:#191528">${person.name}</div>` +
+      (person.room === null
+        ? ""
+        : `<div style="font-size:14px;color:#4a4460;padding-bottom:8px">${person.room.room} — ${person.room.colour.toLowerCase()} sign</div>`) +
+      `<img src="${SITE}/qr/${person.id}.png" alt="Check-in code for ${person.name}" width="200" height="200" style="display:block;border:1px solid #e6e2f0">` +
+      `</div>`;
+
+    const listRow = (person: Person): string =>
+      `<tr>` +
+      `<td valign="top" style="padding:8px 12px 8px 0;border-bottom:1px solid #f0edf6">` +
+      `<div style="font-size:15px;font-weight:bold;color:#191528">${person.name}</div>` +
+      (person.room === null
+        ? ""
+        : `<div style="font-size:13px;color:#4a4460">${person.room.room} — ${person.room.colour.toLowerCase()} sign</div>`) +
+      `</td>` +
+      `<td valign="top" align="right" style="padding:8px 0;border-bottom:1px solid #f0edf6;white-space:nowrap">` +
+      `<a href="${SITE}/pass/${person.id}" style="font-size:14px;color:#3e2a85">Buksan ang code</a>` +
+      `</td></tr>`;
+
+    // One page per registration, holding every code on it at full size.
+    const pages = numbers
       .map(
-        (person) =>
-          `<p style="margin:0 0 24px"><strong>${person.name}</strong><br>` +
-          (person.room === null
-            ? ""
-            : `${person.room.room} — ${person.room.colour.toLowerCase()} sign<br>`) +
-          `<img src="${SITE}/qr/${person.id}.png" alt="Check-in code for ${person.name}" width="180" height="180" style="display:block;margin-top:8px"></p>`,
+        (number) =>
+          `<a href="${SITE}/passes/${number}" style="color:#3e2a85">${number}</a>`,
       )
-      .join("");
+      .join(" &middot; ");
+
+    const qrHtml = drawn
+      ? people.map(card).join("")
+      : `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%">` +
+        people.map(listRow).join("") +
+        `</table>` +
+        `<p style="margin:16px 0 0;font-size:14px;color:#4a4460">` +
+        `Lahat ng code sa isang pahina, pwedeng i-print: ${pages}</p>`;
+
+    // The copy has to say a different thing to somebody holding one code and
+    // somebody holding twenty. "Screenshot your QR code" is wrong advice for
+    // a coordinator who has to hand them out.
+    const intro =
+      people.length === 1
+        ? `Narito na ang iyong QR code. I-screenshot mo ito dahil kailangan mo ito ` +
+          `para makapasok sa summit venue.`
+        : drawn
+          ? `Narito ang QR codes ng ${people.length} taong nakarehistro sa iyo. ` +
+            `I-screenshot o i-forward sa bawat isa ang sarili niyang code.`
+          : `Nakarehistro sa iyo ang ${people.length} katao. Pakisuyong i-forward sa ` +
+            `bawat isa ang sarili niyang link sa ibaba — doon niya makikita ang ` +
+            `sarili niyang QR code. Pwede mo ring i-print ang buong listahan.`;
 
     // One line per row: a newline inside a CSV field is legal but makes the
     // file impossible to check by eye before sending 431 emails.
@@ -139,6 +186,7 @@ const rows: Row[] = [...byAddress.entries()]
       Names: people.map((p) => p.name).join(", "),
       PassLinks: linksHtml,
       QrCodes: qrHtml,
+      Intro: intro,
       PassLinksPlain: linksText,
       // Only meaningful when everything in this inbox is one registration.
       AllCodesLink:

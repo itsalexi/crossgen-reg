@@ -124,7 +124,17 @@ const rows: Row[] = [...byAddress.entries()]
 
     return {
       Email: email,
-      Greeting: people[0].first,
+      // Greeting the first name in the list is right for the 374 rows that
+      // are one person, and wrong for a coordinator holding twenty: they are
+      // not Jerayah. Their group is the truer address, and where an inbox
+      // spans several groups there is no name that fits.
+      Greeting:
+        people.length === 1
+          ? people[0].first
+          : new Set(people.map((person) => person.group)).size === 1 &&
+              people[0].group.length > 0
+            ? people[0].group
+            : "CrossGen family",
       People: String(people.length),
       Names: people.map((p) => p.name).join(", "),
       PassLinks: linksHtml,

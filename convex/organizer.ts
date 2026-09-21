@@ -680,6 +680,52 @@ export const addRegistrationAs = internalMutation({
 });
 
 /**
+ * Points a registration at whoever should actually be receiving its post.
+ *
+ * A church that sent twenty names and no addresses was filed by an organizer,
+ * so the organizer's own inbox is on the record as the registrant — and every
+ * one of those twenty codes goes to them to forward by hand. Naming the real
+ * coordinator sends the codes where the people are.
+ *
+ *   npx convex run organizer:setContactAs '{"registrationNumber":"CG26-00139","email":"coordinator@church.org","name":"Ptr Juan"}' --prod
+ */
+export const setContactAs = internalMutation({
+  args: {
+    registrationNumber: v.string(),
+    email: v.string(),
+    name: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const registration = await ctx.db
+      .query("registrations")
+      .withIndex("by_registrationNumber", (q) =>
+        q.eq("registrationNumber", args.registrationNumber.trim()),
+      )
+      .unique();
+    if (registration === null) throw new ConvexError("No such registration.");
+
+    const email = args.email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new ConvexError(`${email} is not a valid address.`);
+    }
+
+    await ctx.db.patch(registration._id, {
+      registrantEmail: email,
+      registrantName: (args.name ?? "").trim().length > 0
+        ? (args.name as string).trim()
+        : (registration.groupName ?? email),
+    });
+
+    return {
+      registrationNumber: registration.registrationNumber,
+      group: registration.groupName ?? "",
+      was: registration.registrantEmail,
+      now: email,
+    };
+  },
+});
+
+/**
  * Fixes an address somebody mistyped into the form.
  *
  * Kept separate from a substitution because it is the opposite operation: the

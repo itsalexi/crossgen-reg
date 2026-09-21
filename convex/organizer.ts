@@ -680,6 +680,44 @@ export const addRegistrationAs = internalMutation({
 });
 
 /**
+ * Fixes an address somebody mistyped into the form.
+ *
+ * Kept separate from a substitution because it is the opposite operation: the
+ * person is not changing, only the way to reach them. Patches the registrant's
+ * copy too when it carries the same mistake, which it does whenever somebody
+ * registered themselves.
+ *
+ *   npx convex run organizer:fixEmailAs '{"participantId":"...","email":"someone@gmail.com"}' --prod
+ */
+export const fixEmailAs = internalMutation({
+  args: { participantId: v.id("participants"), email: v.string() },
+  handler: async (ctx, args) => {
+    const participant = await ctx.db.get(args.participantId);
+    if (participant === null) throw new ConvexError("Participant not found.");
+
+    const email = args.email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new ConvexError(`${email} is not a valid address.`);
+    }
+
+    const was = participant.email ?? "";
+    await ctx.db.patch(args.participantId, { email });
+
+    const registration = await ctx.db.get(participant.registrationId);
+    let registrantFixed = false;
+    if (
+      registration !== null &&
+      registration.registrantEmail.trim().toLowerCase() === was.trim().toLowerCase()
+    ) {
+      await ctx.db.patch(registration._id, { registrantEmail: email });
+      registrantFixed = true;
+    }
+
+    return { who: participant.fullName, was, now: email, registrantFixed };
+  },
+});
+
+/**
  * Puts a different person in somebody's place.
  *
  * Churches send substitutions all week: the money is paid, the seat is theirs,

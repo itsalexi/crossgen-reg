@@ -141,8 +141,22 @@ const rows: Row[] = [...byAddress.entries()]
       )
       .join(" &middot; ");
 
+    // The "images not showing?" line belongs with the images. On a row that
+    // shows a list of links there is nothing to fail, and repeating all
+    // twenty-seven names underneath the twenty-seven links reads as a fault.
+    const fallback =
+      `<p style="margin:12px 0 0;font-size:14px;color:#4a4460">` +
+      `Hindi lumalabas ang larawan? Buksan ang code dito: ` +
+      people
+        .map(
+          (person) =>
+            `<a href="${SITE}/pass/${person.id}" style="color:#3e2a85">${person.name}</a>`,
+        )
+        .join(", ") +
+      `</p>`;
+
     const qrHtml = drawn
-      ? people.map(card).join("")
+      ? people.map(card).join("") + fallback
       : `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%">` +
         people.map(listRow).join("") +
         `</table>` +

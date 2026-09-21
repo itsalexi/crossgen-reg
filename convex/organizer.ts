@@ -680,6 +680,70 @@ export const addRegistrationAs = internalMutation({
 });
 
 /**
+ * Puts a different person in somebody's place.
+ *
+ * Churches send substitutions all week: the money is paid, the seat is theirs,
+ * and somebody else is coming instead. Editing the name in place keeps the
+ * registration number, the deposit, the group and the workshop slot exactly
+ * where they are — deleting and re-adding would break the link to the payment
+ * and quietly move the headcount in two workshops.
+ *
+ * Every personal field is cleared unless a new value is given. The old age,
+ * mobile and email belong to the person who is no longer coming, and leaving
+ * them behind would attribute a stranger's details to whoever takes the seat.
+ *
+ *   npx convex run organizer:substituteAs '{"participantId":"...","fullName":"Arliz Young","email":"arlizyoung@gmail.com"}' --prod
+ */
+export const substituteAs = internalMutation({
+  args: {
+    participantId: v.id("participants"),
+    fullName: v.string(),
+    email: v.optional(v.string()),
+    mobileNumber: v.optional(v.string()),
+    age: v.optional(v.number()),
+    gender: v.optional(v.string()),
+    maritalStatus: v.optional(v.string()),
+    churchOrganization: v.optional(v.string()),
+    cityMunicipality: v.optional(v.string()),
+    /** Carries over unless told otherwise: the seat is in a workshop already. */
+    breakoutSession: v.optional(breakoutSessionValidator),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db.get(args.participantId);
+    if (existing === null) throw new ConvexError("Participant not found.");
+
+    const name = args.fullName.trim();
+    if (name.length === 0) throw new ConvexError("Name the substitute.");
+
+    const clean = (value: string | undefined): string | undefined => {
+      const trimmed = (value ?? "").trim();
+      return trimmed.length > 0 ? trimmed : undefined;
+    };
+
+    await ctx.db.patch(args.participantId, {
+      fullName: name,
+      preferredName: undefined,
+      age: args.age,
+      gender: clean(args.gender),
+      maritalStatus: clean(args.maritalStatus),
+      churchOrganization: clean(args.churchOrganization),
+      ministryInvolvement: undefined,
+      occupation: undefined,
+      mobileNumber: clean(args.mobileNumber),
+      email: clean(args.email)?.toLowerCase(),
+      cityMunicipality: clean(args.cityMunicipality),
+      breakoutSession: args.breakoutSession ?? existing.breakoutSession,
+    });
+
+    return {
+      replaced: existing.fullName,
+      with: name,
+      breakoutSession: args.breakoutSession ?? existing.breakoutSession,
+    };
+  },
+});
+
+/**
  * Changes what a registration is: guest, speaker, volunteer or sponsor.
  *
  * Sponsored places were being recorded as ₱3,500 received against a made-up

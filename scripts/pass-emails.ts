@@ -21,13 +21,7 @@ import { readFileSync } from "node:fs";
 
 const SITE = "https://crossgen.pcecfamily.org";
 
-const WORKSHOPS: Record<number, string> = {
-  1: "Making Family Discipleship Work at Home and In Our Church",
-  2: "Family Flourishing: Nurturing Mental Health in the Home",
-  3: "Solo Parenting and Discipleship",
-  4: "Faith and Family Connection in the Digital Age",
-  5: "I Love You, Anak: Dealing with Identity and Gender Confusion in the Family",
-};
+import { breakoutRoom, breakoutTitle } from "../convex/shared.ts";
 
 type Row = Record<string, string>;
 
@@ -55,6 +49,7 @@ type Person = {
   name: string;
   first: string;
   workshop: string;
+  room: { room: string; colour: string } | null;
   registrationNumber: string;
   group: string;
   ownEmail: boolean;
@@ -66,6 +61,10 @@ const unreachable: Person[] = [];
 for (const participant of participants) {
   const registration = registrations.get(participant.registrationId);
   if (registration === undefined) continue;
+  // A sponsor seat nobody has claimed has no name and nobody to send to.
+  if (participant.seat === true && String(participant.fullName).trim() === "") {
+    continue;
+  }
 
   const own = String(participant.email ?? "").trim().toLowerCase();
   const filer = String(registration.registrantEmail ?? "").trim().toLowerCase();
@@ -75,7 +74,8 @@ for (const participant of participants) {
     id: participant._id,
     name: String(participant.fullName).trim(),
     first: String(participant.fullName).trim().split(/\s+/)[0],
-    workshop: WORKSHOPS[participant.breakoutSession] ?? "",
+    workshop: breakoutTitle(participant.breakoutSession),
+    room: breakoutRoom(participant.breakoutSession),
     registrationNumber: registration.registrationNumber,
     group: String(registration.groupName ?? "").trim(),
     ownEmail: valid(own),
@@ -96,7 +96,10 @@ const rows: Row[] = [...byAddress.entries()]
     const linksHtml = people
       .map(
         (person) =>
-          `<a href="${SITE}/pass/${person.id}">${person.name}</a> — ${person.workshop}`,
+          `<a href="${SITE}/pass/${person.id}">${person.name}</a> — ${person.workshop}` +
+          (person.room === null
+            ? ""
+            : ` — ${person.room.room} (${person.room.colour.toLowerCase()} sign)`),
       )
       .join("<br>");
     // One line per row: a newline inside a CSV field is legal but makes the
@@ -128,7 +131,11 @@ for (const row of rows) {
   console.log(headers.map((h) => escape(row[h] ?? "")).join(","));
 }
 
-console.error(`${rows.length} emails covering ${participants.length - unreachable.length} people`);
+const covered = [...byAddress.values()].reduce(
+  (total, people) => total + people.length,
+  0,
+);
+console.error(`${rows.length} emails covering ${covered} people`);
 console.error(
   `${rows.filter((r) => Number(r.People) > 1).length} of those carry more than one code`,
 );

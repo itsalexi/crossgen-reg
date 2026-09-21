@@ -102,6 +102,20 @@ const rows: Row[] = [...byAddress.entries()]
             : ` — ${person.room.room} (${person.room.colour.toLowerCase()} sign)`),
       )
       .join("<br>");
+    // The same thing with the code drawn in, for a layout that shows the QR
+    // rather than linking to it. Both fields ship: an email client with
+    // images turned off still has the links.
+    const qrHtml = people
+      .map(
+        (person) =>
+          `<p style="margin:0 0 24px"><strong>${person.name}</strong><br>` +
+          (person.room === null
+            ? ""
+            : `${person.room.room} — ${person.room.colour.toLowerCase()} sign<br>`) +
+          `<img src="${SITE}/qr/${person.id}.png" alt="Check-in code for ${person.name}" width="180" height="180" style="display:block;margin-top:8px"></p>`,
+      )
+      .join("");
+
     // One line per row: a newline inside a CSV field is legal but makes the
     // file impossible to check by eye before sending 431 emails.
     const linksText = people
@@ -114,6 +128,7 @@ const rows: Row[] = [...byAddress.entries()]
       People: String(people.length),
       Names: people.map((p) => p.name).join(", "),
       PassLinks: linksHtml,
+      QrCodes: qrHtml,
       PassLinksPlain: linksText,
       // Only meaningful when everything in this inbox is one registration.
       AllCodesLink:

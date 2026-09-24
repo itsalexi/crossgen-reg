@@ -52,6 +52,8 @@ and their personal details are cleared rather than inherited.
 | 24 Sep | CG26-00105 | Ace Mark Belardo | Rochelle Ann S. Maico | YDT Room | janny.sabado@gmail.com | no |
 | 24 Sep | CG26-00023 | Julius Agustin | Gilbert Solis | 2nd Floor Lobby | mcsolis.dpmc@gmail.com | no |
 | 24 Sep | CG26-00023 | Frances Agustin | Riley Franco | 2nd Floor Lobby | wfa.franco00@gmail.com | no |
+| 24 Sep | CG26-00022 | Edgardo I. Patron | Chris Lomotan | YDT Room | viviansaludhernandez@gmail.com | no |
+| 24 Sep | CG26-00022 | Lourdes S. Patron | Lauren Lomotan | YDT Room | viviansaludhernandez@gmail.com | no |
 
 Both PVGC ones were requested by Christina Buan by email on 22 and 23
 September. Neither substitute has an address of their own, so their codes go to

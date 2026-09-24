@@ -35,6 +35,17 @@ and their personal details are cleared rather than inherited.
 | 24 Sep | GF26-00053 | Jeanette Nano | Linda Villoria | Worship Hall | garciagraceann@gmail.com | no |
 | 24 Sep | CG26-00063 | Nehemias Martin | Merlyn Guillermo | Worship Hall | merlyn_guillermo@yahoo.com | no |
 | 24 Sep | CG26-00034 | James M. Lumanog | Roselle Santander | YDT Room | sisleili2020@gmail.com | no |
+| 24 Sep | CG26-00139 | Ivee Abenojar | Jemie Joy LaPastora | Worship Hall | sgualberto@icloud.com | no |
+| 24 Sep | CG26-00139 | Mark Nepacina | Gian Andrew Gutierrez | Worship Hall | sgualberto@icloud.com | no |
+| 24 Sep | CG26-00139 | Zhein Ronquillo | Kyle Gutierrez | Worship Hall | sgualberto@icloud.com | no |
+| 24 Sep | CG26-00139 | Esther Nicole Lladones | Jovita Lladones | Worship Hall | sgualberto@icloud.com | no |
+| 24 Sep | CG26-00139 | BJoy Nepacina | Carl John Ronquillo | Worship Hall | sgualberto@icloud.com | no |
+| 24 Sep | CG26-00139 | Jerayah Kiel Jovellanos | Love Treasure Ronquillo | Worship Hall | sgualberto@icloud.com | no |
+| 24 Sep | CG26-00139 | French Emerald Cruz | Almer Hernandez | Worship Hall | sgualberto@icloud.com | no |
+| 24 Sep | CG26-00139 | Melchor Bermas | Aimee Joy Hernandez | Worship Hall | sgualberto@icloud.com | no |
+| 24 Sep | CG26-00139 | Clouie Cruz | Jokiebed Lim | Worship Hall | sgualberto@icloud.com | no |
+| 24 Sep | CG26-00139 | Evelyn Campo | Levi Tia | Worship Hall | sgualberto@icloud.com | no |
+| 24 Sep | CG26-00139 | Dominique Deoso | Raizene Alvarado | Worship Hall | sgualberto@icloud.com | no |
 
 Both PVGC ones were requested by Christina Buan by email on 22 and 23
 September. Neither substitute has an address of their own, so their codes go to
@@ -89,6 +100,7 @@ needs a printed pass from `/passes/GF26-00018`.
 | --- | --- | --- | --- |
 | 23 Sep | CG26-00143 (CMGO Fellowship) | alexicanamo@gmail.com | ibespineli@gmail.com |
 | 24 Sep | GF26-00065, GF26-00064, GF26-00053 | each outgoing person's own address | garciagraceann@gmail.com |
+| 24 Sep | CG26-00139 (Church of the Nazarene GMA) | alexicanamo@gmail.com | sgualberto@icloud.com |
 
 ## Still unreachable
 

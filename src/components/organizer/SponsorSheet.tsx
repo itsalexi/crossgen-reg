@@ -277,7 +277,7 @@ export function SponsorSheet({
               {recent.length === 1 ? "The one in" : `The last few of ${used.length}`}
             </p>
             <ul className="mt-3 flex flex-col gap-2.5">
-              {recent.slice(0, 6).map((seat, index) => (
+              {recent.slice(0, 6).map((seat) => (
                 <li
                   key={seat.id}
                   className="flex items-center gap-3 rounded-2xl px-4 py-3"
@@ -287,7 +287,7 @@ export function SponsorSheet({
                     <span className="block truncate text-[18px] leading-[1.25] font-semibold text-ink">
                       {seat.name.trim().length > 0
                         ? seat.name
-                        : `No name given`}
+                        : "No name given"}
                     </span>
                     <span
                       className="block text-[15px] leading-[1.3]"

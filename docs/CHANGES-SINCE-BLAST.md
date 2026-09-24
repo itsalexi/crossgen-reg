@@ -47,7 +47,7 @@ and their personal details are cleared rather than inherited.
 | 24 Sep | CG26-00139 | Evelyn Campo | Levi Tia | Worship Hall | sgualberto@icloud.com | no |
 | 24 Sep | CG26-00139 | Dominique Deoso | Raizene Alvarado | Worship Hall | sgualberto@icloud.com | no |
 | 24 Sep | CG26-00112 | Maria Concepcion Villegas | Marika Grace Palasi | Worship Hall | ikayrikay13@gmail.com | no |
-| 24 Sep | CG26-00112 | Cesar Villegas | Grace Palasi | Worship Hall | ikayrikay13@gmail.com | no |
+| 24 Sep | CG26-00112 | Cesar Villegas | Grace Palasi | Worship Hall | mgpalasi@yahoo.com | no |
 | 24 Sep | CG26-00105 | Sheena Belardo | Justine Mai A. Maico | YDT Room | janny.sabado@gmail.com | no |
 | 24 Sep | CG26-00105 | Ace Mark Belardo | Rochelle Ann S. Maico | YDT Room | janny.sabado@gmail.com | no |
 | 24 Sep | CG26-00023 | Julius Agustin | Gilbert Solis | 2nd Floor Lobby | mcsolis.dpmc@gmail.com | no |
@@ -115,30 +115,21 @@ needs a printed pass from `/passes/GF26-00018`.
 | 24 Sep | CG26-00139 (Church of the Nazarene GMA) | alexicanamo@gmail.com | sgualberto@icloud.com |
 | 24 Sep | CG26-00112 (Palasi, was Villegas) | aulen5706@gmail.com | ikayrikay13@gmail.com |
 
-### A second Palasi address is cut off
+### The Palasi addresses, confirmed
 
-The sheet gave two addresses for the two Palasis — `ikayrikay13@gmail.com` and
-`mgpalasi@yahoo.` with the domain truncated. Only the complete one was used,
-as the registration's contact, so both codes reach somebody. The second is
-deliberately not guessed: `yahoo.com` and `yahoo.com.ph` are both live, and
-picking wrong is how Esperanza Felix's code went nowhere for three days.
+Doc Susan of GCF South Metro confirmed the replacement on 24 September and gave
+both addresses in full:
+
+- Marika Grace Palasi — ikayrikay13@gmail.com
+- Grace Palasi — mgpalasi@yahoo.com
+
+Worth recording that the obvious reading was wrong: `mgpalasi@` belongs to
+Grace, not to Marika Grace. The sheet had arrived truncated at
+`mgpalasi@yahoo.` and the domain was deliberately not guessed; the initials
+would have sent it to the wrong one of the two anyway.
 
 The Maicos have no address at all — that row said "messaged via fb page" — so
 their codes go to Janny Sabado, who registered them.
-
-## Sessions are closed
-
-As of 24 September no workshop changes are made, whatever is asked. The rooms
-are signed, the counts are printed, and three of the five are already over
-capacity.
-
-The one request this turns down is Janny Sabado's, sent 11 September: Francis
-Benedick Consunji to session 4, which had already been done, and Rey Ornido to
-session 5, which has not and now will not. The Choir Room holds 30 and has 31.
-He stays in the Worship Hall, which has room.
-
-Substitutions do not touch this: a replacement inherits the seat's workshop, so
-nobody added this week moved between rooms.
 
 ## Still unreachable
 

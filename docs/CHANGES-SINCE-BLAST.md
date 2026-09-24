@@ -30,6 +30,10 @@ and their personal details are cleared rather than inherited.
 | 24 Sep | CG26-00071 | Teresita Gonzales | Jackie Mar | YDT Room | ellenmaegonzales@gmail.com | no |
 | 24 Sep | CG26-00047 | Irene Arunan | Teofila Bongato | Worship Hall | reyierose@gmail.com | no |
 | 24 Sep | CG26-00047 | Nancy Pagalilawan | Esperanza Buena Mazon | Worship Hall | reyierose@gmail.com | no |
+| 24 Sep | GF26-00065 | Norberto Torrefranca III | Melanie Gutierrez | Worship Hall | garciagraceann@gmail.com | no |
+| 24 Sep | GF26-00064 | Pamela Torrefranca | Grace Cua | Worship Hall | garciagraceann@gmail.com | no |
+| 24 Sep | GF26-00053 | Jeanette Nano | Linda Villoria | Worship Hall | garciagraceann@gmail.com | no |
+| 24 Sep | CG26-00063 | Nehemias Martin | Merlyn Guillermo | Worship Hall | merlyn_guillermo@yahoo.com | no |
 
 Both PVGC ones were requested by Christina Buan by email on 22 and 23
 September. Neither substitute has an address of their own, so their codes go to
@@ -56,11 +60,27 @@ Alma Gicana's is the one to be honest about: the missing `@` was reconstructed,
 the result was delivered to nobody, and she still has no working address. She
 needs a printed pass from `/passes/GF26-00018`.
 
+### "Nemy Martin" was read as Nehemias, not Myrna
+
+The sheet said "Nemy Martin" and CG26-00063 holds two: Nehemias and Myrna, both
+session 1, both on myrnasmartin@gmail.com. Nehemias was taken as the match on
+the strength of the nickname. If that is wrong, Myrna is the one to swap and
+Nehemias goes back as:
+
+```
+age 68 · Female · Married · Pastor · Life at I am Redeemer and Master
+Evangelical Church · Marikina · 09178530165 · myrnasmartin@gmail.com
+```
+
+Myrna, untouched, is: age 67 · Female · Married · Housewife · Life group leader
+· Marikina · 09173201574 · myrnasmartin@gmail.com.
+
 ## Contacts repointed
 
 | Date | Registration | Was | Now |
 | --- | --- | --- | --- |
 | 23 Sep | CG26-00143 (CMGO Fellowship) | alexicanamo@gmail.com | ibespineli@gmail.com |
+| 24 Sep | GF26-00065, GF26-00064, GF26-00053 | each outgoing person's own address | garciagraceann@gmail.com |
 
 ## Still unreachable
 

@@ -50,25 +50,18 @@ and their personal details are cleared rather than inherited.
 | 24 Sep | CG26-00112 | Cesar Villegas | Grace Palasi | Worship Hall | ikayrikay13@gmail.com | no |
 | 24 Sep | CG26-00105 | Sheena Belardo | Justine Mai A. Maico | YDT Room | janny.sabado@gmail.com | no |
 | 24 Sep | CG26-00105 | Ace Mark Belardo | Rochelle Ann S. Maico | YDT Room | janny.sabado@gmail.com | no |
+| 24 Sep | CG26-00063 | Myrna Martin | Jean Natividad | Worship Hall | salumbides.maloi@gmail.com | no |
 
 Both PVGC ones were requested by Christina Buan by email on 22 and 23
 September. Neither substitute has an address of their own, so their codes go to
 Christina — which is what she asked for.
 
-### "Nemy Martin" was read as Nehemias, not Myrna
+### Both Martins have now been replaced
 
-The sheet said "Nemy Martin" and CG26-00063 holds two: Nehemias and Myrna, both
-session 1, both on myrnasmartin@gmail.com. Nehemias was taken as the match on
-the strength of the nickname. If that is wrong, Myrna is the one to swap and
-Nehemias goes back as:
-
-```
-age 68 · Female · Married · Pastor · Life at I am Redeemer and Master
-Evangelical Church · Marikina · 09178530165 · myrnasmartin@gmail.com
-```
-
-Myrna, untouched, is: age 67 · Female · Married · Housewife · Life group leader
-· Marikina · 09173201574 · myrnasmartin@gmail.com.
+"Nemy Martin" was read as Nehemias on the strength of the nickname, and Myrna
+was left alone in case that reading was wrong. Maloi then asked for Myrna to go
+too, so CG26-00063 now holds Merlyn Guillermo and Jean Natividad and the
+question no longer matters.
 
 ### The Friends of Jesus Christ sheet
 
@@ -97,6 +90,15 @@ original send went nowhere.
 Alma Gicana's is the one to be honest about: the missing `@` was reconstructed,
 the result was delivered to nobody, and she still has no working address. She
 needs a printed pass from `/passes/GF26-00018`.
+
+## Added after the blast
+
+| Date | Registration | Who | Terms | Code goes to |
+| --- | --- | --- | --- | --- |
+| 24 Sep | CG26-00144 | Pat Natividad | sponsored, exempt, c/o Maloi | salumbides.maloi@gmail.com |
+
+Nobody added after 21 September has ever been sent a code, so these matter more
+in a re-send than the typo fixes do.
 
 ## Contacts repointed
 

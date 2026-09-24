@@ -32,13 +32,22 @@ function at(ts: number): string {
 }
 
 type Group = { label: string; members: RosterEntry[]; inside: number };
+type Pool = {
+  number: string;
+  org: string;
+  walkIn: boolean;
+  seats: RosterEntry[];
+  used: number;
+};
 
 export function CheckInDesk({
   people,
   groups,
+  pools,
   arrived,
   isIn,
   onCheckIn,
+  onCount,
   onUndo,
   query,
   setQuery,
@@ -48,9 +57,12 @@ export function CheckInDesk({
 }: {
   people: RosterEntry[];
   groups: Group[];
+  pools: Pool[];
   arrived: number;
   isIn: (entry: RosterEntry) => boolean;
   onCheckIn: (entries: RosterEntry[]) => void;
+  /** Seats claimed without names — the headcount. */
+  onCount: (seats: RosterEntry[]) => void;
   onUndo: (entry: RosterEntry) => void;
   query: string;
   setQuery: (value: string) => void;
@@ -61,6 +73,7 @@ export function CheckInDesk({
   const [tab, setTab] = useState<"find" | "groups" | "arrived">("find");
   const [openId, setOpenId] = useState<string | null>(null);
   const [partyLabel, setPartyLabel] = useState<string | null>(null);
+  const [poolNumber, setPoolNumber] = useState<string | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const searchRef = useRef<HTMLInputElement | null>(null);
 
@@ -89,6 +102,11 @@ export function CheckInDesk({
     [groups, partyLabel],
   );
 
+  const pool = useMemo(
+    () => pools.find((entry) => entry.number === poolNumber) ?? null,
+    [pools, poolNumber],
+  );
+
   const feed = useMemo(
     () =>
       people
@@ -105,6 +123,7 @@ export function CheckInDesk({
 
   const openPerson = (id: string) => {
     setPartyLabel(null);
+    setPoolNumber(null);
     setOpenId(id);
   };
 
@@ -215,6 +234,32 @@ export function CheckInDesk({
       >
         {tab === "groups" ? (
           <ul className="flex flex-col">
+            {pools.map((entry) => (
+              <li key={entry.number}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenId(null);
+                    setPartyLabel(null);
+                    setPoolNumber(entry.number);
+                  }}
+                  className="flex w-full items-center justify-between gap-4 border-b px-5 py-4 text-left hover:bg-white"
+                  style={{ borderColor: HAIRLINE }}
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-[16px] font-semibold text-ink">
+                      {entry.org}
+                    </span>
+                    <span className="block text-[13.5px]" style={{ color: FAINT }}>
+                      {entry.walkIn ? "Not on the list" : "Sponsor seats"}
+                    </span>
+                  </span>
+                  <span className="flex-none text-[14px]" style={{ color: BODY }}>
+                    {entry.used} of {entry.seats.length}
+                  </span>
+                </button>
+              </li>
+            ))}
             {groups.map((group) => (
               <li key={group.label}>
                 <button
@@ -325,7 +370,14 @@ export function CheckInDesk({
       {/* ------------------------------------------------- person and feed */}
       <section className="flex min-h-0 flex-col bg-white">
         <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-6 pb-4">
-          {party !== null ? (
+          {pool !== null ? (
+            <PoolPanel
+              pool={pool}
+              isIn={isIn}
+              onCount={onCount}
+              onUndo={onUndo}
+            />
+          ) : party !== null ? (
             <GroupPanel
               party={party}
               waiting={waiting}
@@ -579,6 +631,134 @@ function PersonPanel({
       >
         Open their code
       </a>
+    </div>
+  );
+}
+
+/**
+ * A sponsor's seats at the desk.
+ *
+ * Eighty seats with nobody's name on them is not a list to tick through, it is
+ * a number to count up and down. The phone learned that first; this is the same
+ * thing with a keyboard behind it.
+ */
+function PoolPanel({
+  pool,
+  isIn,
+  onCount,
+  onUndo,
+}: {
+  pool: Pool;
+  isIn: (entry: RosterEntry) => boolean;
+  onCount: (seats: RosterEntry[]) => void;
+  onUndo: (entry: RosterEntry) => void;
+}) {
+  const used = pool.seats.filter(
+    (seat) => isIn(seat) || seat.name.trim().length > 0,
+  );
+  const free = pool.seats.filter(
+    (seat) => !isIn(seat) && seat.name.trim().length === 0,
+  );
+  const recent = [...used].sort(
+    (a, b) => (b.checkedInAt ?? Infinity) - (a.checkedInAt ?? Infinity),
+  );
+
+  const add = (howMany: number) => {
+    const taking = free.slice(0, howMany);
+    if (taking.length > 0) onCount(taking);
+  };
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div>
+        <p className="text-[13px] font-semibold" style={{ color: PURPLE }}>
+          {pool.walkIn ? "Not on the list" : "Sponsor seats"}
+        </p>
+        <p className="mt-1 font-display text-[26px] leading-[1.15] font-bold text-ink">
+          {pool.org}
+        </p>
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between gap-2.5">
+          <button
+            type="button"
+            onClick={() => recent[0] !== undefined && onUndo(recent[0])}
+            disabled={used.length === 0}
+            aria-label="One fewer"
+            className="h-[72px] flex-1 rounded-xl text-[32px] leading-none font-semibold disabled:opacity-30"
+            style={{ border: `2px solid ${LINE}`, color: PURPLE }}
+          >
+            −
+          </button>
+          <span className="flex min-w-[92px] flex-col items-center">
+            <span
+              className="font-display text-[46px] leading-none font-bold tabular-nums"
+              style={{ color: PURPLE }}
+            >
+              {used.length}
+            </span>
+            <span className="mt-1 text-[13.5px]" style={{ color: BODY }}>
+              of {pool.seats.length}
+            </span>
+          </span>
+          <button
+            type="button"
+            onClick={() => add(1)}
+            disabled={free.length === 0}
+            aria-label="One more"
+            className="h-[72px] flex-1 rounded-xl text-[32px] leading-none font-semibold text-white disabled:opacity-30"
+            style={{ background: PURPLE }}
+          >
+            +
+          </button>
+        </div>
+
+        <div className="mt-2.5 flex gap-2.5">
+          {[5, 10].map((step) => (
+            <button
+              key={step}
+              type="button"
+              onClick={() => add(step)}
+              disabled={free.length === 0}
+              className="h-11 flex-1 rounded-lg text-[14.5px] font-semibold disabled:opacity-30"
+              style={{ border: `2px solid ${LINE}`, color: PURPLE }}
+            >
+              +{step}
+            </button>
+          ))}
+        </div>
+
+        <p className="mt-3 text-[13.5px]" style={{ color: FAINT }}>
+          {free.length} seats left. Minus takes back the last one.
+        </p>
+      </div>
+
+      {recent.length > 0 && (
+        <div className="border-t pt-4" style={{ borderColor: HAIRLINE }}>
+          <p
+            className="text-[11.5px] font-semibold tracking-[0.09em] uppercase"
+            style={{ color: FAINT }}
+          >
+            Last few in
+          </p>
+          <ul className="mt-2 flex flex-col gap-1.5">
+            {recent.slice(0, 8).map((seat) => (
+              <li
+                key={seat.id}
+                className="flex items-baseline justify-between gap-3 text-[14px]"
+              >
+                <span className="min-w-0 truncate text-ink">
+                  {seat.name.trim().length > 0 ? seat.name : "No name given"}
+                </span>
+                <span className="flex-none" style={{ color: FAINT }}>
+                  {seat.checkedInAt !== null ? at(seat.checkedInAt) : "now"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

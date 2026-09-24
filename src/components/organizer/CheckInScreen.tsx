@@ -229,7 +229,8 @@ export function CheckInScreen() {
    * agrees. Without the overlay a phone with no signal shows the name it just
    * took as an empty seat again, which reads as having lost it.
    */
-  const people = useMemo(() => {
+  /** Everything the device holds, seats included. The pools are built off this. */
+  const roster = useMemo(() => {
     const base = cache?.people ?? [];
     if (names.length === 0) return base;
     const typed = new Map(names.map((entry) => [entry.participantId, entry.name]));
@@ -239,9 +240,19 @@ export function CheckInScreen() {
       return { ...entry, name, search: `${name} ${entry.search}`.toLowerCase() };
     });
   }, [cache, names]);
+
+  /**
+   * The people. A seat nobody has claimed is a promise, not a person: counting
+   * one inflates the total at the door, and searching one puts a row with no
+   * name in front of a volunteer looking for somebody real.
+   */
+  const people = useMemo(
+    () => roster.filter((entry) => !entry.seat || entry.name.trim().length > 0),
+    [roster],
+  );
   useEffect(() => {
-    peopleRef.current = people;
-  }, [people]);
+    peopleRef.current = roster;
+  }, [roster]);
 
   /**
    * Drops a queued check-in only once the roster comes back showing that
@@ -353,6 +364,9 @@ export function CheckInScreen() {
   const groups = useMemo(() => {
     const byName = new Map<string, RosterEntry[]>();
     for (const entry of people) {
+      // A sponsor's seats are a pool, not a group. Left in, they appear as a
+      // hundred-strong "group" of blank names.
+      if (entry.seat) continue;
       const key = entry.group.trim();
       if (key.length === 0) continue;
       byName.set(key, [...(byName.get(key) ?? []), entry]);
@@ -396,10 +410,10 @@ export function CheckInScreen() {
   /** Seats belonging to one sponsor, in the order they were created. */
   const seatsOf = useCallback(
     (registrationNumber: string) =>
-      people.filter(
+      roster.filter(
         (entry) => entry.seat && entry.registrationNumber === registrationNumber,
       ),
-    [people],
+    [roster],
   );
 
   /**
@@ -408,7 +422,7 @@ export function CheckInScreen() {
    */
   const pools = useMemo(() => {
     const byNumber = new Map<string, RosterEntry[]>();
-    for (const entry of people) {
+    for (const entry of roster) {
       if (!entry.seat) continue;
       byNumber.set(entry.registrationNumber, [
         ...(byNumber.get(entry.registrationNumber) ?? []),
@@ -426,7 +440,7 @@ export function CheckInScreen() {
         ).length,
       }))
       .sort((a, b) => a.org.localeCompare(b.org));
-  }, [people, isIn]);
+  }, [roster, isIn]);
 
   /**
    * Groups and sponsors whose name matches what has been typed.
@@ -1020,9 +1034,11 @@ export function CheckInScreen() {
         <CheckInDesk
           people={people}
           groups={groups}
+          pools={pools}
           arrived={arrived}
           isIn={isIn}
           onCheckIn={markIn}
+          onCount={countSeats}
           onUndo={undoOne}
           query={query}
           setQuery={setQuery}

@@ -34,10 +34,33 @@ and their personal details are cleared rather than inherited.
 | 24 Sep | GF26-00064 | Pamela Torrefranca | Grace Cua | Worship Hall | garciagraceann@gmail.com | no |
 | 24 Sep | GF26-00053 | Jeanette Nano | Linda Villoria | Worship Hall | garciagraceann@gmail.com | no |
 | 24 Sep | CG26-00063 | Nehemias Martin | Merlyn Guillermo | Worship Hall | merlyn_guillermo@yahoo.com | no |
+| 24 Sep | CG26-00034 | James M. Lumanog | Roselle Santander | YDT Room | sisleili2020@gmail.com | no |
 
 Both PVGC ones were requested by Christina Buan by email on 22 and 23
 September. Neither substitute has an address of their own, so their codes go to
 Christina — which is what she asked for.
+
+### "Nemy Martin" was read as Nehemias, not Myrna
+
+The sheet said "Nemy Martin" and CG26-00063 holds two: Nehemias and Myrna, both
+session 1, both on myrnasmartin@gmail.com. Nehemias was taken as the match on
+the strength of the nickname. If that is wrong, Myrna is the one to swap and
+Nehemias goes back as:
+
+```
+age 68 · Female · Married · Pastor · Life at I am Redeemer and Master
+Evangelical Church · Marikina · 09178530165 · myrnasmartin@gmail.com
+```
+
+Myrna, untouched, is: age 67 · Female · Married · Housewife · Life group leader
+· Marikina · 09173201574 · myrnasmartin@gmail.com.
+
+### The Friends of Jesus Christ sheet
+
+Six names in two columns with no pairing given, and three of them already on
+the registration. Only one row was a real change: James Lumanog out, Roselle
+Santander in. Charissa and Rossman Dado were already registered, so those two
+rows recorded something that had already happened.
 
 ## Addresses repaired
 
@@ -59,21 +82,6 @@ original send went nowhere.
 Alma Gicana's is the one to be honest about: the missing `@` was reconstructed,
 the result was delivered to nobody, and she still has no working address. She
 needs a printed pass from `/passes/GF26-00018`.
-
-### "Nemy Martin" was read as Nehemias, not Myrna
-
-The sheet said "Nemy Martin" and CG26-00063 holds two: Nehemias and Myrna, both
-session 1, both on myrnasmartin@gmail.com. Nehemias was taken as the match on
-the strength of the nickname. If that is wrong, Myrna is the one to swap and
-Nehemias goes back as:
-
-```
-age 68 · Female · Married · Pastor · Life at I am Redeemer and Master
-Evangelical Church · Marikina · 09178530165 · myrnasmartin@gmail.com
-```
-
-Myrna, untouched, is: age 67 · Female · Married · Housewife · Life group leader
-· Marikina · 09173201574 · myrnasmartin@gmail.com.
 
 ## Contacts repointed
 

@@ -54,22 +54,26 @@ and their personal details are cleared rather than inherited.
 | 24 Sep | CG26-00023 | Frances Agustin | Riley Franco | 2nd Floor Lobby | wfa.franco00@gmail.com | no |
 | 24 Sep | CG26-00022 | Edgardo I. Patron | Chris Lomotan | YDT Room | viviansaludhernandez@gmail.com | no |
 | 24 Sep | CG26-00022 | Lourdes S. Patron | Lauren Lomotan | YDT Room | viviansaludhernandez@gmail.com | no |
+| 24 Sep | GF26-00035 | Alma Berrnabe Salumbides | Vic Salazar | Worship Hall | lezylpnb72@gmail.com | no |
+| 24 Sep | CG26-00063 | Myrna Martin | Lezyl Salazar | Worship Hall | lezylpnb72@gmail.com | no |
 
 Both PVGC ones were requested by Christina Buan by email on 22 and 23
 September. Neither substitute has an address of their own, so their codes go to
 Christina — which is what she asked for.
 
-"Nemy Martin" was read as Nehemias, not Myrna
----------------------------------------------
+Both Martins have gone in the end
+---------------------------------
 
-CG26-00063 holds two Martins, both session 1, both on myrnasmartin@gmail.com.
-Nehemias was taken as the match on the strength of the nickname, and his seat
-is Merlyn Guillermo's now. If that reading was wrong, Myrna is the one to swap.
+CG26-00063 held two, both session 1, both on myrnasmartin@gmail.com. "Nemy"
+was read as Nehemias on the strength of the nickname and his seat went to
+Merlyn Guillermo. Myrna was then briefly replaced by Jean Natividad, put back
+an hour later at the organizers' request, and finally replaced by Lezyl
+Salazar. So the registration now holds Merlyn Guillermo and Lezyl Salazar, and
+the question of which one "Nemy" meant no longer matters.
 
-Myrna was briefly replaced by Jean Natividad on 24 September and put straight
-back at the organizers' request. Her occupation and ministry fields did not
-survive the round trip — "Housewife" and "Life group leader" — because
-`substituteAs` does not carry them. Nothing downstream reads those two fields.
+Myrna's occupation and ministry did not survive that round trip — "Housewife"
+and "Life group leader" — because `substituteAs` clears what it is not given.
+Nothing downstream reads those two fields.
 
 ### Ma'am Menchit Wong's four slots
 

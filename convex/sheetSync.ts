@@ -604,20 +604,45 @@ export const push = internalAction({
       payments,
     ];
 
-    const response = await fetch(url, {
+    const payload = JSON.stringify({
+      secret,
+      // Kept so a sheet still running the old single-tab script carries on
+      // working until its script is replaced.
+      headers: participants.headers,
+      rows: participants.rows,
+      sheets: tabs,
+      syncedAt: new Date().toISOString(),
+      syncedBy: args.byEmail,
+    });
+
+    /**
+     * Apps Script never answers the POST itself. It writes the rows, then
+     * redirects to a one-time googleusercontent URL that holds the reply, and
+     * that URL only serves GET.
+     *
+     * A browser and curl handle this by dropping the method on a 302, which is
+     * what the spec says. This runtime does not, so the redirect is followed by
+     * hand: POST, read the Location, then GET it. Without this the sheet is
+     * written correctly and the answer comes back as a 404 or a Google error
+     * page, which reads as a failure when nothing failed.
+     */
+    let response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        secret,
-        // Kept so a sheet still running the old single-tab script carries on
-        // working until its script is replaced.
-        headers: participants.headers,
-        rows: participants.rows,
-        sheets: tabs,
-        syncedAt: new Date().toISOString(),
-        syncedBy: args.byEmail,
-      }),
+      body: payload,
+      redirect: "manual",
     });
+
+    const location = response.headers.get("location");
+    if (
+      (response.status === 301 ||
+        response.status === 302 ||
+        response.status === 303 ||
+        response.status === 307) &&
+      location !== null
+    ) {
+      response = await fetch(location);
+    }
 
     // Apps Script answers 200 with an error body rather than a status code,
     // so the body is what actually has to be checked.

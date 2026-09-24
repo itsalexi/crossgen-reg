@@ -18,44 +18,47 @@ carry those people's codes.
 
 ## Substitutions
 
+A re-send went out on 24 September covering everything below that is marked
+sent. Anything added after it is marked otherwise and still needs one.
+
 The seat stays, the money stays, the workshop slot stays. The person changes,
 and their personal details are cleared rather than inherited.
 
 | Date | Registration | Out | In | Room | Code now goes to | Re-sent |
 | --- | --- | --- | --- | --- | --- | --- |
-| 21 Sep | CG26-00085 | Eduardo E. Orozco | Alfredo Young Jr | Worship Hall | arlizyoung@gmail.com | no |
-| 21 Sep | CG26-00085 | Glorina P. Orozco | Arliz Young | YDT Room | arlizyoung@gmail.com | no |
-| 24 Sep | CG26-00071 | Allan Gonzales | Rudy Monterey | 2nd Floor Lobby | ellenmaegonzales@gmail.com | no |
-| 24 Sep | CG26-00071 | Amador Gonzales, Jr | Alfred Mar | YDT Room | ellenmaegonzales@gmail.com | no |
-| 24 Sep | CG26-00071 | Teresita Gonzales | Jackie Mar | YDT Room | ellenmaegonzales@gmail.com | no |
-| 24 Sep | CG26-00047 | Irene Arunan | Teofila Bongato | Worship Hall | reyierose@gmail.com | no |
-| 24 Sep | CG26-00047 | Nancy Pagalilawan | Esperanza Buena Mazon | Worship Hall | reyierose@gmail.com | no |
-| 24 Sep | GF26-00065 | Norberto Torrefranca III | Melanie Gutierrez | Worship Hall | garciagraceann@gmail.com | no |
-| 24 Sep | GF26-00064 | Pamela Torrefranca | Grace Cua | Worship Hall | garciagraceann@gmail.com | no |
-| 24 Sep | GF26-00053 | Jeanette Nano | Linda Villoria | Worship Hall | garciagraceann@gmail.com | no |
-| 24 Sep | CG26-00063 | Nehemias Martin | Merlyn Guillermo | Worship Hall | merlyn_guillermo@yahoo.com | no |
-| 24 Sep | CG26-00034 | James M. Lumanog | Roselle Santander | YDT Room | sisleili2020@gmail.com | no |
-| 24 Sep | CG26-00139 | Ivee Abenojar | Jemie Joy LaPastora | Worship Hall | sgualberto@icloud.com | no |
-| 24 Sep | CG26-00139 | Mark Nepacina | Gian Andrew Gutierrez | Worship Hall | sgualberto@icloud.com | no |
-| 24 Sep | CG26-00139 | Zhein Ronquillo | Kyle Gutierrez | Worship Hall | sgualberto@icloud.com | no |
-| 24 Sep | CG26-00139 | Esther Nicole Lladones | Jovita Lladones | Worship Hall | sgualberto@icloud.com | no |
-| 24 Sep | CG26-00139 | BJoy Nepacina | Carl John Ronquillo | Worship Hall | sgualberto@icloud.com | no |
-| 24 Sep | CG26-00139 | Jerayah Kiel Jovellanos | Love Treasure Ronquillo | Worship Hall | sgualberto@icloud.com | no |
-| 24 Sep | CG26-00139 | French Emerald Cruz | Almer Hernandez | Worship Hall | sgualberto@icloud.com | no |
-| 24 Sep | CG26-00139 | Melchor Bermas | Aimee Joy Hernandez | Worship Hall | sgualberto@icloud.com | no |
-| 24 Sep | CG26-00139 | Clouie Cruz | Jokiebed Lim | Worship Hall | sgualberto@icloud.com | no |
-| 24 Sep | CG26-00139 | Evelyn Campo | Levi Tia | Worship Hall | sgualberto@icloud.com | no |
-| 24 Sep | CG26-00139 | Dominique Deoso | Raizene Alvarado | Worship Hall | sgualberto@icloud.com | no |
-| 24 Sep | CG26-00112 | Maria Concepcion Villegas | Marika Grace Palasi | Worship Hall | ikayrikay13@gmail.com | no |
-| 24 Sep | CG26-00112 | Cesar Villegas | Grace Palasi | Worship Hall | mgpalasi@yahoo.com | no |
-| 24 Sep | CG26-00105 | Sheena Belardo | Justine Mai A. Maico | YDT Room | janny.sabado@gmail.com | no |
-| 24 Sep | CG26-00105 | Ace Mark Belardo | Rochelle Ann S. Maico | YDT Room | janny.sabado@gmail.com | no |
-| 24 Sep | CG26-00023 | Julius Agustin | Gilbert Solis | 2nd Floor Lobby | mcsolis.dpmc@gmail.com | no |
-| 24 Sep | CG26-00023 | Frances Agustin | Riley Franco | 2nd Floor Lobby | wfa.franco00@gmail.com | no |
-| 24 Sep | CG26-00022 | Edgardo I. Patron | Chris Lomotan | YDT Room | viviansaludhernandez@gmail.com | no |
-| 24 Sep | CG26-00022 | Lourdes S. Patron | Lauren Lomotan | YDT Room | viviansaludhernandez@gmail.com | no |
-| 24 Sep | GF26-00035 | Alma Berrnabe Salumbides | Vic Salazar | Worship Hall | lezylpnb72@gmail.com | no |
-| 24 Sep | CG26-00063 | Myrna Martin | Lezyl Salazar | Worship Hall | lezylpnb72@gmail.com | no |
+| 21 Sep | CG26-00085 | Eduardo E. Orozco | Alfredo Young Jr | Worship Hall | arlizyoung@gmail.com | sent 24 Sep |
+| 21 Sep | CG26-00085 | Glorina P. Orozco | Arliz Young | YDT Room | arlizyoung@gmail.com | sent 24 Sep |
+| 24 Sep | CG26-00071 | Allan Gonzales | Rudy Monterey | 2nd Floor Lobby | ellenmaegonzales@gmail.com | sent 24 Sep |
+| 24 Sep | CG26-00071 | Amador Gonzales, Jr | Alfred Mar | YDT Room | ellenmaegonzales@gmail.com | sent 24 Sep |
+| 24 Sep | CG26-00071 | Teresita Gonzales | Jackie Mar | YDT Room | ellenmaegonzales@gmail.com | sent 24 Sep |
+| 24 Sep | CG26-00047 | Irene Arunan | Teofila Bongato | Worship Hall | reyierose@gmail.com | sent 24 Sep |
+| 24 Sep | CG26-00047 | Nancy Pagalilawan | Esperanza Buena Mazon | Worship Hall | reyierose@gmail.com | sent 24 Sep |
+| 24 Sep | GF26-00065 | Norberto Torrefranca III | Melanie Gutierrez | Worship Hall | garciagraceann@gmail.com | sent 24 Sep |
+| 24 Sep | GF26-00064 | Pamela Torrefranca | Grace Cua | Worship Hall | garciagraceann@gmail.com | sent 24 Sep |
+| 24 Sep | GF26-00053 | Jeanette Nano | Linda Villoria | Worship Hall | garciagraceann@gmail.com | sent 24 Sep |
+| 24 Sep | CG26-00063 | Nehemias Martin | Merlyn Guillermo | Worship Hall | merlyn_guillermo@yahoo.com | sent 24 Sep |
+| 24 Sep | CG26-00034 | James M. Lumanog | Roselle Santander | YDT Room | sisleili2020@gmail.com | sent 24 Sep |
+| 24 Sep | CG26-00139 | Ivee Abenojar | Jemie Joy LaPastora | Worship Hall | sgualberto@icloud.com | sent 24 Sep |
+| 24 Sep | CG26-00139 | Mark Nepacina | Gian Andrew Gutierrez | Worship Hall | sgualberto@icloud.com | sent 24 Sep |
+| 24 Sep | CG26-00139 | Zhein Ronquillo | Kyle Gutierrez | Worship Hall | sgualberto@icloud.com | sent 24 Sep |
+| 24 Sep | CG26-00139 | Esther Nicole Lladones | Jovita Lladones | Worship Hall | sgualberto@icloud.com | sent 24 Sep |
+| 24 Sep | CG26-00139 | BJoy Nepacina | Carl John Ronquillo | Worship Hall | sgualberto@icloud.com | sent 24 Sep |
+| 24 Sep | CG26-00139 | Jerayah Kiel Jovellanos | Love Treasure Ronquillo | Worship Hall | sgualberto@icloud.com | sent 24 Sep |
+| 24 Sep | CG26-00139 | French Emerald Cruz | Almer Hernandez | Worship Hall | sgualberto@icloud.com | sent 24 Sep |
+| 24 Sep | CG26-00139 | Melchor Bermas | Aimee Joy Hernandez | Worship Hall | sgualberto@icloud.com | sent 24 Sep |
+| 24 Sep | CG26-00139 | Clouie Cruz | Jokiebed Lim | Worship Hall | sgualberto@icloud.com | sent 24 Sep |
+| 24 Sep | CG26-00139 | Evelyn Campo | Levi Tia | Worship Hall | sgualberto@icloud.com | sent 24 Sep |
+| 24 Sep | CG26-00139 | Dominique Deoso | Raizene Alvarado | Worship Hall | sgualberto@icloud.com | sent 24 Sep |
+| 24 Sep | CG26-00112 | Maria Concepcion Villegas | Marika Grace Palasi | Worship Hall | ikayrikay13@gmail.com | sent 24 Sep |
+| 24 Sep | CG26-00112 | Cesar Villegas | Grace Palasi | Worship Hall | mgpalasi@yahoo.com | sent 24 Sep |
+| 24 Sep | CG26-00105 | Sheena Belardo | Justine Mai A. Maico | YDT Room | janny.sabado@gmail.com | sent 24 Sep |
+| 24 Sep | CG26-00105 | Ace Mark Belardo | Rochelle Ann S. Maico | YDT Room | janny.sabado@gmail.com | sent 24 Sep |
+| 24 Sep | CG26-00023 | Julius Agustin | Gilbert Solis | 2nd Floor Lobby | mcsolis.dpmc@gmail.com | sent 24 Sep |
+| 24 Sep | CG26-00023 | Frances Agustin | Riley Franco | 2nd Floor Lobby | wfa.franco00@gmail.com | sent 24 Sep |
+| 24 Sep | CG26-00022 | Edgardo I. Patron | Chris Lomotan | YDT Room | viviansaludhernandez@gmail.com | sent 24 Sep |
+| 24 Sep | CG26-00022 | Lourdes S. Patron | Lauren Lomotan | YDT Room | viviansaludhernandez@gmail.com | sent 24 Sep |
+| 24 Sep | GF26-00035 | Alma Berrnabe Salumbides | Vic Salazar | Worship Hall | lezylpnb72@gmail.com | **not yet** |
+| 24 Sep | CG26-00063 | Myrna Martin | Lezyl Salazar | Worship Hall | lezylpnb72@gmail.com | **not yet** |
 
 Both PVGC ones were requested by Christina Buan by email on 22 and 23
 September. Neither substitute has an address of their own, so their codes go to
@@ -100,11 +103,11 @@ original send went nowhere.
 | 22 Sep | Raphaelle Mavi Arriola | …@gmail.con | …@gmail.com | yes |
 | 22 Sep | Maritess Cudiamat, Maribel Villamor | jeydahbel11@gmail.cok | …@gmail.com | yes |
 | 22 Sep | Rhealiza C. Apolinar | rcapolinar28@gmail.com. | …@gmail.com | yes |
-| 23 Sep | Bernie Mallari | …@gmil.com (a typosquat, was receiving his mail) | …@gmail.com | no |
-| 23 Sep | Walderico Rodriguez Berras | …@yahooo.com (null MX) | …@yahoo.com | no |
-| 24 Sep | Jonamie Mosquera | arnelallanhoen@gmail.com | arnelallanhorn@gmail.com | no |
-| 24 Sep | Tresilyn Alipio | iflicdmia@gmail.com | iflicdmia21@gmail.com | no |
-| 24 Sep | Esperanza Felix | eipse_0328@yahoo.com | eipse_0328@yahoo.com.**ph** | no |
+| 23 Sep | Bernie Mallari | …@gmil.com (a typosquat, was receiving his mail) | …@gmail.com | sent 24 Sep |
+| 23 Sep | Walderico Rodriguez Berras | …@yahooo.com (null MX) | …@yahoo.com | sent 24 Sep |
+| 24 Sep | Jonamie Mosquera | arnelallanhoen@gmail.com | arnelallanhorn@gmail.com | sent 24 Sep |
+| 24 Sep | Tresilyn Alipio | iflicdmia@gmail.com | iflicdmia21@gmail.com | sent 24 Sep |
+| 24 Sep | Esperanza Felix | eipse_0328@yahoo.com | eipse_0328@yahoo.com.**ph** | sent 24 Sep |
 
 Alma Gicana's is the one to be honest about: the missing `@` was reconstructed,
 the result was delivered to nobody, and she still has no working address. She

@@ -50,6 +50,8 @@ and their personal details are cleared rather than inherited.
 | 24 Sep | CG26-00112 | Cesar Villegas | Grace Palasi | Worship Hall | ikayrikay13@gmail.com | no |
 | 24 Sep | CG26-00105 | Sheena Belardo | Justine Mai A. Maico | YDT Room | janny.sabado@gmail.com | no |
 | 24 Sep | CG26-00105 | Ace Mark Belardo | Rochelle Ann S. Maico | YDT Room | janny.sabado@gmail.com | no |
+| 24 Sep | CG26-00023 | Julius Agustin | Gilbert Solis | 2nd Floor Lobby | mcsolis.dpmc@gmail.com | no |
+| 24 Sep | CG26-00023 | Frances Agustin | Riley Franco | 2nd Floor Lobby | wfa.franco00@gmail.com | no |
 
 Both PVGC ones were requested by Christina Buan by email on 22 and 23
 September. Neither substitute has an address of their own, so their codes go to
@@ -66,6 +68,13 @@ Myrna was briefly replaced by Jean Natividad on 24 September and put straight
 back at the organizers' request. Her occupation and ministry fields did not
 survive the round trip — "Housewife" and "Life group leader" — because
 `substituteAs` does not carry them. Nothing downstream reads those two fields.
+
+### Ma'am Menchit Wong's four slots
+
+The four paid slots on CG26-00023 were Julius Agustin, Frances Agustin,
+Christina Solis and Winnie Franco. The couples take them instead, so the
+Agustins step out and Gilbert Solis and Riley Franco step in — each paired onto
+their spouse's address, so a couple's two codes land in one inbox.
 
 ### The Friends of Jesus Christ sheet
 

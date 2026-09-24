@@ -680,6 +680,40 @@ export const addRegistrationAs = internalMutation({
 });
 
 /**
+ * Sets the church on everybody in one registration.
+ *
+ * Needed because renaming a group rewrites the church of anyone whose church
+ * happened to match the old group name — which is right for a family filed
+ * under their own surname and wrong for a church filed under its own name.
+ *
+ *   npx convex run organizer:setChurchAs '{"registrationNumber":"CG26-00075","church":"IFL"}' --prod
+ */
+export const setChurchAs = internalMutation({
+  args: { registrationNumber: v.string(), church: v.string() },
+  handler: async (ctx, args) => {
+    const registration = await ctx.db
+      .query("registrations")
+      .withIndex("by_registrationNumber", (q) =>
+        q.eq("registrationNumber", args.registrationNumber.trim()),
+      )
+      .unique();
+    if (registration === null) throw new ConvexError("No such registration.");
+
+    const church = args.church.trim();
+    const people = await ctx.db
+      .query("participants")
+      .withIndex("by_registrationId", (q) =>
+        q.eq("registrationId", registration._id),
+      )
+      .collect();
+    for (const person of people) {
+      await ctx.db.patch(person._id, { churchOrganization: church });
+    }
+    return { registrationNumber: registration.registrationNumber, church, people: people.length };
+  },
+});
+
+/**
  * Corrects the group a registration was filed under.
  *
  * Distinct from assigning a groupKey, which overrides a typed name the

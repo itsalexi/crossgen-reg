@@ -118,6 +118,20 @@ picking wrong is how Esperanza Felix's code went nowhere for three days.
 The Maicos have no address at all — that row said "messaged via fb page" — so
 their codes go to Janny Sabado, who registered them.
 
+## Sessions are closed
+
+As of 24 September no workshop changes are made, whatever is asked. The rooms
+are signed, the counts are printed, and three of the five are already over
+capacity.
+
+The one request this turns down is Janny Sabado's, sent 11 September: Francis
+Benedick Consunji to session 4, which had already been done, and Rey Ornido to
+session 5, which has not and now will not. The Choir Room holds 30 and has 31.
+He stays in the Worship Hall, which has room.
+
+Substitutions do not touch this: a replacement inherits the seat's workshop, so
+nobody added this week moved between rooms.
+
 ## Still unreachable
 
 Fourteen people whose address failed and has no correction. They need a printed

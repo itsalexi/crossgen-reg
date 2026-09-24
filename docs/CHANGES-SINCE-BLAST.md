@@ -28,14 +28,12 @@ and their personal details are cleared rather than inherited.
 | 24 Sep | CG26-00071 | Allan Gonzales | Rudy Monterey | 2nd Floor Lobby | ellenmaegonzales@gmail.com | no |
 | 24 Sep | CG26-00071 | Amador Gonzales, Jr | Alfred Mar | YDT Room | ellenmaegonzales@gmail.com | no |
 | 24 Sep | CG26-00071 | Teresita Gonzales | Jackie Mar | YDT Room | ellenmaegonzales@gmail.com | no |
+| 24 Sep | CG26-00047 | Irene Arunan | Teofila Bongato | Worship Hall | reyierose@gmail.com | no |
+| 24 Sep | CG26-00047 | Nancy Pagalilawan | Esperanza Buena Mazon | Worship Hall | reyierose@gmail.com | no |
 
-### Asked for, not yet applied
-
-Christina Buan of Pilar Village Gospel Church (CG26-00047) asked by email on
-22 and 23 September:
-
-- Irene Arunan → Teofila Bongato
-- Nancy Pagalilawan → Esperanza Buena Mazon
+Both PVGC ones were requested by Christina Buan by email on 22 and 23
+September. Neither substitute has an address of their own, so their codes go to
+Christina — which is what she asked for.
 
 ## Addresses repaired
 

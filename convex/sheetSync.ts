@@ -634,14 +634,44 @@ export const push = internalAction({
     });
 
     const location = response.headers.get("location");
-    if (
-      (response.status === 301 ||
-        response.status === 302 ||
-        response.status === 303 ||
-        response.status === 307) &&
-      location !== null
-    ) {
-      response = await fetch(location);
+    const redirected =
+      response.status === 301 ||
+      response.status === 302 ||
+      response.status === 303 ||
+      response.status === 307;
+
+    /**
+     * A redirect means the script ran to the end.
+     *
+     * Apps Script only redirects once doPost has returned; a script that threw,
+     * or refused the token, answers 200 with a body instead. So by the time
+     * there is a Location header the rows are already in the sheet.
+     *
+     * Reading the reply is best-effort: that one-time URL is not always
+     * resolvable from where this runs, and it has answered 404 as often as it
+     * has answered JSON. Failing the sync over an unreadable receipt reports a
+     * problem that does not exist, and sends somebody chasing a script that is
+     * working.
+     */
+    if (redirected && location !== null) {
+      try {
+        const receipt = await fetch(location);
+        if (receipt.ok) {
+          response = receipt;
+        } else {
+          return {
+            rows: participants.rows.length,
+            tabs: tabs.length,
+            sheetSaid: `written, but the reply could not be read (HTTP ${receipt.status})`,
+          };
+        }
+      } catch {
+        return {
+          rows: participants.rows.length,
+          tabs: tabs.length,
+          sheetSaid: "written, but the reply could not be read",
+        };
+      }
     }
 
     // Apps Script answers 200 with an error body rather than a status code,

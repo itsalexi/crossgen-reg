@@ -242,19 +242,6 @@ export function CheckInScreen() {
   }, [cache, names]);
 
   /**
-   * The people. A seat nobody has claimed is a promise, not a person: counting
-   * one inflates the total at the door, and searching one puts a row with no
-   * name in front of a volunteer looking for somebody real.
-   */
-  const people = useMemo(
-    () => roster.filter((entry) => !entry.seat || entry.name.trim().length > 0),
-    [roster],
-  );
-  useEffect(() => {
-    peopleRef.current = roster;
-  }, [roster]);
-
-  /**
    * Drops a queued check-in only once the roster comes back showing that
    * person inside.
    *
@@ -266,13 +253,13 @@ export function CheckInScreen() {
    */
   useEffect(() => {
     const confirmed = queue.filter((entry) =>
-      people.some(
+      roster.some(
         (person) =>
           person.id === entry.participantId && person.checkedInAt !== null,
       ),
     );
     if (confirmed.length > 0) setQueue(clearQueued(confirmed));
-  }, [people, queue]);
+  }, [roster, queue]);
 
   // Same bargain for the names: kept until the roster itself says so.
   useEffect(() => {
@@ -294,6 +281,39 @@ export function CheckInScreen() {
     (entry: RosterEntry) => entry.checkedInAt !== null || queued.has(entry.id),
     [queued],
   );
+
+  /**
+   * The people.
+   *
+   * An unclaimed seat is a promise, not a person, and counting one inflates
+   * every total at the door. A claimed one is a person even when nobody took
+   * their name: somebody walked through the door on a sponsor's ticket, and
+   * the headcount is the whole point of counting them.
+   */
+  const people = useMemo(
+    () =>
+      roster.filter(
+        (entry) =>
+          !entry.seat ||
+          entry.name.trim().length > 0 ||
+          entry.checkedInAt !== null ||
+          queued.has(entry.id),
+      ),
+    [roster, queued],
+  );
+
+  /**
+   * What the search looks through. A nameless arrival counts towards the
+   * total but must not appear as a blank row under somebody's surname.
+   */
+  const searchable = useMemo(
+    () => people.filter((entry) => !entry.seat || entry.name.trim().length > 0),
+    [people],
+  );
+  useEffect(() => {
+    peopleRef.current = roster;
+  }, [roster]);
+
   const arrived = useMemo(() => people.filter(isIn).length, [people, isIn]);
 
   const markIn = useCallback(
@@ -359,7 +379,10 @@ export function CheckInScreen() {
     [flushNames, undoOne],
   );
 
-  const results = useMemo(() => searchRoster(people, query), [people, query]);
+  const results = useMemo(
+    () => searchRoster(searchable, query),
+    [searchable, query],
+  );
 
   const groups = useMemo(() => {
     const byName = new Map<string, RosterEntry[]>();

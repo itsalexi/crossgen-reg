@@ -119,6 +119,21 @@ export function CheckInDesk({
   );
 
   const shown = query.trim().length > 0 ? results : [];
+
+  /**
+   * Typing a sponsor's name should find the sponsor. Their seats are not in
+   * the people search — a hundred blank rows help nobody — so the pools and
+   * groups are matched separately and shown above the names.
+   */
+  const needle = query.toLowerCase().trim();
+  const hitPools =
+    needle.length === 0
+      ? []
+      : pools.filter((entry) => entry.org.toLowerCase().includes(needle));
+  const hitGroups =
+    needle.length === 0
+      ? []
+      : groups.filter((group) => group.label.toLowerCase().includes(needle));
   const waiting = party?.members.filter((entry) => !isIn(entry)) ?? [];
 
   const openPerson = (id: string) => {
@@ -305,10 +320,14 @@ export function CheckInDesk({
                   >
                     <span className="min-w-0">
                       <span className="block truncate text-[16px] font-semibold text-ink">
-                        {entry.name}
+                        {entry.name.trim().length > 0
+                          ? entry.name
+                          : "No name given"}
                       </span>
                       <span className="block text-[13.5px]" style={{ color: BODY }}>
-                        {entry.group.length > 0 ? entry.group : entry.registrationNumber}
+                        {entry.group.length > 0
+                          ? entry.group
+                          : entry.registrationNumber}
                       </span>
                     </span>
                     <span className="flex-none text-[13.5px]" style={{ color: FAINT }}>
@@ -318,7 +337,7 @@ export function CheckInDesk({
                 </li>
               ))}
           </ul>
-        ) : shown.length === 0 ? (
+        ) : shown.length === 0 && hitPools.length === 0 && hitGroups.length === 0 ? (
           <p className="px-5 py-8 text-[15px] leading-relaxed" style={{ color: BODY }}>
             {query.trim().length === 0
               ? "Type a surname on the left. Matches appear here."
@@ -326,6 +345,54 @@ export function CheckInDesk({
           </p>
         ) : (
           <ul className="flex flex-col">
+            {hitPools.map((entry) => (
+              <li key={entry.number}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenId(null);
+                    setPartyLabel(null);
+                    setPoolNumber(entry.number);
+                  }}
+                  className="flex w-full items-center justify-between gap-4 border-b px-5 py-4 text-left hover:bg-white"
+                  style={{ borderColor: HAIRLINE }}
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-[16px] font-semibold text-ink">
+                      {entry.org}
+                    </span>
+                    <span className="block text-[13.5px]" style={{ color: FAINT }}>
+                      {entry.walkIn ? "Not on the list" : "Sponsor seats"}
+                    </span>
+                  </span>
+                  <span className="flex-none text-[14px]" style={{ color: BODY }}>
+                    {entry.used} of {entry.seats.length}
+                  </span>
+                </button>
+              </li>
+            ))}
+            {hitGroups.map((group) => (
+              <li key={group.label}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenId(null);
+                    setPoolNumber(null);
+                    setPicked(new Set());
+                    setPartyLabel(group.label);
+                  }}
+                  className="flex w-full items-center justify-between gap-4 border-b px-5 py-4 text-left hover:bg-white"
+                  style={{ borderColor: HAIRLINE }}
+                >
+                  <span className="min-w-0 truncate text-[16px] font-semibold text-ink">
+                    {group.label}
+                  </span>
+                  <span className="flex-none text-[14px]" style={{ color: BODY }}>
+                    {group.inside} of {group.members.length}
+                  </span>
+                </button>
+              </li>
+            ))}
             {shown.map((entry) => {
               const inside = isIn(entry);
               return (
@@ -419,7 +486,9 @@ export function CheckInDesk({
                 key={entry.id}
                 className="flex items-baseline justify-between gap-3 text-[14px]"
               >
-                <span className="min-w-0 truncate text-ink">{entry.name}</span>
+                <span className="min-w-0 truncate text-ink">
+                  {entry.name.trim().length > 0 ? entry.name : "No name given"}
+                </span>
                 <span className="flex-none" style={{ color: FAINT }}>
                   {entry.checkedInAt !== null ? at(entry.checkedInAt) : "now"}
                 </span>

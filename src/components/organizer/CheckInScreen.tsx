@@ -305,6 +305,14 @@ export function CheckInScreen() {
    * the fact the day turns on, the name is a detail that can follow when there
    * is signal for it.
    */
+  /** The headcount: several seats at once, nameless. */
+  const countSeats = useCallback(
+    (chosen: RosterEntry[]) => {
+      markIn(chosen);
+    },
+    [markIn],
+  );
+
   const claimSeat = useCallback(
     (seat: RosterEntry, name: string, note: string) => {
       const typed = name.trim();
@@ -419,6 +427,25 @@ export function CheckInScreen() {
       }))
       .sort((a, b) => a.org.localeCompare(b.org));
   }, [people, isIn]);
+
+  /**
+   * Groups and sponsors whose name matches what has been typed.
+   *
+   * Typing is how everything else is found, so it should find a group too —
+   * a leader says "Capitol City" long before anyone says a surname, and the
+   * twenty names underneath are not what the volunteer wants to wade through.
+   */
+  const matchingGroups = useMemo(() => {
+    const needle = query.toLowerCase().trim();
+    if (needle.length === 0) return [];
+    return groups.filter((group) => group.label.toLowerCase().includes(needle));
+  }, [groups, query]);
+
+  const matchingPools = useMemo(() => {
+    const needle = query.toLowerCase().trim();
+    if (needle.length === 0) return [];
+    return pools.filter((pool) => pool.org.toLowerCase().includes(needle));
+  }, [pools, query]);
 
   /** The spare seats, if the organizers set any aside. */
   const walkInPool = useMemo(() => pools.find((pool) => pool.walkIn), [pools]);
@@ -772,7 +799,7 @@ export function CheckInScreen() {
                           className="flex-none text-[17px] leading-[1.2] font-medium"
                           style={{ color: BODY }}
                         >
-                          {pool.used} of {pool.seats.length}
+                          {pool.used} of {pool.seats.length} in
                         </span>
                       </button>
                     </li>
@@ -812,7 +839,74 @@ export function CheckInScreen() {
               ))}
             </ul>
           </>
-        ) : results.length === 0 ? (
+        ) : (
+          <>
+            {(matchingPools.length > 0 || matchingGroups.length > 0) && (
+              <>
+                <p
+                  className="px-1 py-2.5 text-[16px] leading-none font-semibold"
+                  style={{ color: BODY }}
+                >
+                  Groups matching that
+                </p>
+                <ul className="mb-4 flex flex-col gap-2.5">
+                  {matchingPools.map((pool) => (
+                    <li key={pool.number}>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setView({ kind: "sponsor", number: pool.number })
+                        }
+                        className="flex min-h-[72px] w-full items-center justify-between gap-3.5 rounded-2xl bg-white px-[18px] py-4 text-left"
+                        style={{ border: `2px solid ${HAIRLINE}` }}
+                      >
+                        <span className="text-[19px] leading-[1.25] font-semibold text-ink">
+                          {pool.org}
+                        </span>
+                        <span
+                          className="flex-none text-[17px] leading-[1.2] font-medium"
+                          style={{ color: BODY }}
+                        >
+                          {pool.used} of {pool.seats.length} in
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                  {matchingGroups.map((group) => (
+                    <li key={group.label}>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setView({ kind: "groupCount", label: group.label })
+                        }
+                        className="flex min-h-[72px] w-full items-center justify-between gap-3.5 rounded-2xl bg-white px-[18px] py-4 text-left"
+                        style={{ border: `2px solid ${HAIRLINE}` }}
+                      >
+                        <span className="text-[19px] leading-[1.25] font-semibold text-ink">
+                          {group.label}
+                        </span>
+                        <span
+                          className="flex-none text-[17px] leading-[1.2] font-medium"
+                          style={{ color: BODY }}
+                        >
+                          {group.inside} of {group.members.length} in
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+
+            {results.length > 0 && (
+              <p
+                className="px-1 py-2.5 text-[16px] leading-none font-semibold"
+                style={{ color: BODY }}
+              >
+                People
+              </p>
+            )}
+            {results.length === 0 && matchingGroups.length + matchingPools.length > 0 ? null : results.length === 0 ? (
           <div className="px-1 pt-6">
             <p className="font-display text-[27px] leading-[1.15] font-bold text-ink">
               Nobody by that name
@@ -910,6 +1004,8 @@ export function CheckInScreen() {
             })}
           </ul>
         )}
+          </>
+        )}
       </div>
     </div>
   );
@@ -994,6 +1090,7 @@ export function CheckInScreen() {
                 walkIn={seatsOf(view.number)[0]?.walkIn === true}
                 isIn={isIn}
                 onClaim={claimSeat}
+                onCount={countSeats}
                 onUndo={releaseSeat}
                 onClose={back}
               />
@@ -1312,6 +1409,7 @@ export function CheckInScreen() {
                           walkIn={seatsOf(hit.number)[0]?.walkIn === true}
                           isIn={isIn}
                           onClaim={claimSeat}
+                          onCount={countSeats}
                           onUndo={releaseSeat}
                           onClose={closeHit}
                         />

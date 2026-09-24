@@ -4,21 +4,25 @@ import { useRef, useState } from "react";
 import type { RosterEntry } from "@convex/checkin";
 
 /**
- * A sponsor's seats, at the door.
+ * Seats that were paid for before anybody knew who would sit in them.
  *
- * The sponsor paid for ten slots and never sent ten names, so there is nobody
- * to look up: the person standing there is the first anyone has heard of them.
- * One question, then — what is your name — and the seat is theirs.
+ * Two ways in, because two different things happen at a door. A sponsor sends
+ * eighty people and nobody is going to type eighty names: that is a headcount,
+ * counted up and down as they file past. A walk-in is one person nobody has
+ * ever heard of, and their name is the only thing that will make sense of them
+ * on Monday.
  *
- * A name is not required. A queue that stops while somebody spells their
- * surname is worse than a seat recorded as used with nobody's name on it, and
- * the name can be filled in afterwards from the dashboard.
+ * So counting leads for a sponsor and naming leads for a walk-in, and either
+ * can reach the other in one tap. A seat claimed without a name is still a
+ * seat claimed: it counts, it can be undone, and a name can be written into it
+ * afterwards from the dashboard.
  */
 
 const PURPLE = "#3e2a85";
 const BORDER = "#c9c2dd";
 const HAIRLINE = "#ddd8e8";
 const BODY = "#4a4460";
+const FAINT = "#6e6885";
 const TEAL = "#1d5f78";
 const TEAL_TINT = "#e8f4f8";
 
@@ -29,11 +33,20 @@ function at(ts: number): string {
   });
 }
 
+function buzz(pattern: number | number[]): void {
+  try {
+    navigator.vibrate?.(pattern);
+  } catch {
+    // The number on screen is the feedback that matters.
+  }
+}
+
 export function SponsorSheet({
   org,
   seats,
   isIn,
   onClaim,
+  onCount,
   onUndo,
   onClose,
   walkIn = false,
@@ -41,17 +54,15 @@ export function SponsorSheet({
   org: string;
   seats: RosterEntry[];
   isIn: (entry: RosterEntry) => boolean;
-  /** Writes the name into the seat and marks it arrived, in that order. */
+  /** One person, with their name. */
   onClaim: (seat: RosterEntry, name: string, note: string) => void;
+  /** Several at once, nameless — the headcount. */
+  onCount: (seats: RosterEntry[]) => void;
   onUndo: (seat: RosterEntry) => void;
   onClose: () => void;
-  /**
-   * Spare seats for people with no record at all, rather than a sponsor's.
-   * Same machinery; the difference is that somebody has to sort them out
-   * afterwards, so the door is asked for a word about who they were.
-   */
   walkIn?: boolean;
 }) {
+  const [naming, setNaming] = useState(walkIn);
   const [name, setName] = useState("");
   const [note, setNote] = useState("");
   const field = useRef<HTMLInputElement | null>(null);
@@ -64,12 +75,31 @@ export function SponsorSheet({
   );
   const next = free[0] ?? null;
 
+  // Most recent first: undoing means undoing the last tap, nearly always.
+  const recent = [...used].sort(
+    (a, b) => (b.checkedInAt ?? Infinity) - (a.checkedInAt ?? Infinity),
+  );
+
   const claim = () => {
     if (next === null) return;
     onClaim(next, name, note);
     setName("");
     setNote("");
     field.current?.focus();
+  };
+
+  const add = (howMany: number) => {
+    const taking = free.slice(0, howMany);
+    if (taking.length === 0) return;
+    buzz(taking.length > 1 ? [18, 50, 18] : 18);
+    onCount(taking);
+  };
+
+  const removeLast = () => {
+    const last = recent[0];
+    if (last === undefined) return;
+    buzz(10);
+    onUndo(last);
   };
 
   return (
@@ -84,36 +114,35 @@ export function SponsorSheet({
         <p className="mt-2 font-display text-[29px] leading-[1.12] font-bold text-ink">
           {org}
         </p>
-        <p className="mt-1.5 text-[17px] leading-[1.35]" style={{ color: BODY }}>
-          {used.length} of {seats.length} used
-          {free.length > 0 ? ` · ${free.length} left` : ""}
-        </p>
 
         {next === null ? (
           <div
-            className="mt-5 rounded-2xl px-4 py-4"
+            className="mt-4 rounded-2xl px-4 py-4"
             style={{ background: "#fff6dd", border: "2px solid #f0d68a" }}
           >
             <p
               className="text-[17px] leading-[1.3] font-semibold"
               style={{ color: "#7a5c00" }}
             >
-              Every seat is used
+              All {seats.length} seats are used
             </p>
             <p
               className="mt-1 text-[16px] leading-[1.45]"
               style={{ color: "#6b5200" }}
             >
-              {walkIn
-                ? "Let them in and take their name on paper. An organizer can add more seats in a few seconds."
-                : "Let them in anyway and tell the registration table — a seat can be added there in a few seconds."}
+              Let them in anyway and tell the registration table. More seats can
+              be added there in a few seconds.
             </p>
           </div>
-        ) : (
+        ) : naming ? (
           <div className="mt-5">
+            <p className="text-[17px] leading-[1.35]" style={{ color: BODY }}>
+              {used.length} of {seats.length} in · {free.length} left
+            </p>
+
             <label
               htmlFor="sponsor-name"
-              className="text-[17px] leading-none font-semibold text-ink"
+              className="mt-4 block text-[17px] leading-none font-semibold text-ink"
             >
               Their name
             </label>
@@ -134,8 +163,6 @@ export function SponsorSheet({
               style={{ border: `2px solid ${BORDER}` }}
             />
 
-            {/* One line for whoever picks this up on Monday: which church,
-                whether they paid at the table, whose guest they are. */}
             {walkIn && (
               <>
                 <label
@@ -160,30 +187,107 @@ export function SponsorSheet({
               </>
             )}
           </div>
+        ) : (
+          /* The headcount. One number, made big enough to read at arm's length
+             while a queue walks past, and two buttons either side of it. */
+          <div className="mt-5">
+            <p
+              className="text-center text-[17px] leading-none font-semibold"
+              style={{ color: BODY }}
+            >
+              How many are in
+            </p>
+
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={removeLast}
+                disabled={used.length === 0}
+                aria-label="One fewer"
+                className="h-[92px] flex-1 rounded-2xl text-[44px] leading-none font-semibold disabled:opacity-30"
+                style={{
+                  background: "#fff",
+                  border: `2px solid ${BORDER}`,
+                  color: PURPLE,
+                }}
+              >
+                −
+              </button>
+
+              <span className="flex min-w-[104px] flex-col items-center">
+                <span
+                  className="font-display text-[64px] leading-none font-bold tabular-nums"
+                  style={{ color: PURPLE }}
+                >
+                  {used.length}
+                </span>
+                <span
+                  className="mt-1 text-[16px] leading-none font-medium"
+                  style={{ color: BODY }}
+                >
+                  of {seats.length}
+                </span>
+              </span>
+
+              <button
+                type="button"
+                onClick={() => add(1)}
+                aria-label="One more"
+                className="h-[92px] flex-1 rounded-2xl text-[44px] leading-none font-semibold text-white"
+                style={{ background: PURPLE }}
+              >
+                +
+              </button>
+            </div>
+
+            {/* A van arrives with twelve people in it. */}
+            <div className="mt-2.5 flex gap-2.5">
+              {[5, 10].map((step) => (
+                <button
+                  key={step}
+                  type="button"
+                  onClick={() => add(step)}
+                  disabled={free.length === 0}
+                  className="h-[52px] flex-1 rounded-xl text-[18px] font-semibold disabled:opacity-30"
+                  style={{
+                    background: "#fff",
+                    border: `2px solid ${BORDER}`,
+                    color: PURPLE,
+                  }}
+                >
+                  +{step}
+                </button>
+              ))}
+            </div>
+
+            <p className="mt-3 text-[16px] leading-[1.45]" style={{ color: FAINT }}>
+              {free.length} seats left. Tap minus to take the last one back.
+            </p>
+          </div>
         )}
 
-        {/* Who has come in on this sponsor's seats, and the way to undo a
-            wrong one. The sponsor will ask for exactly this list. */}
-        {used.length > 0 && (
+        {/* Only shown once there is something to show. An empty panel under an
+            empty list was the thing that looked broken. */}
+        {recent.length > 0 && (
           <div className="mt-6">
             <p
               className="text-[16px] leading-none font-semibold"
               style={{ color: BODY }}
             >
-              In on these seats
+              {recent.length === 1 ? "The one in" : `The last few of ${used.length}`}
             </p>
             <ul className="mt-3 flex flex-col gap-2.5">
-              {used.map((seat, index) => (
+              {recent.slice(0, 6).map((seat, index) => (
                 <li
                   key={seat.id}
                   className="flex items-center gap-3 rounded-2xl px-4 py-3"
-                  style={{ background: TEAL_TINT, border: `2px solid ${TEAL_TINT}` }}
+                  style={{ background: TEAL_TINT }}
                 >
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[18px] leading-[1.25] font-semibold text-ink">
                       {seat.name.trim().length > 0
                         ? seat.name
-                        : `Seat ${index + 1}, no name given`}
+                        : `No name given`}
                     </span>
                     <span
                       className="block text-[15px] leading-[1.3]"
@@ -205,6 +309,11 @@ export function SponsorSheet({
                 </li>
               ))}
             </ul>
+            {used.length > 6 && (
+              <p className="mt-2.5 text-[15px]" style={{ color: FAINT }}>
+                {used.length - 6} more already in.
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -222,7 +331,7 @@ export function SponsorSheet({
           >
             Next person
           </button>
-        ) : (
+        ) : naming ? (
           <>
             <button
               type="button"
@@ -234,11 +343,33 @@ export function SponsorSheet({
             </button>
             <button
               type="button"
-              onClick={onClose}
+              onClick={() => (walkIn ? onClose() : setNaming(false))}
               className="mt-2.5 h-[52px] w-full rounded-xl text-[18px] font-semibold"
               style={{ border: `2px solid ${BORDER}`, color: PURPLE }}
             >
+              {walkIn ? "Done" : "Just count them instead"}
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-[68px] w-full rounded-xl text-[21px] font-semibold text-white"
+              style={{ background: PURPLE }}
+            >
               Done
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setNaming(true);
+                setTimeout(() => field.current?.focus(), 0);
+              }}
+              className="mt-2.5 h-[52px] w-full rounded-xl text-[18px] font-semibold"
+              style={{ border: `2px solid ${BORDER}`, color: PURPLE }}
+            >
+              Someone gave a name
             </button>
           </>
         )}

@@ -87,6 +87,13 @@ export type RosterEntry = {
   /** False when the deposit covering them has not been settled. */
   cleared: boolean;
   /**
+   * Somebody wrote down that this money is still to come — a church paying at
+   * the venue on the day. Different from an unreconciled deposit, which is the
+   * office's problem and not the door's, and the two must not look alike: one
+   * means wave them through, the other means send them to the table.
+   */
+  owes: boolean;
+  /**
    * A sponsor's seat. Unclaimed while the name is empty: somebody paid for it
    * and the person sitting in it is named at the door.
    */
@@ -139,6 +146,9 @@ export const roster = query({
         registration?.paymentType !== "paid" ||
         (record !== undefined && (record.status ?? "received") === "received");
 
+      // Marked unpaid by an organizer, rather than merely unreconciled.
+      const owes = record !== undefined && record.status === "unpaid";
+
       return {
         id: participant._id,
         name: participant.fullName,
@@ -159,6 +169,7 @@ export const roster = query({
         mobile: participant.mobileNumber ?? "",
         email: participant.email ?? "",
         cleared,
+        owes,
         seat: participant.seat === true,
         walkIn:
           participant.seat === true &&

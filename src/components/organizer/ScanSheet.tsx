@@ -179,7 +179,25 @@ export function ScanSheet({
           </p>
         </div>
 
-        {!person.cleared && (
+        {person.owes ? (
+          <div
+            className="mt-4 rounded-2xl px-4 py-3.5"
+            style={{ background: "#fdeaea", border: "2px solid #e8a0a0" }}
+          >
+            <p
+              className="text-[17px] leading-[1.3] font-semibold"
+              style={{ color: "#8f2020" }}
+            >
+              Still to pay
+            </p>
+            <p
+              className="mt-1 text-[16px] leading-[1.45]"
+              style={{ color: "#8f2020" }}
+            >
+              Send them to the registration table before they go in.
+            </p>
+          </div>
+        ) : !person.cleared && (
           <div
             className="mt-4 rounded-2xl px-4 py-3.5"
             style={{ background: "#fff6dd", border: "2px solid #f0d68a" }}

@@ -602,7 +602,21 @@ function PersonPanel({
         </p>
       </div>
 
-      {!person.cleared && (
+      {person.owes && (
+        <div
+          className="rounded-xl px-4 py-3"
+          style={{ background: "#fdeaea", border: "2px solid #e8a0a0" }}
+        >
+          <p className="text-[14.5px] font-semibold" style={{ color: "#8f2020" }}>
+            Still to pay
+          </p>
+          <p className="mt-0.5 text-[13.5px]" style={{ color: "#8f2020" }}>
+            Send them to the registration table before they go in.
+          </p>
+        </div>
+      )}
+
+      {!person.cleared && !person.owes && (
         <div
           className="rounded-xl px-4 py-3"
           style={{ background: "#fff6dd", border: "2px solid #f0d68a" }}
@@ -647,7 +661,10 @@ function PersonPanel({
         {field("City", person.city)}
         {field("Number", person.registrationNumber)}
         {field("Group", person.group)}
-        {field("Paid", person.cleared ? "Settled" : "Not finished")}
+        {field(
+          "Paid",
+          person.owes ? "Still to pay" : person.cleared ? "Settled" : "Not finished",
+        )}
       </dl>
 
       {family.length > 0 && (

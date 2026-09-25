@@ -413,7 +413,23 @@ export function CheckInDesk({
                       <span className="block truncate text-[16px] font-semibold text-ink">
                         {entry.name}
                       </span>
-                      <span className="block truncate text-[13.5px]" style={{ color: BODY }}>
+                      <span
+                        className="flex items-center gap-1.5 truncate text-[13.5px]"
+                        style={{ color: BODY }}
+                      >
+                        {(() => {
+                          const room = breakoutRoom(entry.sessionNumber);
+                          if (room === null) return null;
+                          return (
+                            <span
+                              className="size-2.5 flex-none rounded-full"
+                              style={{
+                                background: room.hex,
+                                border: `1px solid ${room.ink}`,
+                              }}
+                            />
+                          );
+                        })()}
                         {entry.group.length > 0
                           ? entry.group
                           : entry.church.length > 0
@@ -971,8 +987,29 @@ function GroupPanel({
                 >
                   ✓
                 </span>
-                <span className="truncate text-[15px] font-medium text-ink">
-                  {entry.name}
+                <span className="min-w-0">
+                  <span className="block truncate text-[15px] font-medium text-ink">
+                    {entry.name}
+                  </span>
+                  {(() => {
+                    const room = breakoutRoom(entry.sessionNumber);
+                    if (room === null) return null;
+                    return (
+                      <span
+                        className="flex items-center gap-1.5 text-[12.5px]"
+                        style={{ color: room.ink }}
+                      >
+                        <span
+                          className="size-2.5 flex-none rounded-full"
+                          style={{
+                            background: room.hex,
+                            border: `1px solid ${room.ink}`,
+                          }}
+                        />
+                        {room.room}
+                      </span>
+                    );
+                  })()}
                 </span>
               </button>
             </li>

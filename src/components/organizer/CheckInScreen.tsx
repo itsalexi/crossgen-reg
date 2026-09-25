@@ -1220,11 +1220,35 @@ export function CheckInScreen() {
                               >
                                 ✓
                               </span>
-                              <span
-                                className="text-[19px] leading-[1.25] font-semibold"
-                                style={{ color: on ? "#fff" : "#191528" }}
-                              >
-                                {entry.name}
+                              <span className="min-w-0">
+                                <span
+                                  className="block text-[19px] leading-[1.25] font-semibold"
+                                  style={{ color: on ? "#fff" : "#191528" }}
+                                >
+                                  {entry.name}
+                                </span>
+                                {/* A family of five rarely goes to one room.
+                                    The colour is what the volunteer points at
+                                    as each of them walks past. */}
+                                {(() => {
+                                  const room = breakoutRoom(entry.sessionNumber);
+                                  if (room === null) return null;
+                                  return (
+                                    <span
+                                      className="mt-0.5 flex items-center gap-1.5 text-[15px] leading-[1.3]"
+                                      style={{ color: on ? "#e8e4f5" : BODY }}
+                                    >
+                                      <span
+                                        className="size-3 flex-none rounded-full"
+                                        style={{
+                                          background: room.hex,
+                                          border: `1px solid ${on ? "#fff" : room.ink}`,
+                                        }}
+                                      />
+                                      {room.room}
+                                    </span>
+                                  );
+                                })()}
                               </span>
                             </button>
                           </li>

@@ -1062,6 +1062,7 @@ export function CheckInScreen() {
           isIn={isIn}
           onCheckIn={markIn}
           onCount={countSeats}
+          onClaim={claimSeat}
           onUndo={undoOne}
           query={query}
           setQuery={setQuery}

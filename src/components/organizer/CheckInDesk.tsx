@@ -48,6 +48,7 @@ export function CheckInDesk({
   isIn,
   onCheckIn,
   onCount,
+  onClaim,
   onUndo,
   query,
   setQuery,
@@ -63,6 +64,8 @@ export function CheckInDesk({
   onCheckIn: (entries: RosterEntry[]) => void;
   /** Seats claimed without names — the headcount. */
   onCount: (seats: RosterEntry[]) => void;
+  /** One seat, with the name and a word about who they are. */
+  onClaim: (seat: RosterEntry, name: string, note: string) => void;
   onUndo: (entry: RosterEntry) => void;
   query: string;
   setQuery: (value: string) => void;
@@ -442,6 +445,7 @@ export function CheckInDesk({
               pool={pool}
               isIn={isIn}
               onCount={onCount}
+              onClaim={onClaim}
               onUndo={onUndo}
             />
           ) : party !== null ? (
@@ -732,13 +736,18 @@ function PoolPanel({
   pool,
   isIn,
   onCount,
+  onClaim,
   onUndo,
 }: {
   pool: Pool;
   isIn: (entry: RosterEntry) => boolean;
   onCount: (seats: RosterEntry[]) => void;
+  onClaim: (seat: RosterEntry, name: string, note: string) => void;
   onUndo: (entry: RosterEntry) => void;
 }) {
+  const [name, setName] = useState("");
+  const [note, setNote] = useState("");
+  const nameRef = useRef<HTMLInputElement | null>(null);
   const used = pool.seats.filter(
     (seat) => isIn(seat) || seat.name.trim().length > 0,
   );
@@ -754,6 +763,15 @@ function PoolPanel({
     if (taking.length > 0) onCount(taking);
   };
 
+  const claim = () => {
+    const seat = free[0];
+    if (seat === undefined) return;
+    onClaim(seat, name, note);
+    setName("");
+    setNote("");
+    nameRef.current?.focus();
+  };
+
   return (
     <div className="flex flex-col gap-5">
       <div>
@@ -765,7 +783,56 @@ function PoolPanel({
         </p>
       </div>
 
-      <div>
+      {/* A walk-in is one person nobody has heard of, and their name is the
+          only thing that will make sense of them afterwards. A sponsor's guest
+          is a headcount. Both are here; which one leads depends on the pool. */}
+      <div style={{ order: pool.walkIn ? 0 : 1 }}>
+        <label
+          htmlFor="pool-name"
+          className="text-[13px] font-semibold"
+          style={{ color: PURPLE }}
+        >
+          {pool.walkIn ? "Their name" : "Someone gave a name"}
+        </label>
+        <input
+          id="pool-name"
+          ref={nameRef}
+          autoComplete="off"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !pool.walkIn) claim();
+          }}
+          placeholder="As they say it"
+          className="mt-1.5 h-11 w-full rounded-lg px-3 text-[15px] text-ink"
+          style={{ border: `2px solid ${LINE}` }}
+        />
+        {pool.walkIn && (
+          <input
+            aria-label="What are they"
+            autoComplete="off"
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") claim();
+            }}
+            placeholder="Church, or paid at the table"
+            className="mt-2 h-11 w-full rounded-lg px-3 text-[15px] text-ink"
+            style={{ border: `2px solid ${LINE}` }}
+          />
+        )}
+        <button
+          type="button"
+          onClick={claim}
+          disabled={free.length === 0}
+          className="mt-2 h-11 w-full rounded-lg text-[14.5px] font-semibold text-white disabled:opacity-30"
+          style={{ background: PURPLE }}
+        >
+          {name.trim().length > 0 ? `Check in ${name.trim()}` : "Check in without a name"}
+        </button>
+      </div>
+
+      <div style={{ order: pool.walkIn ? 1 : 0 }}>
         <div className="flex items-center justify-between gap-2.5">
           <button
             type="button"

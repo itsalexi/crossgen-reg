@@ -1514,6 +1514,54 @@ export const listOrganizers = query({
   },
 });
 
+/**
+ * Adds door accounts from the command line.
+ *
+ * Six volunteers arriving by chat message the night before is not a job for a
+ * form with one field. Idempotent, so running it twice on the same list is
+ * safe and says so rather than throwing.
+ *
+ *   npx convex run organizer:addDoorAs '{"emails":["a@b.com"],"role":"volunteer"}' --prod
+ */
+export const addDoorAs = internalMutation({
+  args: {
+    emails: v.array(v.string()),
+    role: v.optional(v.union(v.literal("organizer"), v.literal("volunteer"))),
+    note: v.optional(v.string()),
+    byEmail: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const added: string[] = [];
+    const already: string[] = [];
+    const rejected: string[] = [];
+
+    for (const raw of args.emails) {
+      const email = raw.toLowerCase().trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        rejected.push(raw);
+        continue;
+      }
+      const existing = await ctx.db
+        .query("organizers")
+        .withIndex("by_email", (q) => q.eq("email", email))
+        .unique();
+      if (existing !== null) {
+        already.push(email);
+        continue;
+      }
+      await ctx.db.insert("organizers", {
+        email,
+        role: args.role ?? "volunteer",
+        addedByEmail: args.byEmail ?? "cli",
+        note: args.note,
+      });
+      added.push(email);
+    }
+
+    return { added, already, rejected };
+  },
+});
+
 export const addOrganizer = mutation({
   args: {
     email: v.string(),

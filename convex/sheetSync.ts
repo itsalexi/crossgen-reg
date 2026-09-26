@@ -27,6 +27,7 @@ import { internalAction } from "./_generated/server";
 import { normalizeGroupKey, pickGroupLabel } from "./groupKey";
 import {
   BREAKOUT_SESSIONS,
+  breakoutRoom,
   breakoutTitle,
   EVENT,
   formatDatePaid,
@@ -244,6 +245,67 @@ export const push = internalAction({
           typeShort(e.registration.registrationType as RegistrationType),
           e.registration.registrationNumber,
         ]),
+    };
+
+    /**
+     * Who actually walked in, in the order they did.
+     *
+     * The Check-in tab is who was expected; this is who came. Kept apart
+     * because the difference between the two is the only number anybody will
+     * ask about afterwards, and a single tab that tried to be both would
+     * answer neither.
+     */
+    const arrivedAt = new Map<string, { at: number; byEmail: string }>();
+    for (const row of data.checkIns) {
+      const seen = arrivedAt.get(row.participantId);
+      if (seen === undefined || row.at < seen.at) {
+        arrivedAt.set(row.participantId, { at: row.at, byEmail: row.byEmail });
+      }
+    }
+
+    const manila = (ms: number): string =>
+      new Date(ms).toLocaleString("en-PH", {
+        timeZone: "Asia/Manila",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      });
+
+    const arrived: Tab = {
+      name: "Arrived",
+      headers: [
+        "Time In",
+        "Full Name",
+        "Group",
+        "Room",
+        "Colour",
+        "Breakout Session",
+        "Registration Number",
+        "Checked In By",
+      ],
+      rows: everyone
+        .filter((e) => arrivedAt.has(e.participant._id))
+        .sort(
+          (a, b) =>
+            (arrivedAt.get(a.participant._id)?.at ?? 0) -
+            (arrivedAt.get(b.participant._id)?.at ?? 0),
+        )
+        .map((e) => {
+          const seen = arrivedAt.get(e.participant._id);
+          const room = breakoutRoom(e.participant.breakoutSession);
+          return [
+            seen === undefined ? "" : manila(seen.at),
+            e.participant.fullName.trim().length > 0
+              ? e.participant.fullName
+              : "(no name given)",
+            e.group,
+            room?.room ?? "",
+            room?.colour ?? "",
+            `${e.participant.breakoutSession}. ${breakoutTitle(e.participant.breakoutSession)}`,
+            e.registration.registrationNumber,
+            seen?.byEmail ?? "",
+          ];
+        }),
     };
 
     const participants: Tab = {
@@ -598,6 +660,7 @@ export const push = internalAction({
     const tabs: Tab[] = [
       summary,
       checkIn,
+      arrived,
       participants,
       sessions,
       groups,

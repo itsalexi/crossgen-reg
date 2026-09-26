@@ -535,6 +535,7 @@ export const everything = internalQuery({
     registrations: Doc<"registrations">[];
     participants: Doc<"participants">[];
     payments: Doc<"payments">[];
+    checkIns: Doc<"checkIns">[];
   }> => ({
     registrations: await ctx.db.query("registrations").collect(),
     // An unclaimed seat is a promise, not a person. Counting one would put
@@ -545,6 +546,7 @@ export const everything = internalQuery({
       .collect()
       .then((rows) => rows.filter((row) => !isEmptySeat(row))),
     payments: await ctx.db.query("payments").collect(),
+    checkIns: await ctx.db.query("checkIns").collect(),
   }),
 });
 

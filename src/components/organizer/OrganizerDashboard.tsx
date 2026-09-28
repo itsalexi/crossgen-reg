@@ -23,6 +23,7 @@ import { AccountBar, BottomBar, TopBar } from "@/components/brand";
 import { GoogleSignIn } from "@/components/GoogleSignIn";
 import { Button, Eyebrow, Spinner, cn } from "@/components/ui";
 import { buildParticipantCsv, downloadCsv } from "@/lib/csv";
+import { buildMailMergeCsv } from "@/lib/mailmerge";
 import {
   buildRows,
   computeStats,
@@ -672,19 +673,40 @@ export function OrganizerDashboard() {
                         </span>
                       )}
                     </h1>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={rows.length === 0}
-                      onClick={() =>
-                        downloadCsv(
-                          "crossgen-2026-participants.csv",
-                          buildParticipantCsv(rows, payments),
-                        )
-                      }
-                    >
-                      Export CSV
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={rows.length === 0}
+                        onClick={() =>
+                          downloadCsv(
+                            "crossgen-2026-participants.csv",
+                            buildParticipantCsv(rows, payments),
+                          )
+                        }
+                      >
+                        Export CSV
+                      </Button>
+                      {/* The mail-merge sheet used to come out of a script on
+                          somebody's laptop, which made every email blast wait
+                          on that person. */}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={data.participants.length === 0}
+                        onClick={() =>
+                          downloadCsv(
+                            "crossgen-email-list.csv",
+                            buildMailMergeCsv(
+                              data.registrations,
+                              data.participants,
+                            ),
+                          )
+                        }
+                      >
+                        Email list
+                      </Button>
+                    </div>
                   </div>
 
                   <AddRegistration onAdded={() => {}} />
